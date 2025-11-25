@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
-import { CheckCircle, Circle } from 'lucide-react';
+import { CheckCircle, Circle, Heart } from 'lucide-react';
 import { mockVideos } from '../data/mockData';
 
 const VideoDetail = () => {
@@ -22,6 +22,12 @@ const VideoDetail = () => {
         return learnedIds.includes(parseInt(id));
     });
 
+    // 管理"收藏"状态 - 从 localStorage 读取
+    const [isFavorite, setIsFavorite] = useState(() => {
+        const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+        return favoriteIds.includes(parseInt(id));
+    });
+
     // 初始化数据
     useEffect(() => {
         const video = mockVideos.find(v => v.id === parseInt(id));
@@ -29,9 +35,12 @@ const VideoDetail = () => {
             setVideoData(video);
         }
 
-        // 每次切换视频时，重新检查该视频的学习状态
+        // 每次切换视频时，重新检查该视频的学习状态和收藏状态
         const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
         setIsLearned(learnedIds.includes(parseInt(id)));
+
+        const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+        setIsFavorite(favoriteIds.includes(parseInt(id)));
     }, [id]);
 
     // 监听 mode 变化，自动保存到 localStorage
@@ -56,6 +65,25 @@ const VideoDetail = () => {
         }
 
         localStorage.setItem('learnedVideoIds', JSON.stringify(updatedIds));
+    };
+
+    // 切换"收藏/取消收藏"状态
+    const handleToggleFavorite = () => {
+        const videoId = parseInt(id);
+        const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+
+        let updatedIds;
+        if (favoriteIds.includes(videoId)) {
+            // 移除收藏
+            updatedIds = favoriteIds.filter(id => id !== videoId);
+            setIsFavorite(false);
+        } else {
+            // 添加收藏
+            updatedIds = [...favoriteIds, videoId];
+            setIsFavorite(true);
+        }
+
+        localStorage.setItem('favoriteVideoIds', JSON.stringify(updatedIds));
     };
 
     // 处理点击字幕跳转
@@ -99,26 +127,45 @@ const VideoDetail = () => {
                         ← 返回首页
                     </Link>
 
-                    {/* 标记已学/未学按钮 */}
-                    <button
-                        onClick={handleToggleLearned}
-                        className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isLearned
+                    {/* 操作按钮组 */}
+                    <div className="flex items-center gap-2">
+                        {/* 收藏按钮 */}
+                        <button
+                            onClick={handleToggleFavorite}
+                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isFavorite
+                                ? 'bg-red-500 text-white hover:bg-red-600 shadow-md'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                                }`}
+                        >
+                            <Heart
+                                className={`w-4 h-4 md:w-5 md:h-5 ${isFavorite ? 'fill-current' : ''}`}
+                            />
+                            <span className="text-xs md:text-sm hidden sm:inline">
+                                {isFavorite ? '已收藏' : '收藏'}
+                            </span>
+                        </button>
+
+                        {/* 标记已学/未学按钮 */}
+                        <button
+                            onClick={handleToggleLearned}
+                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isLearned
                                 ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
                                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        {isLearned ? (
-                            <>
-                                <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                                <span className="text-xs md:text-sm">已学习</span>
-                            </>
-                        ) : (
-                            <>
-                                <Circle className="w-4 h-4 md:w-5 md:h-5" />
-                                <span className="text-xs md:text-sm">标记已学</span>
-                            </>
-                        )}
-                    </button>
+                                }`}
+                        >
+                            {isLearned ? (
+                                <>
+                                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                                    <span className="text-xs md:text-sm hidden sm:inline">已学习</span>
+                                </>
+                            ) : (
+                                <>
+                                    <Circle className="w-4 h-4 md:w-5 md:h-5" />
+                                    <span className="text-xs md:text-sm hidden sm:inline">标记已学</span>
+                                </>
+                            )}
+                        </button>
+                    </div>
                 </div>
 
                 <h1 className="text-lg md:text-2xl font-bold mb-2">{videoData.title}</h1>
