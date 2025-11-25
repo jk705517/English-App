@@ -2,10 +2,13 @@ export const mockVideos = [
     {
         id: 1,
         title: "How language shapes the way we think",
+        cover: "/cover.jpg",
         videoUrl: "/demo.mp4",
         duration: "14:03",
         author: "Lera Boroditsky",
         level: "⭐⭐⭐⭐",
+        difficulty: 4,
+        category: "语言学",
         isLearned: false,
         // 调整后的时间轴，适配本地测试视频
         transcript: [
@@ -24,9 +27,9 @@ export const mockVideos = [
         ]
     },
     // 占位数据
-    { id: 2, title: "Daily Conversation", videoUrl: "", duration: "10:00", author: "TEco Lab", level: "⭐⭐", isLearned: true },
-    { id: 3, title: "Business English", videoUrl: "", duration: "15:30", author: "TEco Lab", level: "⭐⭐⭐", isLearned: false },
-    { id: 4, title: "Travel Vlog", videoUrl: "", duration: "08:20", author: "TEco Lab", level: "⭐⭐", isLearned: false },
-    { id: 5, title: "Tech News", videoUrl: "", duration: "12:45", author: "TEco Lab", level: "⭐⭐⭐⭐", isLearned: false },
-    { id: 6, title: "Cooking Class", videoUrl: "", duration: "20:10", author: "TEco Lab", level: "⭐", isLearned: true },
+    { id: 2, title: "Daily Conversation", cover: "/cover.jpg", videoUrl: "", duration: "10:00", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "日常对话", isLearned: true },
+    { id: 3, title: "Business English", cover: "/cover.jpg", videoUrl: "", duration: "15:30", author: "TEco Lab", level: "⭐⭐⭐", difficulty: 3, category: "商务英语", isLearned: false },
+    { id: 4, title: "Travel Vlog", cover: "/cover.jpg", videoUrl: "", duration: "08:20", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "旅行", isLearned: false },
+    { id: 5, title: "Tech News", cover: "/cover.jpg", videoUrl: "", duration: "12:45", author: "TEco Lab", level: "⭐⭐⭐⭐", difficulty: 4, category: "科技", isLearned: false },
+    { id: 6, title: "Cooking Class", cover: "/cover.jpg", videoUrl: "", duration: "20:10", author: "TEco Lab", level: "⭐", difficulty: 1, category: "美食", isLearned: true },
 ];
