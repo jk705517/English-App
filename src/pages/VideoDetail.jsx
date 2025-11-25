@@ -171,7 +171,7 @@ const VideoDetail = () => {
                 <h1 className="text-lg md:text-2xl font-bold mb-2">{videoData.title}</h1>
 
                 {/* 视频播放器容器 - 手机端固定高度，电脑端自适应 */}
-                <div className="w-full aspect-video md:flex-1 bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg">
+                <div className="w-full aspect-video md:flex-1 bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
                     <ReactPlayer
                         ref={playerRef}
                         url={videoData.videoUrl}
