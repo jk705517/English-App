@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
+import { CheckCircle, Circle } from 'lucide-react';
 import { mockVideos } from '../data/mockData';
 
 const VideoDetail = () => {
@@ -9,9 +10,16 @@ const VideoDetail = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
+
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
         return localStorage.getItem('studyMode') || 'dual';
+    });
+
+    // 管理"已学"状态 - 从 localStorage 读取
+    const [isLearned, setIsLearned] = useState(() => {
+        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
+        return learnedIds.includes(parseInt(id));
     });
 
     // 初始化数据
@@ -20,12 +28,35 @@ const VideoDetail = () => {
         if (video) {
             setVideoData(video);
         }
+
+        // 每次切换视频时，重新检查该视频的学习状态
+        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
+        setIsLearned(learnedIds.includes(parseInt(id)));
     }, [id]);
 
     // 监听 mode 变化，自动保存到 localStorage
     useEffect(() => {
         localStorage.setItem('studyMode', mode);
     }, [mode]);
+
+    // 切换"已学/未学"状态
+    const handleToggleLearned = () => {
+        const videoId = parseInt(id);
+        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
+
+        let updatedIds;
+        if (learnedIds.includes(videoId)) {
+            // 移除
+            updatedIds = learnedIds.filter(id => id !== videoId);
+            setIsLearned(false);
+        } else {
+            // 添加
+            updatedIds = [...learnedIds, videoId];
+            setIsLearned(true);
+        }
+
+        localStorage.setItem('learnedVideoIds', JSON.stringify(updatedIds));
+    };
 
     // 处理点击字幕跳转
     const handleSeek = (seconds) => {
@@ -63,9 +94,32 @@ const VideoDetail = () => {
         <div className="flex flex-col md:flex-row h-screen bg-gray-50">
             {/* 视频区域 - 手机端上半部分，电脑端左侧 */}
             <div className="w-full md:w-2/3 p-4 md:p-6 flex flex-col">
-                <Link to="/" className="mb-2 md:mb-4 text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
-                    ← 返回首页
-                </Link>
+                <div className="flex items-center justify-between mb-2 md:mb-4">
+                    <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
+                        ← 返回首页
+                    </Link>
+
+                    {/* 标记已学/未学按钮 */}
+                    <button
+                        onClick={handleToggleLearned}
+                        className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isLearned
+                                ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
+                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        {isLearned ? (
+                            <>
+                                <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
+                                <span className="text-xs md:text-sm">已学习</span>
+                            </>
+                        ) : (
+                            <>
+                                <Circle className="w-4 h-4 md:w-5 md:h-5" />
+                                <span className="text-xs md:text-sm">标记已学</span>
+                            </>
+                        )}
+                    </button>
+                </div>
 
                 <h1 className="text-lg md:text-2xl font-bold mb-2">{videoData.title}</h1>
 

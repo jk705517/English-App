@@ -1,10 +1,20 @@
+import { useState, useEffect } from 'react';
 import { mockVideos } from '../data/mockData';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
 function Home() {
+    const [learnedVideoIds, setLearnedVideoIds] = useState([]);
+
+    // 从 localStorage 读取已学习的视频 ID 列表
+    useEffect(() => {
+        const storedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
+        setLearnedVideoIds(storedIds);
+    }, []);
+
+    // 计算统计数据
     const totalVideos = mockVideos.length;
-    const learnedVideos = mockVideos.filter(v => v.isLearned).length;
+    const learnedVideos = learnedVideoIds.length;
     const unlearnedVideos = totalVideos - learnedVideos;
 
     return (
@@ -60,7 +70,13 @@ function Home() {
             {/* 视频卡片网格 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {mockVideos.map((video) => (
-                    <VideoCard key={video.id} video={video} />
+                    <VideoCard
+                        key={video.id}
+                        video={{
+                            ...video,
+                            isLearned: learnedVideoIds.includes(video.id)
+                        }}
+                    />
                 ))}
             </div>
         </div>
