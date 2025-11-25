@@ -17,8 +17,8 @@ function Layout() {
 
     return (
         <div className="flex h-screen bg-gray-50">
-            {/* 左侧固定 Sidebar */}
-            <aside className="w-64 bg-white border-r border-gray-200 flex flex-col shadow-sm">
+            {/* 左侧固定 Sidebar - 只在桌面端显示 */}
+            <aside className="hidden md:flex w-64 bg-white border-r border-gray-200 flex-col shadow-sm">
                 {/* Logo 区域 */}
                 <div className="p-6 border-b border-gray-200">
                     <div className="flex items-center gap-3">
@@ -64,10 +64,42 @@ function Layout() {
                 </div>
             </aside>
 
-            {/* 右侧主内容区 */}
-            <main className="flex-1 overflow-y-auto p-8">
+            {/* 右侧主内容区 - 手机端添加底部内边距 */}
+            <main className="flex-1 overflow-y-auto p-4 md:p-8 pb-20 md:pb-8">
                 <Outlet />
             </main>
+
+            {/* 底部导航栏 - 只在移动端显示 */}
+            <nav className="flex md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+                <div className="flex w-full">
+                    {navItems.map((item) => {
+                        const Icon = item.icon;
+                        const active = isActive(item.path);
+
+                        return (
+                            <Link
+                                key={item.path}
+                                to={item.path}
+                                className={clsx(
+                                    'flex-1 flex flex-col items-center justify-center py-3 transition-all duration-200',
+                                    active
+                                        ? 'text-indigo-600 bg-indigo-50'
+                                        : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                                )}
+                            >
+                                <Icon className={clsx(
+                                    'w-6 h-6 mb-1',
+                                    active ? 'stroke-[2.5]' : 'stroke-[2]'
+                                )} />
+                                <span className={clsx(
+                                    'text-xs',
+                                    active ? 'font-semibold' : 'font-medium'
+                                )}>{item.label}</span>
+                            </Link>
+                        );
+                    })}
+                </div>
+            </nav>
         </div>
     );
 }
