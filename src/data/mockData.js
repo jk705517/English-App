@@ -3,7 +3,7 @@ export const mockVideos = [
         id: 1,
         title: "How language shapes the way we think",
         cover: "/cover.jpg",
-        videoUrl: "/demo.mp4",
+        videoUrl: "https://biubiu-assets.oss-cn-hangzhou.aliyuncs.com/demo.mp4",
         duration: "14:03",
         author: "Lera Boroditsky",
         level: "⭐⭐⭐⭐",
