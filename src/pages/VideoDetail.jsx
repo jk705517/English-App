@@ -38,7 +38,7 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block mx-1 px-2 bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none transition-all duration-200 ${status === 'error'
+            className={`inline-block mx-1 px-2 py-0 bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
                     ? 'ring-2 ring-red-500 text-red-500 animate-shake'
                     : 'focus:ring-2 focus:ring-indigo-400 focus:bg-white'
                 }`}
@@ -371,9 +371,9 @@ const VideoDetail = () => {
                                 key={index}
                                 ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
-                                className={`p-3 md:p-4 rounded-lg cursor-pointer transition-all duration-200 border-l-4 ${isActive
-                                    ? 'bg-indigo-100 border-indigo-600 shadow-sm'
-                                    : 'hover:bg-gray-50 text-gray-600 border-transparent'
+                                className={`relative p-4 rounded-lg cursor-pointer border-l-4 transition-colors duration-200 ${isActive
+                                        ? 'bg-indigo-50 border-indigo-600 shadow-sm'
+                                        : 'hover:bg-gray-50 border-transparent text-gray-600'
                                     }`}
                             >
                                 {/* 英文部分 - 根据模式显示 */}
