@@ -40,7 +40,7 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
             onKeyDown={handleKeyDown}
             onFocus={onFocus}
             onBlur={onBlur}
-            className={`inline-block min-w-[60px] px-2 py-0 mx-1 text-center font-medium rounded align-baseline bg-gray-100 text-indigo-600 leading-snug ring-1 ring-gray-300 ring-inset focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
+            className={`inline-block min-w-[60px] px-2 py-0 h-6 mx-1 text-center font-medium rounded align-middle bg-gray-100 text-indigo-600 leading-snug ring-1 ring-gray-300 ring-inset focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
                 } ${status === 'correct' ? 'text-green-600 ring-green-300 bg-green-50' : ''
                 }`}
             style={{ width: `${inputWidth}ch` }}
@@ -378,20 +378,19 @@ const VideoDetail = () => {
                                 key={index}
                                 ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
-                                className={`relative pl-5 pr-4 py-4 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                                className={`relative pl-6 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                     }`}
                             >
-                                {/* 1. 绝对定位的指示条 (悬浮层，完全不影响文字排版) */}
+                                {/* 蓝色指示条：absolute 绝对定位。它悬浮在 padding 区域内，不占位置，不会挤压文字 */}
                                 <div
-                                    className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'bg-indigo-600 opacity-0'
+                                    className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
                                         }`}
                                 />
 
-                                {/* 2. 文字内容 (位置被父级 padding 锁定，绝对不动) */}
-                                <div>
-                                    {/* 英文部分 */}
-                                    <div className={`text-base font-medium leading-loose mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900' : 'text-gray-900'
-                                        }`}>
+                                {/* 文字内容：位置被父级 padding 锁定，永远不会动 */}
+                                <div className="flex-1">
+                                    {/* 英文 */}
+                                    <div className="text-base font-medium text-gray-900 leading-loose mb-1">
                                         {mode === 'cloze' ? (
                                             renderClozeText(item.text, videoData.vocab)
                                         ) : (
@@ -399,10 +398,10 @@ const VideoDetail = () => {
                                         )}
                                     </div>
 
-                                    {/* 中文翻译 */}
+                                    {/* 中文 */}
                                     <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                                            ? 'bg-gray-200 select-none text-transparent hover:bg-transparent hover:text-gray-600 rounded px-1'
-                                            : (isActive ? 'text-indigo-600' : 'text-gray-500')
+                                            ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
+                                            : 'text-gray-600'
                                         }`}>
                                         {item.cn}
                                     </div>
