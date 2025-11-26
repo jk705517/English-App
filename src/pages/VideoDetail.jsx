@@ -314,12 +314,12 @@ const VideoDetail = () => {
                             >
                                 {/* 英文部分 - 根据模式显示 */}
                                 {mode === 'cloze' ? (
-                                    <p className={`text-base font-semibold leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-900'}`}>
+                                    <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-900'}`}>
                                         {renderClozeText(item.text)}
                                     </p>
                                 ) : (
                                     <p
-                                        className={`text-base font-semibold leading-relaxed mb-1 ${mode === 'cn'
+                                        className={`text-base font-medium leading-relaxed mb-1 ${mode === 'cn'
                                                 ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
                                                 : isActive
                                                     ? 'text-indigo-700 font-bold'
@@ -336,7 +336,7 @@ const VideoDetail = () => {
                                             ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
                                             : isActive
                                                 ? 'text-indigo-600'
-                                                : 'text-gray-500'
+                                                : 'text-gray-600'
                                         }`}
                                 >
                                     {item.cn}
