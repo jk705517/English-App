@@ -26,8 +26,50 @@ export const mockVideos = [
             { word: "Vibration", type: "n.", meaning: "振动" }
         ]
     },
-    // 占位数据
-    { id: 2, title: "Daily Conversation", cover: "/cover.jpg", videoUrl: "", duration: "10:00", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "日常", isLearned: true },
+    {
+        id: 2,
+        title: "一个让我做回自己的地方",
+        cover: "https://biubiu-assets.oss-cn-hangzhou.aliyuncs.com/%E5%B0%81%E9%9D%A2118.png",
+        videoUrl: "https://biubiu-assets.oss-cn-hangzhou.aliyuncs.com/%E6%97%A0%E5%AD%97%E5%B9%95%E8%A7%86%E9%A2%91118.mp4",
+        duration: "01:05",
+        author: "BiuBiu Pick",
+        level: "⭐⭐⭐",
+        difficulty: 3,
+        category: "旅行",
+        isLearned: false,
+        transcript: [
+            { start: 0.24, text: "There's something about being here", cn: "在这里有一种特别的感觉" },
+            { start: 1.5, text: "that makes me feel beautiful and free.", cn: "让我感到美丽而自由。" },
+            { start: 5.07, text: "Maybe it's the warmth in the air or how the", cn: "也许是空气中的温暖，或者是" },
+            { start: 7.65, text: "food tastes like it was made slowly with care.", cn: "食物尝起来像是用心慢慢制作的。" },
+            { start: 11.16, text: "Maybe it's just the way people move.", cn: "也许只是人们行动的方式。" },
+            { start: 12.945, text: "Slower, more open, whatever it is, it", cn: "更慢，更开放，无论是什么，" },
+            { start: 17.115, text: "makes me feel like I can finally breathe.", cn: "让我觉得我终于可以呼吸了。" },
+            { start: 20.925, text: "I'm remembering a version of", cn: "我想起了一个" },
+            { start: 23.025, text: "myself I haven't seen in a while.", cn: "我好久没见过的自己。" },
+            { start: 25.995, text: "The one who lets her curl stay wild,", cn: "那个让她的卷发自然蓬松的自己，" },
+            { start: 28.845, text: "throws on a linen dress and walks", cn: "穿上亚麻裙，随意走着，" },
+            { start: 31.485, text: "with no plan, no need to impress,", cn: "没有计划，不需要取悦任何人，" },
+            { start: 35.085, text: "but look at this, it's stunning.", cn: "但看看这个，真是令人惊叹。" },
+            { start: 37.035, text: "Seriously, wow.", cn: "真的，哇。" },
+            { start: 38.69, text: "I will add there are not enough trash", cn: "我还要补充一点，这里垃圾桶不够多，" },
+            { start: 40.55, text: "cans after I've been holding onto", cn: "因为我已经拿着一张纸巾" },
+            { start: 42.86, text: "a tissue for the past 20 minutes.", cn: "20分钟了。" },
+            { start: 45.62, text: "Maybe.", cn: "也许吧。" },
+            { start: 46.58, text: "Stunning.", cn: "令人惊叹。" },
+            { start: 48.199, text: "I feel so happy.", cn: "我感到非常开心。" },
+            { start: 49.79, text: "It's strange, isn't it?", cn: "这很奇怪，不是吗？" },
+            { start: 52.16, text: "How a place I've never been can make me feel", cn: "一个我从未去过的地方竟能让我感到" },
+            { start: 55.4, text: "more embraced and home the place I'm supposed", cn: "比我应该属于的地方更被拥抱，" },
+            { start: 59.15, text: "to belong to, but where everything feels a", cn: "但在那里一切都显得" },
+            { start: 61.91, text: "little more polished, a little more performed.", cn: "更精致，更像在表演。" }
+        ],
+        vocab: [
+            { word: "embraced", type: "adj.", meaning: "被拥抱的，被接纳的" },
+            { word: "polished", type: "adj.", meaning: "精致的，完美的" },
+            { word: "performed", type: "adj.", meaning: "表演的，做作的" }
+        ]
+    },
     { id: 3, title: "Business English", cover: "/cover.jpg", videoUrl: "", duration: "15:30", author: "TEco Lab", level: "⭐⭐⭐", difficulty: 3, category: "职场", isLearned: false },
     { id: 4, title: "Travel Vlog", cover: "/cover.jpg", videoUrl: "", duration: "08:20", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "旅行", isLearned: false },
     { id: 5, title: "Tech News", cover: "/cover.jpg", videoUrl: "", duration: "12:45", author: "TEco Lab", level: "⭐⭐⭐⭐", difficulty: 4, category: "科技", isLearned: false },
