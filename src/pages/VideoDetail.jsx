@@ -24,28 +24,33 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
         }
     };
 
-    // 根据单词长度计算输入框宽度
-    const inputWidth = Math.max(originalWord.length, 4);
-
     if (status === 'correct') {
         return <span className="text-green-600 font-medium mx-1">{originalWord}</span>;
     }
 
     return (
-        <input
-            ref={inputRef}
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            className={`inline-block min-w-[60px] px-2 py-0 h-6 mx-1 text-center font-medium rounded align-middle bg-gray-100 text-indigo-600 leading-snug ring-1 ring-gray-300 ring-inset focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
-                } ${status === 'correct' ? 'text-green-600 ring-green-300 bg-green-50' : ''
-                }`}
-            style={{ width: `${inputWidth}ch` }}
-            placeholder="___"
-        />
+        <span className="relative inline-block mx-1">
+            {/* 1. 幽灵文字：负责占位，决定高度，绝对不抖 */}
+            <span className="opacity-0 pointer-events-none select-none font-medium">
+                {originalWord}
+            </span>
+
+            {/* 2. 绝对定位的输入框：贴在幽灵文字上面 */}
+            <input
+                ref={inputRef}
+                type="text"
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                onFocus={onFocus}
+                onBlur={onBlur}
+                className={`absolute inset-0 w-full h-full text-center font-medium rounded focus:outline-none transition-all px-0 py-0 m-0 border-none ${status === 'correct'
+                        ? 'text-green-600 bg-green-50'
+                        : 'bg-gray-100 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:bg-white'
+                    } ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''
+                    }`}
+            />
+        </span>
     );
 };
 
