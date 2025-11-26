@@ -38,7 +38,7 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block mx-1 px-2 py-0 h-6 align-middle bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
+            className={`inline-block mx-1 px-2 py-0 h-6 align-baseline bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
                     ? 'ring-2 ring-red-500 text-red-500 animate-shake'
                     : 'focus:ring-2 focus:ring-indigo-400 focus:bg-white'
                 }`}
@@ -371,28 +371,24 @@ const VideoDetail = () => {
                                 key={index}
                                 ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
-                                className={`group flex flex-row items-stretch rounded-lg transition-colors duration-200 cursor-pointer ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                                className={`relative pl-5 pr-4 py-4 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                     }`}
                             >
-                                {/* 1. 独立的左侧指示条 (物理防抖核心) */}
+                                {/* 1. 绝对定位的指示条 (悬浮层，完全不影响文字排版) */}
                                 <div
-                                    className={`w-1 flex-shrink-0 rounded-l-lg transition-colors duration-200 ${isActive ? 'bg-indigo-600' : 'bg-transparent'
+                                    className={`absolute left-0 top-0 bottom-0 w-1 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'bg-indigo-600 opacity-0'
                                         }`}
                                 />
 
-                                {/* 2. 文字内容容器 */}
-                                <div className="flex-1 p-4">
+                                {/* 2. 文字内容 (位置被父级 padding 锁定，绝对不动) */}
+                                <div>
                                     {/* 英文部分 */}
-                                    <div className={`text-base leading-relaxed mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900 font-medium' : 'text-gray-900 font-medium'
+                                    <div className={`text-base font-medium leading-relaxed mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900' : 'text-gray-900'
                                         }`}>
                                         {mode === 'cloze' ? (
                                             renderClozeText(item.text, videoData.vocab)
                                         ) : (
-                                            mode === 'cn' ? null : (
-                                                <span>
-                                                    {item.text}
-                                                </span>
-                                            )
+                                            mode === 'cn' ? null : item.text
                                         )}
                                     </div>
 
