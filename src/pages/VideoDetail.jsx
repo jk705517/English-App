@@ -143,11 +143,33 @@ const VideoDetail = () => {
         }
     };
 
-    // Cloze 模式：随机挖空 30% 的单词
-    const renderClozeText = (text) => {
+    // Cloze 模式：智能挖空算法
+    const renderClozeText = (text, vocabList = []) => {
         const words = text.split(' ');
+
+        // 创建词汇表的小写版本用于匹配
+        const vocabWords = vocabList.map(v => v.word.toLowerCase());
+
         return words.map((word, idx) => {
-            const shouldBlur = Math.random() < 0.3;
+            // 移除标点符号用于判断
+            const cleanWord = word.replace(/[.,!?;:]/g, '');
+            const wordLower = cleanWord.toLowerCase();
+
+            let shouldBlur = false;
+
+            // 规则 A：重点词汇强制挖空
+            if (vocabWords.includes(wordLower)) {
+                shouldBlur = true;
+            }
+            // 规则 C：短词永不挖空
+            else if (cleanWord.length <= 3) {
+                shouldBlur = false;
+            }
+            // 规则 B：长词 20% 概率挖空
+            else if (cleanWord.length > 4) {
+                shouldBlur = Math.random() < 0.2;
+            }
+
             if (shouldBlur) {
                 return (
                     <ClozeInput key={idx} originalWord={word} />
@@ -349,15 +371,15 @@ const VideoDetail = () => {
                                 key={index}
                                 ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
-                                className={`p-3 md:p-4 rounded-lg cursor-pointer transition-all duration-200 ${isActive
-                                    ? 'bg-indigo-100 border-l-4 border-indigo-600 shadow-sm'
-                                    : 'hover:bg-gray-50 text-gray-600'
+                                className={`p-3 md:p-4 rounded-lg cursor-pointer transition-all duration-200 border-l-4 ${isActive
+                                    ? 'bg-indigo-100 border-indigo-600 shadow-sm'
+                                    : 'hover:bg-gray-50 text-gray-600 border-transparent'
                                     }`}
                             >
                                 {/* 英文部分 - 根据模式显示 */}
                                 {mode === 'cloze' ? (
                                     <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-900'}`}>
-                                        {renderClozeText(item.text)}
+                                        {renderClozeText(item.text, videoData.vocab)}
                                     </p>
                                 ) : (
                                     <p
