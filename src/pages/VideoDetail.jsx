@@ -38,7 +38,7 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block mx-1 px-2 py-0 bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
+            className={`inline-block mx-1 px-2 py-0 h-6 align-middle bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
                     ? 'ring-2 ring-red-500 text-red-500 animate-shake'
                     : 'focus:ring-2 focus:ring-indigo-400 focus:bg-white'
                 }`}
@@ -371,40 +371,39 @@ const VideoDetail = () => {
                                 key={index}
                                 ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
-                                className={`relative p-4 rounded-lg cursor-pointer border-l-4 transition-colors duration-200 ${isActive
-                                        ? 'bg-indigo-50 border-indigo-600 shadow-sm'
-                                        : 'hover:bg-gray-50 border-transparent text-gray-600'
+                                className={`group flex flex-row items-stretch rounded-lg transition-colors duration-200 cursor-pointer ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                     }`}
                             >
-                                {/* 英文部分 - 根据模式显示 */}
-                                {mode === 'cloze' ? (
-                                    <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700' : 'text-gray-900'}`}>
-                                        {renderClozeText(item.text, videoData.vocab)}
-                                    </p>
-                                ) : (
-                                    <p
-                                        className={`text-base font-medium leading-relaxed mb-1 ${mode === 'cn'
-                                                ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
-                                                : isActive
-                                                    ? 'text-indigo-700'
-                                                    : 'text-gray-900'
-                                            }`}
-                                    >
-                                        {item.text}
-                                    </p>
-                                )}
-
-                                {/* 中文部分 - 根据模式显示 */}
-                                <p
-                                    className={`text-sm font-normal mt-1 ${mode === 'en'
-                                            ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
-                                            : isActive
-                                                ? 'text-indigo-600'
-                                                : 'text-gray-600'
+                                {/* 1. 独立的左侧指示条 (物理防抖核心) */}
+                                <div
+                                    className={`w-1 flex-shrink-0 rounded-l-lg transition-colors duration-200 ${isActive ? 'bg-indigo-600' : 'bg-transparent'
                                         }`}
-                                >
-                                    {item.cn}
-                                </p>
+                                />
+
+                                {/* 2. 文字内容容器 */}
+                                <div className="flex-1 p-4">
+                                    {/* 英文部分 */}
+                                    <div className={`text-base leading-relaxed mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900 font-medium' : 'text-gray-900 font-medium'
+                                        }`}>
+                                        {mode === 'cloze' ? (
+                                            renderClozeText(item.text, videoData.vocab)
+                                        ) : (
+                                            mode === 'cn' ? null : (
+                                                <span>
+                                                    {item.text}
+                                                </span>
+                                            )
+                                        )}
+                                    </div>
+
+                                    {/* 中文翻译 */}
+                                    <div className={`text-sm transition-all duration-300 ${mode === 'en'
+                                            ? 'bg-gray-200 select-none text-transparent hover:bg-transparent hover:text-gray-600 rounded px-1'
+                                            : (isActive ? 'text-indigo-600' : 'text-gray-500')
+                                        }`}>
+                                        {item.cn}
+                                    </div>
+                                </div>
                             </div>
                         );
                     })}
