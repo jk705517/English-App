@@ -22,7 +22,7 @@ function Home() {
             {/* 页面标题 */}
             <div className="mb-8">
                 <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                    欢迎来到 TEco Lab
+                    欢迎来到 Biubiu English
                 </h1>
                 <p className="text-gray-600">
                     开始你的英语学习之旅
