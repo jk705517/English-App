@@ -38,9 +38,9 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block mx-1 px-1 bg-transparent border-b-2 outline-none transition-all duration-200 ${status === 'error'
-                    ? 'border-red-500 text-red-500 animate-shake'
-                    : 'border-gray-400 text-gray-700 focus:border-indigo-500'
+            className={`inline-block mx-1 px-2 bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none transition-all duration-200 ${status === 'error'
+                    ? 'ring-2 ring-red-500 text-red-500 animate-shake'
+                    : 'focus:ring-2 focus:ring-indigo-400 focus:bg-white'
                 }`}
             style={{ width: `${inputWidth}ch` }}
             placeholder="___"
@@ -378,7 +378,7 @@ const VideoDetail = () => {
                             >
                                 {/* 英文部分 - 根据模式显示 */}
                                 {mode === 'cloze' ? (
-                                    <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-900'}`}>
+                                    <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700' : 'text-gray-900'}`}>
                                         {renderClozeText(item.text, videoData.vocab)}
                                     </p>
                                 ) : (
@@ -386,7 +386,7 @@ const VideoDetail = () => {
                                         className={`text-base font-medium leading-relaxed mb-1 ${mode === 'cn'
                                                 ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
                                                 : isActive
-                                                    ? 'text-indigo-700 font-bold'
+                                                    ? 'text-indigo-700'
                                                     : 'text-gray-900'
                                             }`}
                                     >
