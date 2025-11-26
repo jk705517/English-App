@@ -38,9 +38,7 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block mx-1 px-2 py-0 h-6 align-baseline bg-gray-100 rounded-md text-center text-indigo-600 font-bold outline-none leading-none transition-all duration-200 ${status === 'error'
-                    ? 'ring-2 ring-red-500 text-red-500 animate-shake'
-                    : 'focus:ring-2 focus:ring-indigo-400 focus:bg-white'
+            className={`inline-block h-6 py-0 mx-1 text-center bg-gray-100 rounded text-indigo-600 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all align-middle ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''
                 }`}
             style={{ width: `${inputWidth}ch` }}
             placeholder="___"
