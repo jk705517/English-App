@@ -39,6 +39,62 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     );
 };
 
+// 听写输入组件
+const DictationInput = ({ correctText, onFocus, onBlur }) => {
+    const [value, setValue] = useState('');
+    const [status, setStatus] = useState('idle'); // 'idle', 'correct', 'error'
+    const [showAnswer, setShowAnswer] = useState(false);
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            // 移除标点符号后比较
+            const cleanCorrect = correctText.replace(/[.,!?;:'"]/g, '').toLowerCase().trim();
+            const cleanInput = value.replace(/[.,!?;:'"]/g, '').toLowerCase().trim();
+
+            if (cleanInput === cleanCorrect) {
+                setStatus('correct');
+            } else {
+                setStatus('error');
+                // 1秒后显示正确答案
+                setTimeout(() => setShowAnswer(true), 1000);
+            }
+        }
+    };
+
+    if (status === 'correct') {
+        return (
+            <div className="text-green-600 font-medium">
+                ✓ {correctText}
+            </div>
+        );
+    }
+
+    if (showAnswer) {
+        return (
+            <div>
+                <div className="text-red-500 line-through mb-1">{value}</div>
+                <div className="text-green-600 font-medium">正确答案：{correctText}</div>
+            </div>
+        );
+    }
+
+    return (
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            placeholder="听完后在此输入整句..."
+            className={`w-full px-3 py-2 rounded-lg border-2 font-medium transition-all ${status === 'error'
+                    ? 'border-red-300 bg-red-50 text-red-600 animate-shake'
+                    : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-indigo-500 focus:bg-white'
+                }`}
+        />
+    );
+};
+
 const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
@@ -368,6 +424,15 @@ const VideoDetail = () => {
                         >
                             挖空
                         </button>
+                        <button
+                            onClick={() => setMode('dictation')}
+                            className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'dictation'
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                }`}
+                        >
+                            听写
+                        </button>
                     </div>
                 </div>
 
@@ -397,6 +462,12 @@ const VideoDetail = () => {
                                     <div className="text-base font-medium text-gray-900 leading-loose mb-1">
                                         {mode === 'cloze' ? (
                                             renderClozeText(item.text, index)
+                                        ) : mode === 'dictation' ? (
+                                            <DictationInput
+                                                correctText={item.text}
+                                                onFocus={() => setIsUserScrolling(true)}
+                                                onBlur={() => setIsUserScrolling(false)}
+                                            />
                                         ) : (
                                             mode === 'cn' ? null : item.text
                                         )}
