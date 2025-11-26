@@ -4,7 +4,7 @@ import ReactPlayer from 'react-player';
 import { mockVideos } from '../data/mockData';
 
 // 交互式填空组件
-const ClozeInput = ({ originalWord }) => {
+const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     const [value, setValue] = useState('');
     const [status, setStatus] = useState('idle'); // 'idle', 'correct', 'error'
     const inputRef = useRef(null);
@@ -38,7 +38,9 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block min-w-[60px] px-1 mx-1 text-center font-medium rounded focus:outline-none transition-all align-middle bg-gray-100 text-indigo-600 ring-1 ring-gray-300 ring-inset focus:ring-2 focus:ring-indigo-500 focus:bg-white ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
+            onFocus={onFocus}
+            onBlur={onBlur}
+            className={`inline-block min-w-[60px] px-2 py-0 mx-1 text-center font-medium rounded align-baseline bg-gray-100 text-indigo-600 leading-snug ring-1 ring-gray-300 ring-inset focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
                 } ${status === 'correct' ? 'text-green-600 ring-green-300 bg-green-50' : ''
                 }`}
             style={{ width: `${inputWidth}ch` }}
@@ -55,6 +57,7 @@ const VideoDetail = () => {
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
+    const [isUserScrolling, setIsUserScrolling] = useState(false);
 
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
@@ -171,7 +174,12 @@ const VideoDetail = () => {
 
             if (shouldBlur) {
                 return (
-                    <ClozeInput key={idx} originalWord={word} />
+                    <ClozeInput
+                        key={idx}
+                        originalWord={word}
+                        onFocus={() => setIsUserScrolling(true)}
+                        onBlur={() => setIsUserScrolling(false)}
+                    />
                 );
             }
             return <span key={idx}>{word} </span>;
@@ -357,8 +365,8 @@ const VideoDetail = () => {
                         const nextItem = videoData.transcript[index + 1];
                         const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
 
-                        // 自动滚动到当前高亮行
-                        if (isActive && transcriptRefs.current[index]) {
+                        // 自动滚动到当前高亮行（只在非用户输入状态下）
+                        if (isActive && transcriptRefs.current[index] && !isUserScrolling) {
                             transcriptRefs.current[index].scrollIntoView({
                                 behavior: 'smooth',
                                 block: 'center'
