@@ -3,6 +3,51 @@ import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { mockVideos } from '../data/mockData';
 
+// 交互式填空组件
+const ClozeInput = ({ originalWord }) => {
+    const [value, setValue] = useState('');
+    const [status, setStatus] = useState('idle'); // 'idle', 'correct', 'error'
+    const inputRef = useRef(null);
+
+    const handleKeyDown = (e) => {
+        if (e.key === 'Enter') {
+            const userInput = value.trim();
+            const correctWord = originalWord.replace(/[.,!?;:]/g, ''); // 移除标点符号
+
+            if (userInput.toLowerCase() === correctWord.toLowerCase()) {
+                setStatus('correct');
+            } else {
+                setStatus('error');
+                // 抖动动画后重置
+                setTimeout(() => setStatus('idle'), 500);
+            }
+        }
+    };
+
+    // 根据单词长度计算输入框宽度
+    const inputWidth = Math.max(originalWord.length, 4);
+
+    if (status === 'correct') {
+        return <span className="text-green-600 font-medium mx-1">{originalWord}</span>;
+    }
+
+    return (
+        <input
+            ref={inputRef}
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            className={`inline-block mx-1 px-1 bg-transparent border-b-2 outline-none transition-all duration-200 ${status === 'error'
+                    ? 'border-red-500 text-red-500 animate-shake'
+                    : 'border-gray-400 text-gray-700 focus:border-indigo-500'
+                }`}
+            style={{ width: `${inputWidth}ch` }}
+            placeholder="___"
+        />
+    );
+};
+
 const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
@@ -105,12 +150,7 @@ const VideoDetail = () => {
             const shouldBlur = Math.random() < 0.3;
             if (shouldBlur) {
                 return (
-                    <span
-                        key={idx}
-                        className="inline-block mx-1 bg-gray-200 text-transparent rounded px-1 select-none transition-all duration-200 hover:bg-indigo-100 hover:text-indigo-700 cursor-pointer"
-                    >
-                        {word}
-                    </span>
+                    <ClozeInput key={idx} originalWord={word} />
                 );
             }
             return <span key={idx}>{word} </span>;
