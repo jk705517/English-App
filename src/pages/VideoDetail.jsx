@@ -314,16 +314,16 @@ const VideoDetail = () => {
                             >
                                 {/* 英文部分 - 根据模式显示 */}
                                 {mode === 'cloze' ? (
-                                    <p className={`text-base font-medium leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-800'}`}>
+                                    <p className={`text-base font-semibold leading-relaxed mb-1 ${isActive ? 'text-indigo-700 font-bold' : 'text-gray-900'}`}>
                                         {renderClozeText(item.text)}
                                     </p>
                                 ) : (
                                     <p
-                                        className={`text-base font-medium leading-relaxed mb-1 ${mode === 'cn'
+                                        className={`text-base font-semibold leading-relaxed mb-1 ${mode === 'cn'
                                                 ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
                                                 : isActive
                                                     ? 'text-indigo-700 font-bold'
-                                                    : 'text-gray-800'
+                                                    : 'text-gray-900'
                                             }`}
                                     >
                                         {item.text}
@@ -332,11 +332,11 @@ const VideoDetail = () => {
 
                                 {/* 中文部分 - 根据模式显示 */}
                                 <p
-                                    className={`text-sm mt-1 ${mode === 'en'
+                                    className={`text-sm font-normal mt-1 ${mode === 'en'
                                             ? 'bg-gray-200 select-none text-transparent transition-all duration-300 hover:bg-transparent hover:text-gray-700 rounded px-1'
                                             : isActive
                                                 ? 'text-indigo-600'
-                                                : 'text-gray-600'
+                                                : 'text-gray-500'
                                         }`}
                                 >
                                     {item.cn}
