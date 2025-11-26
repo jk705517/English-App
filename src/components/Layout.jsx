@@ -26,7 +26,7 @@ function Layout() {
                             <GraduationCap className="w-6 h-6 text-white" />
                         </div>
                         <div>
-                            <h1 className="text-xl font-bold text-gray-800">TEco Lab</h1>
+                            <h1 className="text-xl font-bold text-gray-800">Biubiu English</h1>
                             <p className="text-xs text-gray-500">英语学习平台</p>
                         </div>
                     </div>
@@ -59,7 +59,7 @@ function Layout() {
                 {/* 底部信息 */}
                 <div className="p-4 border-t border-gray-200">
                     <p className="text-xs text-gray-400 text-center">
-                        © 2025 TEco Lab
+                        © 2025 Biubiu English
                     </p>
                 </div>
             </aside>
