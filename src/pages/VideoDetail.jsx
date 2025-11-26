@@ -38,7 +38,8 @@ const ClozeInput = ({ originalWord }) => {
             value={value}
             onChange={(e) => setValue(e.target.value)}
             onKeyDown={handleKeyDown}
-            className={`inline-block h-6 py-0 mx-1 text-center bg-gray-100 rounded text-indigo-600 font-bold focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:bg-white transition-all align-middle ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''
+            className={`inline-block min-w-[60px] px-1 mx-1 text-center font-medium rounded focus:outline-none transition-all align-middle bg-gray-100 text-indigo-600 ring-1 ring-gray-300 ring-inset focus:ring-2 focus:ring-indigo-500 focus:bg-white ${status === 'error' ? 'animate-shake text-red-500 ring-red-300 bg-red-50' : ''
+                } ${status === 'correct' ? 'text-green-600 ring-green-300 bg-green-50' : ''
                 }`}
             style={{ width: `${inputWidth}ch` }}
             placeholder="___"
@@ -381,7 +382,7 @@ const VideoDetail = () => {
                                 {/* 2. 文字内容 (位置被父级 padding 锁定，绝对不动) */}
                                 <div>
                                     {/* 英文部分 */}
-                                    <div className={`text-base font-medium leading-relaxed mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900' : 'text-gray-900'
+                                    <div className={`text-base font-medium leading-loose mb-1 transition-colors duration-200 ${isActive ? 'text-gray-900' : 'text-gray-900'
                                         }`}>
                                         {mode === 'cloze' ? (
                                             renderClozeText(item.text, videoData.vocab)
