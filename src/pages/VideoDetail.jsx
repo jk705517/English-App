@@ -7,9 +7,11 @@ import { mockVideos } from '../data/mockData';
 const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
+    const transcriptRefs = useRef([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
+    const [isLooping, setIsLooping] = useState(false);
 
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
@@ -121,7 +123,7 @@ const VideoDetail = () => {
     return (
         <div className="flex flex-col md:flex-row h-screen bg-gray-50">
             {/* 视频区域 - 手机端上半部分，电脑端左侧 */}
-            <div className="w-full md:w-2/3 p-4 md:p-6 flex flex-col">
+            <div className="w-full md:w-3/5 p-4 md:p-6 flex flex-col">
                 <div className="flex items-center justify-between mb-2 md:mb-4">
                     <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
                         ← 返回首页
@@ -170,6 +172,19 @@ const VideoDetail = () => {
 
                 <h1 className="text-lg md:text-2xl font-bold mb-2">{videoData.title}</h1>
 
+                {/* 单句循环按钮 */}
+                <div className="mb-2">
+                    <button
+                        onClick={() => setIsLooping(!isLooping)}
+                        className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${isLooping
+                            ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-md'
+                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                            }`}
+                    >
+                        🔁 单句循环
+                    </button>
+                </div>
+
                 {/* 视频播放器容器 - 手机端固定高度，电脑端自适应 */}
                 <div className="w-full aspect-video md:flex-1 bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
                     <ReactPlayer
@@ -184,6 +199,21 @@ const VideoDetail = () => {
                         onPause={() => setIsPlaying(false)}
                         onProgress={({ playedSeconds }) => {
                             setCurrentTime(playedSeconds);
+
+                            // 单句循环逻辑
+                            if (isLooping && videoData?.transcript) {
+                                const currentIndex = videoData.transcript.findIndex((item, idx) => {
+                                    const nextItem = videoData.transcript[idx + 1];
+                                    return playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start);
+                                });
+
+                                if (currentIndex !== -1) {
+                                    const nextItem = videoData.transcript[currentIndex + 1];
+                                    if (nextItem && playedSeconds >= nextItem.start) {
+                                        playerRef.current?.seekTo(videoData.transcript[currentIndex].start, 'seconds');
+                                    }
+                                }
+                            }
                         }}
                         config={{
                             youtube: {
@@ -216,7 +246,7 @@ const VideoDetail = () => {
             </div>
 
             {/* 字幕区域 - 手机端下半部分，电脑端右侧 */}
-            <div className="flex-1 md:w-1/3 bg-white border-t md:border-t-0 md:border-l flex flex-col h-full">
+            <div className="flex-1 md:w-2/5 bg-white border-t md:border-t-0 md:border-l flex flex-col h-full">
                 <div className="p-3 md:p-4 border-b flex items-center justify-between">
                     <h2 className="text-base md:text-lg font-bold flex items-center">
                         📖 字幕
@@ -269,9 +299,18 @@ const VideoDetail = () => {
                         const nextItem = videoData.transcript[index + 1];
                         const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
 
+                        // 自动滚动到当前高亮行
+                        if (isActive && transcriptRefs.current[index]) {
+                            transcriptRefs.current[index].scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                        }
+
                         return (
                             <div
                                 key={index}
+                                ref={(el) => transcriptRefs.current[index] = el}
                                 onClick={() => handleSeek(item.start)}
                                 className={`p-3 md:p-4 rounded-lg cursor-pointer transition-all duration-200 ${isActive
                                     ? 'bg-indigo-100 border-l-4 border-indigo-600 shadow-sm'
@@ -303,10 +342,6 @@ const VideoDetail = () => {
                                 >
                                     {item.cn}
                                 </p>
-
-                                <span className="text-xs text-indigo-400 mt-1 block">
-                                    {Math.floor(item.start)}s
-                                </span>
                             </div>
                         );
                     })}
