@@ -120,129 +120,131 @@ const VideoDetail = () => {
     if (!videoData) return <div className="p-8">Loading...</div>;
 
     return (
-        <div className="flex flex-col md:flex-row h-screen bg-gray-50">
-            {/* 视频区域 - 手机端上半部分，电脑端左侧 */}
-            <div className="w-full md:w-3/5 p-4 md:p-6 flex flex-col">
-                <div className="flex items-center justify-between mb-2 md:mb-4">
-                    <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
-                        ← 返回首页
-                    </Link>
-                </div>
+        <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-gray-50">
+            {/* 视频区域 - 手机端固定头部，电脑端左侧独立滚动 */}
+            <div className="flex-shrink-0 z-10 bg-white md:w-3/5 md:overflow-y-auto md:h-full">
+                <div className="p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-2 md:mb-4">
+                        <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
+                            ← 返回首页
+                        </Link>
+                    </div>
 
-                <h1 className="text-lg md:text-2xl font-bold mb-3">{videoData.title}</h1>
+                    <h1 className="text-lg md:text-2xl font-bold mb-3">{videoData.title}</h1>
 
-                {/* 视频播放器容器 - 手机端固定高度，电脑端自适应 */}
-                <div className="w-full aspect-video bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
-                    <ReactPlayer
-                        ref={playerRef}
-                        url={videoData.videoUrl}
-                        width="100%"
-                        height="100%"
-                        controls={true}
-                        playing={isPlaying}
-                        playsinline={true}  // 关键：防止 iOS 自动全屏
-                        progressInterval={50}  // 每50ms更新一次进度，提高响应速度
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onProgress={({ playedSeconds }) => {
-                            setCurrentTime(playedSeconds);
+                    {/* 视频播放器容器 */}
+                    <div className="w-full aspect-video bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
+                        <ReactPlayer
+                            ref={playerRef}
+                            url={videoData.videoUrl}
+                            width="100%"
+                            height="100%"
+                            controls={true}
+                            playing={isPlaying}
+                            playsinline={true}  // 关键：防止 iOS 自动全屏
+                            progressInterval={50}  // 每50ms更新一次进度，提高响应速度
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onProgress={({ playedSeconds }) => {
+                                setCurrentTime(playedSeconds);
 
-                            // 单句循环逻辑 - 优化版（提前0.2s判断）
-                            if (isLooping && videoData?.transcript && videoData.transcript.length > 0) {
-                                // 找到当前正在播放的字幕索引
-                                let currentIndex = -1;
-                                for (let i = 0; i < videoData.transcript.length; i++) {
-                                    const item = videoData.transcript[i];
-                                    const nextItem = videoData.transcript[i + 1];
+                                // 单句循环逻辑 - 优化版（提前0.2s判断）
+                                if (isLooping && videoData?.transcript && videoData.transcript.length > 0) {
+                                    // 找到当前正在播放的字幕索引
+                                    let currentIndex = -1;
+                                    for (let i = 0; i < videoData.transcript.length; i++) {
+                                        const item = videoData.transcript[i];
+                                        const nextItem = videoData.transcript[i + 1];
 
-                                    if (playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start)) {
-                                        currentIndex = i;
-                                        break;
+                                        if (playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start)) {
+                                            currentIndex = i;
+                                            break;
+                                        }
+                                    }
+
+                                    // 如果找到了当前句，并且不是最后一句
+                                    if (currentIndex !== -1 && currentIndex < videoData.transcript.length - 1) {
+                                        const currentLine = videoData.transcript[currentIndex];
+                                        const nextLine = videoData.transcript[currentIndex + 1];
+                                        const endTime = nextLine.start;
+
+                                        // 提前0.2秒判断，防止滑过
+                                        if (playedSeconds >= endTime - 0.2) {
+                                            playerRef.current?.seekTo(currentLine.start, 'seconds');
+                                        }
                                     }
                                 }
-
-                                // 如果找到了当前句，并且不是最后一句
-                                if (currentIndex !== -1 && currentIndex < videoData.transcript.length - 1) {
-                                    const currentLine = videoData.transcript[currentIndex];
-                                    const nextLine = videoData.transcript[currentIndex + 1];
-                                    const endTime = nextLine.start;
-
-                                    // 提前0.2秒判断，防止滑过
-                                    if (playedSeconds >= endTime - 0.2) {
-                                        playerRef.current?.seekTo(currentLine.start, 'seconds');
+                            }}
+                            config={{
+                                youtube: {
+                                    playerVars: { showinfo: 1 }
+                                },
+                                file: {
+                                    attributes: {
+                                        controlsList: 'nodownload'
                                     }
                                 }
-                            }
-                        }}
-                        config={{
-                            youtube: {
-                                playerVars: { showinfo: 1 }
-                            },
-                            file: {
-                                attributes: {
-                                    controlsList: 'nodownload'
-                                }
-                            }
-                        }}
-                    />
-                </div>
+                            }}
+                        />
+                    </div>
 
-                {/* 操作工具栏 - 视频播放器正下方 */}
-                <div className="mt-4 flex items-center gap-3">
-                    {/* 单句循环按钮 */}
-                    <button
-                        onClick={() => setIsLooping(!isLooping)}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLooping
-                            ? 'bg-purple-500 border-purple-500 text-white shadow-md'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-purple-400 hover:bg-purple-50'
-                            }`}
-                    >
-                        🔁 单句循环
-                    </button>
+                    {/* 操作工具栏 - 视频播放器正下方 */}
+                    <div className="mt-4 flex items-center gap-3">
+                        {/* 单句循环按钮 */}
+                        <button
+                            onClick={() => setIsLooping(!isLooping)}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLooping
+                                ? 'bg-purple-500 border-purple-500 text-white shadow-md'
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-purple-400 hover:bg-purple-50'
+                                }`}
+                        >
+                            🔁 单句循环
+                        </button>
 
-                    {/* 收藏按钮 */}
-                    <button
-                        onClick={handleToggleFavorite}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isFavorite
-                            ? 'bg-red-500 border-red-500 text-white shadow-md'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-red-400 hover:bg-red-50'
-                            }`}
-                    >
-                        ❤️ 收藏
-                    </button>
+                        {/* 收藏按钮 */}
+                        <button
+                            onClick={handleToggleFavorite}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isFavorite
+                                ? 'bg-red-500 border-red-500 text-white shadow-md'
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-red-400 hover:bg-red-50'
+                                }`}
+                        >
+                            ❤️ 收藏
+                        </button>
 
-                    {/* 标记已学按钮 */}
-                    <button
-                        onClick={handleToggleLearned}
-                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLearned
-                            ? 'bg-green-500 border-green-500 text-white shadow-md'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-green-400 hover:bg-green-50'
-                            }`}
-                    >
-                        ✅ 标记已学
-                    </button>
-                </div>
+                        {/* 标记已学按钮 */}
+                        <button
+                            onClick={handleToggleLearned}
+                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLearned
+                                ? 'bg-green-500 border-green-500 text-white shadow-md'
+                                : 'bg-white border-gray-300 text-gray-700 hover:border-green-400 hover:bg-green-50'
+                                }`}
+                        >
+                            ✅ 标记已学
+                        </button>
+                    </div>
 
-                {/* 重点词汇 - 只在电脑端显示 */}
-                <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
-                    <h3 className="text-xl font-bold mb-4">重点词汇</h3>
-                    <div className="grid grid-cols-3 gap-4">
-                        {videoData.vocab?.map((item, index) => (
-                            <div key={index} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
-                                <div className="flex items-end mb-2">
-                                    <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
-                                    <span className="text-sm text-gray-500">{item.type}</span>
+                    {/* 重点词汇 - 只在电脑端显示 */}
+                    <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
+                        <h3 className="text-xl font-bold mb-4">重点词汇</h3>
+                        <div className="grid grid-cols-3 gap-4">
+                            {videoData.vocab?.map((item, index) => (
+                                <div key={index} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                                    <div className="flex items-end mb-2">
+                                        <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
+                                        <span className="text-sm text-gray-500">{item.type}</span>
+                                    </div>
+                                    <p className="text-gray-600 font-medium">{item.meaning}</p>
                                 </div>
-                                <p className="text-gray-600 font-medium">{item.meaning}</p>
-                            </div>
-                        ))}
+                            ))}
+                        </div>
                     </div>
                 </div>
             </div>
 
-            {/* 字幕区域 - 手机端下半部分，电脑端右侧 */}
-            <div className="flex-1 md:w-2/5 bg-white border-t md:border-t-0 md:border-l flex flex-col h-full">
-                <div className="p-3 md:p-4 border-b flex items-center justify-between">
+            {/* 字幕区域 - 独立滚动 */}
+            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col overflow-y-auto pb-20">
+                <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white flex items-center justify-between">
                     <h2 className="text-base md:text-lg font-bold flex items-center">
                         📖 字幕
                     </h2>
@@ -288,8 +290,8 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* 字幕列表 - 可独立滚动 */}
-                <div className="flex-1 overflow-y-auto p-3 md:p-4 space-y-2 md:space-y-3">
+                {/* 字幕列表 */}
+                <div className="p-3 md:p-4 space-y-2 md:space-y-3">
                     {videoData.transcript?.map((item, index) => {
                         const nextItem = videoData.transcript[index + 1];
                         const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
