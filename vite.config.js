@@ -10,9 +10,9 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'mask-icon.svg'],
       manifest: {
-        name: 'Biubiu English',
-        short_name: 'Biubiu',
-        description: 'Learn English with Biubiu Robot',
+        name: 'BiuBiu English',
+        short_name: 'BiuBiu',
+        description: 'Learn English with BiuBiu Robot',
         theme_color: '#ffffff',
         icons: [
           {
