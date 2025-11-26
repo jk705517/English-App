@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
-import { CheckCircle, Circle, Heart } from 'lucide-react';
 import { mockVideos } from '../data/mockData';
 
 const VideoDetail = () => {
@@ -128,65 +127,12 @@ const VideoDetail = () => {
                     <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
                         ← 返回首页
                     </Link>
-
-                    {/* 操作按钮组 */}
-                    <div className="flex items-center gap-2">
-                        {/* 收藏按钮 */}
-                        <button
-                            onClick={handleToggleFavorite}
-                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isFavorite
-                                ? 'bg-red-500 text-white hover:bg-red-600 shadow-md'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                        >
-                            <Heart
-                                className={`w-4 h-4 md:w-5 md:h-5 ${isFavorite ? 'fill-current' : ''}`}
-                            />
-                            <span className="text-xs md:text-sm hidden sm:inline">
-                                {isFavorite ? '已收藏' : '收藏'}
-                            </span>
-                        </button>
-
-                        {/* 标记已学/未学按钮 */}
-                        <button
-                            onClick={handleToggleLearned}
-                            className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 ${isLearned
-                                ? 'bg-green-500 text-white hover:bg-green-600 shadow-md'
-                                : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                                }`}
-                        >
-                            {isLearned ? (
-                                <>
-                                    <CheckCircle className="w-4 h-4 md:w-5 md:h-5" />
-                                    <span className="text-xs md:text-sm hidden sm:inline">已学习</span>
-                                </>
-                            ) : (
-                                <>
-                                    <Circle className="w-4 h-4 md:w-5 md:h-5" />
-                                    <span className="text-xs md:text-sm hidden sm:inline">标记已学</span>
-                                </>
-                            )}
-                        </button>
-                    </div>
                 </div>
 
-                <h1 className="text-lg md:text-2xl font-bold mb-2">{videoData.title}</h1>
-
-                {/* 单句循环按钮 */}
-                <div className="mb-2">
-                    <button
-                        onClick={() => setIsLooping(!isLooping)}
-                        className={`flex items-center gap-2 px-3 md:px-4 py-2 rounded-lg font-medium transition-all duration-200 text-sm ${isLooping
-                            ? 'bg-purple-500 text-white hover:bg-purple-600 shadow-md'
-                            : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
-                            }`}
-                    >
-                        🔁 单句循环
-                    </button>
-                </div>
+                <h1 className="text-lg md:text-2xl font-bold mb-3">{videoData.title}</h1>
 
                 {/* 视频播放器容器 - 手机端固定高度，电脑端自适应 */}
-                <div className="w-full aspect-video md:flex-1 bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
+                <div className="w-full aspect-video bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
                     <ReactPlayer
                         ref={playerRef}
                         url={videoData.videoUrl}
@@ -200,17 +146,29 @@ const VideoDetail = () => {
                         onProgress={({ playedSeconds }) => {
                             setCurrentTime(playedSeconds);
 
-                            // 单句循环逻辑
-                            if (isLooping && videoData?.transcript) {
-                                const currentIndex = videoData.transcript.findIndex((item, idx) => {
-                                    const nextItem = videoData.transcript[idx + 1];
-                                    return playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start);
-                                });
+                            // 单句循环逻辑 - 修复版
+                            if (isLooping && videoData?.transcript && videoData.transcript.length > 0) {
+                                // 找到当前正在播放的字幕索引
+                                let currentIndex = -1;
+                                for (let i = 0; i < videoData.transcript.length; i++) {
+                                    const item = videoData.transcript[i];
+                                    const nextItem = videoData.transcript[i + 1];
 
-                                if (currentIndex !== -1) {
-                                    const nextItem = videoData.transcript[currentIndex + 1];
-                                    if (nextItem && playedSeconds >= nextItem.start) {
-                                        playerRef.current?.seekTo(videoData.transcript[currentIndex].start, 'seconds');
+                                    if (playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start)) {
+                                        currentIndex = i;
+                                        break;
+                                    }
+                                }
+
+                                // 如果找到了当前句，并且不是最后一句
+                                if (currentIndex !== -1 && currentIndex < videoData.transcript.length - 1) {
+                                    const currentLine = videoData.transcript[currentIndex];
+                                    const nextLine = videoData.transcript[currentIndex + 1];
+                                    const endTime = nextLine.start;
+
+                                    // 如果播放时间超过了当前句的结束时间（留0.1s缓冲）
+                                    if (playedSeconds >= endTime - 0.1) {
+                                        playerRef.current?.seekTo(currentLine.start, 'seconds');
                                     }
                                 }
                             }
@@ -226,6 +184,42 @@ const VideoDetail = () => {
                             }
                         }}
                     />
+                </div>
+
+                {/* 操作工具栏 - 视频播放器正下方 */}
+                <div className="mt-4 flex items-center gap-3">
+                    {/* 单句循环按钮 */}
+                    <button
+                        onClick={() => setIsLooping(!isLooping)}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLooping
+                            ? 'bg-purple-500 border-purple-500 text-white shadow-md'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-purple-400 hover:bg-purple-50'
+                            }`}
+                    >
+                        🔁 单句循环
+                    </button>
+
+                    {/* 收藏按钮 */}
+                    <button
+                        onClick={handleToggleFavorite}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isFavorite
+                            ? 'bg-red-500 border-red-500 text-white shadow-md'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-red-400 hover:bg-red-50'
+                            }`}
+                    >
+                        ❤️ 收藏
+                    </button>
+
+                    {/* 标记已学按钮 */}
+                    <button
+                        onClick={handleToggleLearned}
+                        className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLearned
+                            ? 'bg-green-500 border-green-500 text-white shadow-md'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-green-400 hover:bg-green-50'
+                            }`}
+                    >
+                        ✅ 标记已学
+                    </button>
                 </div>
 
                 {/* 重点词汇 - 只在电脑端显示 */}
