@@ -141,12 +141,13 @@ const VideoDetail = () => {
                         controls={true}
                         playing={isPlaying}
                         playsinline={true}  // 关键：防止 iOS 自动全屏
+                        progressInterval={50}  // 每50ms更新一次进度，提高响应速度
                         onPlay={() => setIsPlaying(true)}
                         onPause={() => setIsPlaying(false)}
                         onProgress={({ playedSeconds }) => {
                             setCurrentTime(playedSeconds);
 
-                            // 单句循环逻辑 - 修复版
+                            // 单句循环逻辑 - 优化版（提前0.2s判断）
                             if (isLooping && videoData?.transcript && videoData.transcript.length > 0) {
                                 // 找到当前正在播放的字幕索引
                                 let currentIndex = -1;
@@ -166,8 +167,8 @@ const VideoDetail = () => {
                                     const nextLine = videoData.transcript[currentIndex + 1];
                                     const endTime = nextLine.start;
 
-                                    // 如果播放时间超过了当前句的结束时间（留0.1s缓冲）
-                                    if (playedSeconds >= endTime - 0.1) {
+                                    // 提前0.2秒判断，防止滑过
+                                    if (playedSeconds >= endTime - 0.2) {
                                         playerRef.current?.seekTo(currentLine.start, 'seconds');
                                     }
                                 }
