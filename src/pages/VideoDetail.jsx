@@ -6,19 +6,15 @@ import { mockVideos } from '../data/mockData';
 // 交互式填空组件
 const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     const [value, setValue] = useState('');
-    const [status, setStatus] = useState('idle'); // 'idle', 'correct', 'error'
-    const inputRef = useRef(null);
+    const [status, setStatus] = useState('idle');
 
     const handleKeyDown = (e) => {
         if (e.key === 'Enter') {
-            const userInput = value.trim();
-            const correctWord = originalWord.replace(/[.,!?;:]/g, ''); // 移除标点符号
-
-            if (userInput.toLowerCase() === correctWord.toLowerCase()) {
+            const cleanWord = originalWord.replace(/[.,!?;:]/g, '');
+            if (value.trim().toLowerCase() === cleanWord.toLowerCase()) {
                 setStatus('correct');
             } else {
                 setStatus('error');
-                // 抖动动画后重置
                 setTimeout(() => setStatus('idle'), 500);
             }
         }
@@ -29,28 +25,17 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     }
 
     return (
-        <span className="relative inline-block mx-1">
-            {/* 1. 幽灵文字：负责占位，决定高度，绝对不抖 */}
-            <span className="opacity-0 pointer-events-none select-none font-medium">
-                {originalWord}
-            </span>
-
-            {/* 2. 绝对定位的输入框：贴在幽灵文字上面 */}
-            <input
-                ref={inputRef}
-                type="text"
-                value={value}
-                onChange={(e) => setValue(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onFocus={onFocus}
-                onBlur={onBlur}
-                className={`absolute inset-0 w-full h-full text-center font-medium rounded focus:outline-none transition-all px-0 py-0 m-0 border-none ${status === 'correct'
-                        ? 'text-green-600 bg-green-50'
-                        : 'bg-gray-100 text-indigo-600 focus:ring-2 focus:ring-indigo-500 focus:bg-white'
-                    } ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''
-                    }`}
-            />
-        </span>
+        <input
+            type="text"
+            value={value}
+            onChange={(e) => setValue(e.target.value)}
+            onKeyDown={handleKeyDown}
+            onFocus={onFocus}
+            onBlur={onBlur}
+            style={{ width: `${Math.max(originalWord.length * 0.65, 2.5)}em` }}
+            className={`inline-block text-center font-medium rounded mx-1 px-1 align-baseline bg-gray-100 text-indigo-600 border-none outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''
+                }`}
+        />
     );
 };
 
@@ -63,6 +48,7 @@ const VideoDetail = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isUserScrolling, setIsUserScrolling] = useState(false);
+    const [clozeCache, setClozeCache] = useState({});
 
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
@@ -100,6 +86,46 @@ const VideoDetail = () => {
     useEffect(() => {
         localStorage.setItem('studyMode', mode);
     }, [mode]);
+
+    // 【修复 2】计算并缓存挖空结果，只在 videoData 变化时执行一次
+    useEffect(() => {
+        if (!videoData?.transcript || !videoData?.vocab) return;
+
+        const vocabWords = videoData.vocab.map(v => v.word.toLowerCase());
+        const cache = {};
+
+        videoData.transcript.forEach((item, lineIndex) => {
+            const words = item.text.split(' ');
+            cache[lineIndex] = words.map((word) => {
+                const cleanWord = word.replace(/[.,!?;:]/g, '');
+                const wordLower = cleanWord.toLowerCase();
+
+                if (vocabWords.includes(wordLower)) return true;
+                if (cleanWord.length <= 3) return false;
+                if (cleanWord.length > 4) return Math.random() < 0.2;
+                return false;
+            });
+        });
+
+        setClozeCache(cache);
+    }, [videoData]);
+
+    // 【修复 1】将自动滚动逻辑移到独立的 useEffect
+    useEffect(() => {
+        if (isUserScrolling || !videoData?.transcript) return;
+
+        const activeIndex = videoData.transcript.findIndex((item, index) => {
+            const nextItem = videoData.transcript[index + 1];
+            return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+        });
+
+        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
+            transcriptRefs.current[activeIndex].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }, [currentTime, isUserScrolling, videoData]);
 
     // 切换"已学/未学"状态
     const handleToggleLearned = () => {
@@ -150,32 +176,13 @@ const VideoDetail = () => {
         }
     };
 
-    // Cloze 模式：智能挖空算法
-    const renderClozeText = (text, vocabList = []) => {
+    // 【修复 2】修改 renderClozeText 函数，从缓存读取挖空结果
+    const renderClozeText = (text, lineIndex) => {
         const words = text.split(' ');
-
-        // 创建词汇表的小写版本用于匹配
-        const vocabWords = vocabList.map(v => v.word.toLowerCase());
+        const shouldBlurList = clozeCache[lineIndex] || [];
 
         return words.map((word, idx) => {
-            // 移除标点符号用于判断
-            const cleanWord = word.replace(/[.,!?;:]/g, '');
-            const wordLower = cleanWord.toLowerCase();
-
-            let shouldBlur = false;
-
-            // 规则 A：重点词汇强制挖空
-            if (vocabWords.includes(wordLower)) {
-                shouldBlur = true;
-            }
-            // 规则 C：短词永不挖空
-            else if (cleanWord.length <= 3) {
-                shouldBlur = false;
-            }
-            // 规则 B：长词 20% 概率挖空
-            else if (cleanWord.length > 4) {
-                shouldBlur = Math.random() < 0.2;
-            }
+            const shouldBlur = shouldBlurList[idx];
 
             if (shouldBlur) {
                 return (
@@ -370,14 +377,6 @@ const VideoDetail = () => {
                         const nextItem = videoData.transcript[index + 1];
                         const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
 
-                        // 自动滚动到当前高亮行（只在非用户输入状态下）
-                        if (isActive && transcriptRefs.current[index] && !isUserScrolling) {
-                            transcriptRefs.current[index].scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                        }
-
                         return (
                             <div
                                 key={index}
@@ -397,7 +396,7 @@ const VideoDetail = () => {
                                     {/* 英文 */}
                                     <div className="text-base font-medium text-gray-900 leading-loose mb-1">
                                         {mode === 'cloze' ? (
-                                            renderClozeText(item.text, videoData.vocab)
+                                            renderClozeText(item.text, index)
                                         ) : (
                                             mode === 'cn' ? null : item.text
                                         )}
