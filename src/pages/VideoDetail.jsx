@@ -181,33 +181,57 @@ const VideoDetail = () => {
         setClozeCache(cache);
     }, [videoData]);
 
+    // 🆕 使用 ref 存储最新状态，避免 useEffect 闭包问题
+    const dictationStateRef = useRef({ isPlaying: false, isSeeking: false, dictationIndex: 0 });
+
+    // 同步更新 ref
+    useEffect(() => {
+        dictationStateRef.current = { isPlaying, isSeeking, dictationIndex };
+    }, [isPlaying, isSeeking, dictationIndex]);
+
     // 🆕 听写模式：使用 timeupdate 事件精准检测播放位置
     useEffect(() => {
         if (mode !== 'dictation' || !videoData?.transcript) return;
 
-        const player = playerRef.current?.getInternalPlayer();
-        if (!player || typeof player.addEventListener !== 'function') return;
-
-        const handleTimeUpdate = () => {
-            if (!isPlaying || isSeeking) return;
-
-            const currentVideoTime = player.currentTime;
-            const nextSubtitle = videoData.transcript[dictationIndex + 1];
-
-            // 如果播放到了下一句的开始时间，暂停
-            if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.05) {
-                console.log('🛑 timeupdate: 播放到下一句，自动暂停', currentVideoTime, '>=', nextSubtitle.start);
-                player.pause();
-                setIsPlaying(false);
+        // 延迟获取 player，确保 ReactPlayer 已经挂载
+        const setupListener = () => {
+            const player = playerRef.current?.getInternalPlayer();
+            if (!player || typeof player.addEventListener !== 'function') {
+                // 如果还没准备好，稍后重试
+                setTimeout(setupListener, 500);
+                return null;
             }
+
+            const handleTimeUpdate = () => {
+                const { isPlaying: playing, isSeeking: seeking, dictationIndex: idx } = dictationStateRef.current;
+
+                if (!playing || seeking) return;
+
+                const currentVideoTime = player.currentTime;
+                const nextSubtitle = videoData.transcript[idx + 1];
+
+                // 如果播放到了下一句的开始时间，暂停
+                if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.05) {
+                    console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2));
+                    player.pause();
+                    setIsPlaying(false);
+                }
+            };
+
+            console.log('✅ timeupdate 监听器已添加');
+            player.addEventListener('timeupdate', handleTimeUpdate);
+
+            return () => {
+                console.log('🗑️ timeupdate 监听器已移除');
+                player.removeEventListener('timeupdate', handleTimeUpdate);
+            };
         };
 
-        player.addEventListener('timeupdate', handleTimeUpdate);
-
+        const cleanup = setupListener();
         return () => {
-            player.removeEventListener('timeupdate', handleTimeUpdate);
+            if (typeof cleanup === 'function') cleanup();
         };
-    }, [mode, dictationIndex, isPlaying, isSeeking, videoData]);
+    }, [mode, videoData]);
 
     // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
@@ -281,17 +305,26 @@ const VideoDetail = () => {
         // 单句循环逻辑（非听写模式）
         if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
 
-        const activeIndex = videoData.transcript.findIndex((item, index) => {
-            const nextItem = videoData.transcript[index + 1];
-            return state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start);
-        });
+        // 找到当前播放位置对应的字幕索引
+        let activeIndex = -1;
+        for (let i = 0; i < videoData.transcript.length; i++) {
+            const item = videoData.transcript[i];
+            const nextItem = videoData.transcript[i + 1];
+            if (state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start)) {
+                activeIndex = i;
+                break;
+            }
+        }
 
+        // 🆕 修复：检测是否即将播放到下一句，提前跳回
         if (activeIndex !== -1) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            if (nextSub && state.playedSeconds >= nextSub.start) {
-                playerRef.current?.seekTo(currentSub.start);
+            // 如果有下一句，且当前时间接近下一句开始（提前 0.1 秒跳回）
+            if (nextSub && state.playedSeconds >= nextSub.start - 0.1) {
+                console.log('🔁 单句循环: 跳回', currentSub.start);
+                playerRef.current?.seekTo(currentSub.start, 'seconds');
             }
         }
     };
