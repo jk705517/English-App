@@ -80,6 +80,9 @@ const VideoDetail = () => {
     // 听写模式：当前正在听写的句子索引
     const [dictationIndex, setDictationIndex] = useState(0);
 
+    // 听写模式：追踪当前句是否已播放过
+    const [hasPlayedCurrent, setHasPlayedCurrent] = useState(false);
+
     // 初始化数据
     useEffect(() => {
         const video = mockVideos.find(v => v.id === parseInt(id));
@@ -101,11 +104,15 @@ const VideoDetail = () => {
 
         // 切换到听写模式时，暂停视频并跳到第一句
         if (mode === 'dictation' && videoData?.transcript) {
-            setIsPlaying(false);
             setDictationIndex(0);
-            playerRef.current?.seekTo(videoData.transcript[0].start);
-            // 重置统计
             setDictationStats({ correct: 0, wrong: 0, skipped: 0 });
+            setHasPlayedCurrent(false); // 重置播放状态
+
+            // 使用 setTimeout 确保在下一个事件循环中执行，避免状态冲突
+            setTimeout(() => {
+                playerRef.current?.seekTo(videoData.transcript[0].start);
+                setIsPlaying(false);
+            }, 100);
         }
     }, [mode, videoData]);
 
@@ -245,6 +252,7 @@ const VideoDetail = () => {
         const nextIndex = dictationIndex + 1;
         if (nextIndex < videoData.transcript.length) {
             setDictationIndex(nextIndex);
+            setHasPlayedCurrent(false); // 重置新句子的播放状态
             playerRef.current?.seekTo(videoData.transcript[nextIndex].start);
             setIsPlaying(false); // 暂停等待用户输入
         }
@@ -456,6 +464,8 @@ const VideoDetail = () => {
                                     const currentSubtitle = videoData.transcript[dictationIndex];
                                     playerRef.current?.seekTo(currentSubtitle.start);
                                     setIsPlaying(true);
+                                    setHasPlayedCurrent(true); // 标记已播放
+
                                     // 自动暂停在句尾
                                     const nextSubtitle = videoData.transcript[dictationIndex + 1];
                                     if (nextSubtitle) {
@@ -464,6 +474,7 @@ const VideoDetail = () => {
                                         }, (nextSubtitle.start - currentSubtitle.start) * 1000);
                                     }
                                 }}
+                                hasPlayed={hasPlayedCurrent}
                             />
 
                             {/* 中文翻译（可折叠） */}

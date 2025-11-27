@@ -9,6 +9,7 @@ import { useState, useRef, useEffect } from 'react';
  * @param {number} currentIndex - 当前句子索引
  * @param {number} totalCount - 总句子数
  * @param {function} onReplay - 重播当前句子回调
+ * @param {boolean} hasPlayed - 当前句是否已播放过
  */
 const DictationInput = ({
     correctAnswer,
@@ -17,7 +18,8 @@ const DictationInput = ({
     onWrong,
     currentIndex,
     totalCount,
-    onReplay
+    onReplay,
+    hasPlayed = false
 }) => {
     const [userInput, setUserInput] = useState('');
     const [status, setStatus] = useState('editing'); // editing | correct | wrong
@@ -121,7 +123,7 @@ const DictationInput = ({
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
                     </svg>
-                    重听
+                    {hasPlayed ? '重听' : '播放'}
                 </button>
             </div>
 
