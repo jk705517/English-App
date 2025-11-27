@@ -1,14 +1,88 @@
-const inputRef = useRef(null);
+import { useState, useRef, useEffect } from 'react';
 
-// 自动聚焦
-useEffect(() => {
-    inputRef.current?.focus();
-}, [correctAnswer]);
+/**
+ * 听写输入组件（增强版）
+ * @param {string} correctAnswer - 正确答案
+ * @param {function} onCorrect - 答对回调
+ * @param {function} onSkip - 跳过回调
+ * @param {function} onWrong - 答错回调
+ * @param {number} currentIndex - 当前句子索引
+ * @param {number} totalCount - 总句子数
+ * @param {function} onReplay - 重播当前句子回调
+ */
+const DictationInput = ({
+    correctAnswer,
+    onCorrect,
+    onSkip,
+    onWrong,
+    currentIndex,
+    totalCount,
+    onReplay
+}) => {
+    const [userInput, setUserInput] = useState('');
+    const [status, setStatus] = useState('editing'); // editing | correct | wrong
+    const [showAnswer, setShowAnswer] = useState(false);
+    const [hint, setHint] = useState('');
+    const inputRef = useRef(null);
 
-// 标准化文本（用于比较）
-const normalizeText = (text) => {
-    return text
-    setShowAnswer(false);
+    // 自动聚焦
+    useEffect(() => {
+        inputRef.current?.focus();
+    }, [correctAnswer]);
+
+    // 标准化文本（用于比较）
+    const normalizeText = (text) => {
+        return text
+            .toLowerCase()
+            .replace(/[.,!?;:'"()]/g, '') // 移除标点
+            .replace(/\s+/g, ' ') // 多个空格变一个
+            .trim();
+    };
+
+    // 提交验证
+    const handleSubmit = () => {
+        if (!userInput.trim()) return;
+
+        const isCorrect = normalizeText(userInput) === normalizeText(correctAnswer);
+
+        if (isCorrect) {
+            setStatus('correct');
+            setTimeout(() => {
+                onCorrect?.();
+                // 重置状态准备下一句
+                setUserInput('');
+                setStatus('editing');
+                setShowAnswer(false);
+                setHint('');
+            }, 1500);
+        } else {
+            setStatus('wrong');
+            onWrong?.(); // 调用答错回调
+        }
+    };
+
+    // 重试
+    const handleRetry = () => {
+        setUserInput('');
+        setStatus('editing');
+        setShowAnswer(false);
+        inputRef.current?.focus();
+    };
+
+    // 显示答案
+    const handleShowAnswer = () => {
+        setShowAnswer(true);
+        setUserInput(correctAnswer);
+    };
+
+    // 获取首字母提示
+    const handleHint = () => {
+        const words = correctAnswer.split(' ');
+        const hintText = words.map(word => word[0]).join(' ');
+        setHint(hintText);
+    };
+
+    // Enter 提交，Esc 跳过
     const handleKeyDown = (e) => {
         if (e.key === 'Enter' && status === 'editing') {
             handleSubmit();
@@ -159,6 +233,20 @@ const normalizeText = (text) => {
                             >
                                 👁️ 显示答案
                             </button>
+                        )}
+                        {showAnswer && (
+                            <button
+                                onClick={() => {
+                                    onSkip?.();
+                                    setUserInput('');
+                                    setStatus('editing');
+                                    setShowAnswer(false);
+                                }}
+                                className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                            >
+                                下一句 →
+                            </button>
+                        )}
                     </>
                 )}
             </div>

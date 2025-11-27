@@ -42,8 +42,6 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     );
 };
 
-
-
 const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
@@ -99,14 +97,6 @@ const VideoDetail = () => {
         localStorage.setItem('studyMode', mode);
     }, [mode]);
 
-    // 计算当前活动字幕的索引
-    const currentSubtitleIndex = videoData?.transcript?.findIndex((item, index) => {
-        const nextItem = videoData.transcript[index + 1];
-        return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
-    }) ?? 0;
-
-    const currentSubtitle = videoData?.transcript?.[currentSubtitleIndex];
-
     // 【修复 2】计算并缓存挖空结果，只在 videoData 变化时执行一次
     useEffect(() => {
         if (!videoData?.transcript || !videoData?.vocab) return;
@@ -147,135 +137,153 @@ const VideoDetail = () => {
         }
     }, [currentTime, isUserScrolling, videoData]);
 
-    // 切换"已学/未学"状态
     const handleToggleLearned = () => {
-        const videoId = parseInt(id);
+        const newState = !isLearned;
+        setIsLearned(newState);
+
+        // 更新 localStorage
         const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-
-        let updatedIds;
-        if (learnedIds.includes(videoId)) {
-            // 移除
-            updatedIds = learnedIds.filter(id => id !== videoId);
-            setIsLearned(false);
+        if (newState) {
+            if (!learnedIds.includes(parseInt(id))) {
+                learnedIds.push(parseInt(id));
+            }
         } else {
-            // 添加
-            updatedIds = [...learnedIds, videoId];
-            setIsLearned(true);
+            const index = learnedIds.indexOf(parseInt(id));
+            if (index > -1) {
+                learnedIds.splice(index, 1);
+            }
         }
-
-        localStorage.setItem('learnedVideoIds', JSON.stringify(updatedIds));
+        localStorage.setItem('learnedVideoIds', JSON.stringify(learnedIds));
     };
 
-    // 切换"收藏/取消收藏"状态
     const handleToggleFavorite = () => {
-        const videoId = parseInt(id);
+        const newState = !isFavorite;
+        setIsFavorite(newState);
+
+        // 更新 localStorage
         const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
-
-        let updatedIds;
-        if (favoriteIds.includes(videoId)) {
-            // 移除收藏
-            updatedIds = favoriteIds.filter(id => id !== videoId);
-            setIsFavorite(false);
+        if (newState) {
+            if (!favoriteIds.includes(parseInt(id))) {
+                favoriteIds.push(parseInt(id));
+            }
         } else {
-            // 添加收藏
-            updatedIds = [...favoriteIds, videoId];
-            setIsFavorite(true);
+            const index = favoriteIds.indexOf(parseInt(id));
+            if (index > -1) {
+                favoriteIds.splice(index, 1);
+            }
         }
-
-        localStorage.setItem('favoriteVideoIds', JSON.stringify(updatedIds));
+        localStorage.setItem('favoriteVideoIds', JSON.stringify(favoriteIds));
     };
 
-    // 处理点击字幕跳转
-    const handleSeek = (seconds) => {
-        console.log("试图跳转到秒数:", seconds);
-        if (playerRef.current) {
-            playerRef.current.seekTo(seconds, 'seconds');
-            setIsPlaying(true);
-        } else {
-            console.log("播放器实例未找到！");
+    const handleProgress = (state) => {
+        setCurrentTime(state.playedSeconds);
+
+        if (!videoData?.transcript || !isLooping) return;
+
+        const activeIndex = videoData.transcript.findIndex((item, index) => {
+            const nextItem = videoData.transcript[index + 1];
+            return state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start);
+        });
+
+        if (activeIndex !== -1) {
+            const currentSub = videoData.transcript[activeIndex];
+            const nextSub = videoData.transcript[activeIndex + 1];
+
+            if (nextSub && state.playedSeconds >= nextSub.start) {
+                playerRef.current?.seekTo(currentSub.start);
+            }
         }
     };
 
-    // 【修复 2】修改 renderClozeText 函数，从缓存读取挖空结果
+    const handleSeek = (time) => {
+        playerRef.current?.seekTo(time);
+        setIsPlaying(true);
+    };
+
     const renderClozeText = (text, lineIndex) => {
         const words = text.split(' ');
-        const shouldBlurList = clozeCache[lineIndex] || [];
+        const clozePattern = clozeCache[lineIndex] || [];
 
-        return words.map((word, idx) => {
-            const shouldBlur = shouldBlurList[idx];
-
-            if (shouldBlur) {
-                return (
-                    <ClozeInput
-                        key={idx}
-                        originalWord={word}
-                        onFocus={() => setIsUserScrolling(true)}
-                        onBlur={() => setIsUserScrolling(false)}
-                    />
-                );
-            }
-            return <span key={idx}>{word} </span>;
-        });
+        return (
+            <span>
+                {words.map((word, i) => {
+                    const shouldCloze = clozePattern[i];
+                    if (shouldCloze) {
+                        return (
+                            <ClozeInput
+                                key={i}
+                                originalWord={word}
+                                onFocus={() => setIsUserScrolling(true)}
+                                onBlur={() => setIsUserScrolling(false)}
+                            />
+                        );
+                    }
+                    return <span key={i}>{word} </span>;
+                })}
+            </span>
+        );
     };
 
-    if (!videoData) return <div className="p-8">Loading...</div>;
+    if (!videoData) {
+        return (
+            <div className="min-h-screen flex items-center justify-center">
+                <div className="text-xl text-gray-600">视频加载中...</div>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col md:flex-row h-screen overflow-hidden bg-gray-50">
-            {/* 视频区域 - 手机端固定头部，电脑端左侧独立滚动 */}
-            <div className="flex-shrink-0 z-10 bg-white md:w-3/5 md:overflow-y-auto md:h-full">
-                <div className="p-4 md:p-6">
-                    <div className="flex items-center justify-between mb-2 md:mb-4">
-                        <Link to="/" className="text-gray-600 hover:text-blue-600 flex items-center text-sm md:text-base">
-                            ← 返回首页
-                        </Link>
+        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+            {/* 左侧：视频、标题、词汇 */}
+            <div className="w-full md:w-3/5 flex flex-col">
+                <div className="p-3 md:p-6 flex-shrink-0">
+                    {/* 返回按钮 */}
+                    <Link
+                        to="/"
+                        className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium mb-3 md:mb-4 group"
+                    >
+                        <svg className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
+                        </svg>
+                        ← 返回首页
+                    </Link>
+
+                    {/* 标题 */}
+                    <h1 className="text-xl md:text-3xl font-bold mb-2 md:mb-3">{videoData.title}</h1>
+
+                    {/* 元数据 */}
+                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
+                        <span className="flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                            </svg>
+                            {videoData.author}
+                        </span>
+                        <span className="flex items-center">
+                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                            </svg>
+                            {videoData.duration}
+                        </span>
+                        <span className="flex items-center">{videoData.level}</span>
+                        <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                            {videoData.category}
+                        </span>
                     </div>
 
-                    <h1 className="text-lg md:text-2xl font-bold mb-3">{videoData.title}</h1>
-
-                    {/* 视频播放器容器 */}
-                    <div className="w-full aspect-video bg-black rounded-lg md:rounded-xl overflow-hidden shadow-lg" onContextMenu={(e) => e.preventDefault()}>
+                    {/* 视频播放器 */}
+                    <div className="relative bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
                         <ReactPlayer
                             ref={playerRef}
                             url={videoData.videoUrl}
-                            width="100%"
-                            height="100%"
-                            controls={true}
                             playing={isPlaying}
-                            playsinline={true}  // 关键：防止 iOS 自动全屏
-                            progressInterval={50}  // 每50ms更新一次进度，提高响应速度
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
-                            onProgress={({ playedSeconds }) => {
-                                setCurrentTime(playedSeconds);
-
-                                // 单句循环逻辑 - 优化版（提前0.2s判断）
-                                if (isLooping && videoData?.transcript && videoData.transcript.length > 0) {
-                                    // 找到当前正在播放的字幕索引
-                                    let currentIndex = -1;
-                                    for (let i = 0; i < videoData.transcript.length; i++) {
-                                        const item = videoData.transcript[i];
-                                        const nextItem = videoData.transcript[i + 1];
-
-                                        if (playedSeconds >= item.start && (!nextItem || playedSeconds < nextItem.start)) {
-                                            currentIndex = i;
-                                            break;
-                                        }
-                                    }
-
-                                    // 如果找到了当前句，并且不是最后一句
-                                    if (currentIndex !== -1 && currentIndex < videoData.transcript.length - 1) {
-                                        const currentLine = videoData.transcript[currentIndex];
-                                        const nextLine = videoData.transcript[currentIndex + 1];
-                                        const endTime = nextLine.start;
-
-                                        // 提前0.2秒判断，防止滑过
-                                        if (playedSeconds >= endTime - 0.2) {
-                                            playerRef.current?.seekTo(currentLine.start, 'seconds');
-                                        }
-                                    }
-                                }
-                            }}
+                            onProgress={handleProgress}
+                            controls
+                            width="100%"
+                            height="100%"
+                            style={{ position: 'absolute', top: 0, left: 0 }}
                             config={{
                                 youtube: {
                                     playerVars: { showinfo: 1 }
@@ -480,12 +488,14 @@ const VideoDetail = () => {
                                     </div>
 
                                     {/* 中文 */}
-                                    <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                                        ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
-                                        : 'text-gray-600'
-                                        }`}>
-                                        {item.cn}
-                                    </div>
+                                    {mode !== 'dictation' && (
+                                        <div className={`text-sm transition-all duration-300 ${mode === 'en'
+                                            ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
+                                            : 'text-gray-600'
+                                            }`}>
+                                            {item.cn}
+                                        </div>
+                                    )}
                                 </div>
                             </div>
                         );
