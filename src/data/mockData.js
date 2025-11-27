@@ -40,7 +40,11 @@ export const mockVideos = [
         transcript: [
             { start: 0.24, text: "There's something about being here", cn: "在这里有一种特别的感觉" },
             { start: 1.5, text: "that makes me feel beautiful and free.", cn: "让我感到美丽而自由。" },
-            { start: 5.07, text: "Maybe it's the warmth in the air or how the", cn: "也许是空气中的温暖，或者是" },
+            {
+                start: 5.07, text: "Maybe it's the warmth in the air or how the", cn: "也许是空气中的温暖，或者是", highlights: [
+                    { word: "warmth", phonetic: "/wɔːrmθ/", type: "n.", meaning: "温暖", definition: "The quality, state, or sensation of being warm", example: "We enjoyed the warmth of the sun.", exampleCn: "我们享受着阳光的温暖。" }
+                ]
+            },
             { start: 7.65, text: "food tastes like it was made slowly with care.", cn: "食物尝起来像是用心慢慢制作的。" },
             { start: 11.16, text: "Maybe it's just the way people move.", cn: "也许只是人们行动的方式。" },
             { start: 12.945, text: "Slower, more open, whatever it is, it", cn: "更慢，更开放，无论是什么，" },
@@ -60,9 +64,18 @@ export const mockVideos = [
             { start: 48.199, text: "I feel so happy.", cn: "我感到非常开心。" },
             { start: 49.79, text: "It's strange, isn't it?", cn: "这很奇怪，不是吗？" },
             { start: 52.16, text: "How a place I've never been can make me feel", cn: "一个我从未去过的地方竟能让我感到" },
-            { start: 55.4, text: "more embraced and home the place I'm supposed", cn: "比我应该属于的地方更被拥抱，" },
+            {
+                start: 55.4, text: "more embraced and home the place I'm supposed", cn: "比我应该属于的地方更被拥抱，", highlights: [
+                    { word: "embraced", phonetic: "/ɪmˈbreɪst/", type: "adj./v.", meaning: "被拥抱的；拥抱", definition: "Hold someone closely in one's arms; accept willingly", example: "She embraced the new culture.", exampleCn: "她欣然接受了新文化。" }
+                ]
+            },
             { start: 59.15, text: "to belong to, but where everything feels a", cn: "但在那里一切都显得" },
-            { start: 61.91, text: "little more polished, a little more performed.", cn: "更精致，更像在表演。" }
+            {
+                start: 61.91, text: "little more polished, a little more performed.", cn: "更精致，更像在表演。", highlights: [
+                    { word: "polished", phonetic: "/ˈpɑːlɪʃt/", type: "adj.", meaning: "精致的，完美的", definition: "Refined, sophisticated, or elegant", example: "He gave a polished performance.", exampleCn: "他的表演很完美。" },
+                    { word: "performed", phonetic: "/pərˈfɔːrmd/", type: "adj./v.", meaning: "表演的；做作的", definition: "Carried out or executed; presented in a theatrical manner", example: "The dance was beautifully performed.", exampleCn: "舞蹈表演得很美。" }
+                ]
+            }
         ],
         vocab: [
             { word: "embraced", type: "adj.", meaning: "被拥抱的，被接纳的" },

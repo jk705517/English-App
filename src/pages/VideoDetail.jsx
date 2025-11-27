@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { mockVideos } from '../data/mockData';
+import HighlightedText from '../components/HighlightedText';
 
 // 交互式填空组件
 const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
@@ -88,8 +89,8 @@ const DictationInput = ({ correctText, onFocus, onBlur }) => {
             onBlur={onBlur}
             placeholder="听完后在此输入整句..."
             className={`w-full px-3 py-2 rounded-lg border-2 font-medium transition-all ${status === 'error'
-                    ? 'border-red-300 bg-red-50 text-red-600 animate-shake'
-                    : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-indigo-500 focus:bg-white'
+                ? 'border-red-300 bg-red-50 text-red-600 animate-shake'
+                : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-indigo-500 focus:bg-white'
                 }`}
         />
     );
@@ -469,14 +470,19 @@ const VideoDetail = () => {
                                                 onBlur={() => setIsUserScrolling(false)}
                                             />
                                         ) : (
-                                            mode === 'cn' ? null : item.text
+                                            mode === 'cn' ? null : (
+                                                <HighlightedText
+                                                    text={item.text}
+                                                    highlights={item.highlights || []}
+                                                />
+                                            )
                                         )}
                                     </div>
 
                                     {/* 中文 */}
                                     <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                                            ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
-                                            : 'text-gray-600'
+                                        ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
+                                        : 'text-gray-600'
                                         }`}>
                                         {item.cn}
                                     </div>
