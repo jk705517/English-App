@@ -255,7 +255,7 @@ const DictationInput = ({
 
             {/* 键盘提示 */}
             <div className="text-xs text-gray-500 text-center">
-                提示：按 <kbd className="px-2 py-1 bg-gray-200 rounded">Enter</kbd> 提交，
+                按 <kbd className="px-2 py-1 bg-gray-200 rounded">Enter</kbd> 提交，
                 <kbd className="px-2 py-1 bg-gray-200 rounded">Esc</kbd> 跳过
             </div>
         </div>

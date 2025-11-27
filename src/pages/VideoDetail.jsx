@@ -208,13 +208,24 @@ const VideoDetail = () => {
                 if (!playing || seeking) return;
 
                 const currentVideoTime = player.currentTime;
+                const currentSubtitle = videoData.transcript[idx];
                 const nextSubtitle = videoData.transcript[idx + 1];
 
-                // 如果播放到了下一句的开始时间，暂停
-                if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.05) {
-                    console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2));
+                // 🆕 如果播放到了下一句的开始时间前 0.3 秒，提前暂停
+                // 这样可以避免播放到下一句的开头
+                if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.3) {
+                    console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2), '下一句开始:', nextSubtitle.start);
                     player.pause();
                     setIsPlaying(false);
+                }
+
+                // 🆕 如果是最后一句，检测是否接近视频结尾
+                if (!nextSubtitle && currentSubtitle) {
+                    // 假设最后一句播放 5 秒后暂停
+                    if (currentVideoTime >= currentSubtitle.start + 5) {
+                        player.pause();
+                        setIsPlaying(false);
+                    }
                 }
             };
 
@@ -321,8 +332,8 @@ const VideoDetail = () => {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 如果有下一句，且当前时间接近下一句开始（提前 0.1 秒跳回）
-            if (nextSub && state.playedSeconds >= nextSub.start - 0.1) {
+            // 如果有下一句，且当前时间接近下一句开始（提前 0.3 秒跳回）
+            if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
                 console.log('🔁 单句循环: 跳回', currentSub.start);
                 playerRef.current?.seekTo(currentSub.start, 'seconds');
             }
@@ -652,9 +663,14 @@ const VideoDetail = () => {
                                     key={index}
                                     ref={(el) => transcriptRefs.current[index] = el}
                                     onClick={() => handleSeek(item.start)}
-                                    className={`relative pl-6 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                                    className={`relative pl-10 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                         }`}
                                 >
+                                    {/* 🆕 字幕行编号 */}
+                                    <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
+                                        {index + 1}
+                                    </span>
+
                                     {/* 蓝色指示条 */}
                                     <div
                                         className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
