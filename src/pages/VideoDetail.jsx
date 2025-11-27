@@ -4,6 +4,7 @@ import ReactPlayer from 'react-player';
 import { mockVideos } from '../data/mockData';
 import HighlightedText from '../components/HighlightedText';
 import FloatingControls from '../components/FloatingControls';
+import DictationInput from '../components/DictationInput';
 
 // 交互式填空组件
 const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
@@ -41,61 +42,7 @@ const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
     );
 };
 
-// 听写输入组件
-const DictationInput = ({ correctText, onFocus, onBlur }) => {
-    const [value, setValue] = useState('');
-    const [status, setStatus] = useState('idle'); // 'idle', 'correct', 'error'
-    const [showAnswer, setShowAnswer] = useState(false);
 
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            // 移除标点符号后比较
-            const cleanCorrect = correctText.replace(/[.,!?;:'"]/g, '').toLowerCase().trim();
-            const cleanInput = value.replace(/[.,!?;:'"]/g, '').toLowerCase().trim();
-
-            if (cleanInput === cleanCorrect) {
-                setStatus('correct');
-            } else {
-                setStatus('error');
-                // 1秒后显示正确答案
-                setTimeout(() => setShowAnswer(true), 1000);
-            }
-        }
-    };
-
-    if (status === 'correct') {
-        return (
-            <div className="text-green-600 font-medium">
-                ✓ {correctText}
-            </div>
-        );
-    }
-
-    if (showAnswer) {
-        return (
-            <div>
-                <div className="text-red-500 line-through mb-1">{value}</div>
-                <div className="text-green-600 font-medium">正确答案：{correctText}</div>
-            </div>
-        );
-    }
-
-    return (
-        <input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            placeholder="听完后在此输入整句..."
-            className={`w-full px-3 py-2 rounded-lg border-2 font-medium transition-all ${status === 'error'
-                ? 'border-red-300 bg-red-50 text-red-600 animate-shake'
-                : 'border-gray-200 bg-gray-50 text-gray-800 focus:border-indigo-500 focus:bg-white'
-                }`}
-        />
-    );
-};
 
 const VideoDetail = () => {
     const { id } = useParams();
@@ -125,6 +72,13 @@ const VideoDetail = () => {
         return favoriteIds.includes(parseInt(id));
     });
 
+    // 听写模式统计
+    const [dictationStats, setDictationStats] = useState({
+        correct: 0,
+        wrong: 0,
+        skipped: 0
+    });
+
     // 初始化数据
     useEffect(() => {
         const video = mockVideos.find(v => v.id === parseInt(id));
@@ -144,6 +98,14 @@ const VideoDetail = () => {
     useEffect(() => {
         localStorage.setItem('studyMode', mode);
     }, [mode]);
+
+    // 计算当前活动字幕的索引
+    const currentSubtitleIndex = videoData?.transcript?.findIndex((item, index) => {
+        const nextItem = videoData.transcript[index + 1];
+        return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+    }) ?? 0;
+
+    const currentSubtitle = videoData?.transcript?.[currentSubtitleIndex];
 
     // 【修复 2】计算并缓存挖空结果，只在 videoData 变化时执行一次
     useEffect(() => {
@@ -404,6 +366,34 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
+                {/* 听写模式统计面板 */}
+                {mode === 'dictation' && (
+                    <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
+                        <div className="flex justify-around">
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
+                                <div className="text-xs text-gray-600">答对</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-red-600">{dictationStats.wrong}</div>
+                                <div className="text-xs text-gray-600">答错</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-gray-600">{dictationStats.skipped}</div>
+                                <div className="text-xs text-gray-600">跳过</div>
+                            </div>
+                            <div className="text-center">
+                                <div className="text-2xl font-bold text-blue-600">
+                                    {dictationStats.correct + dictationStats.wrong + dictationStats.skipped > 0
+                                        ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
+                                        : 0}%
+                                </div>
+                                <div className="text-xs text-gray-600">正确率</div>
+                            </div>
+                        </div>
+                    </div>
+                )}
+
                 {/* 字幕列表 */}
                 <div className="p-3 md:p-4 space-y-2 md:space-y-3">
                     {videoData.transcript?.map((item, index) => {
@@ -431,11 +421,54 @@ const VideoDetail = () => {
                                         {mode === 'cloze' ? (
                                             renderClozeText(item.text, index)
                                         ) : mode === 'dictation' ? (
-                                            <DictationInput
-                                                correctText={item.text}
-                                                onFocus={() => setIsUserScrolling(true)}
-                                                onBlur={() => setIsUserScrolling(false)}
-                                            />
+                                            isActive ? (
+                                                <div className="bg-blue-50 p-4 rounded-lg -mx-2">
+                                                    <DictationInput
+                                                        correctAnswer={item.text}
+                                                        currentIndex={index}
+                                                        totalCount={videoData.transcript.length}
+                                                        onCorrect={() => {
+                                                            console.log('答对了！');
+                                                            setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
+                                                            // 1.5秒后自动跳到下一句
+                                                            setTimeout(() => {
+                                                                if (index < videoData.transcript.length - 1) {
+                                                                    const nextSubtitle = videoData.transcript[index + 1];
+                                                                    playerRef.current?.seekTo(nextSubtitle.start);
+                                                                }
+                                                            }, 1500);
+                                                        }}
+                                                        onWrong={() => {
+                                                            setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+                                                        }}
+                                                        onSkip={() => {
+                                                            console.log('跳过当前句');
+                                                            setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+                                                            // 跳转到下一句字幕
+                                                            if (index < videoData.transcript.length - 1) {
+                                                                const nextSubtitle = videoData.transcript[index + 1];
+                                                                playerRef.current?.seekTo(nextSubtitle.start);
+                                                            }
+                                                        }}
+                                                        onReplay={() => {
+                                                            // 重播当前句子
+                                                            playerRef.current?.seekTo(item.start);
+                                                        }}
+                                                    />
+
+                                                    {/* 中文翻译（可折叠） */}
+                                                    <details className="mt-3">
+                                                        <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
+                                                            💡 显示中文翻译
+                                                        </summary>
+                                                        <p className="mt-2 text-gray-700 pl-4">{item.cn}</p>
+                                                    </details>
+                                                </div>
+                                            ) : (
+                                                <div className="text-gray-400 italic">
+                                                    {item.text}
+                                                </div>
+                                            )
                                         ) : (
                                             mode === 'cn' ? null : (
                                                 <HighlightedText
