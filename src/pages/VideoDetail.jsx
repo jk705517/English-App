@@ -107,9 +107,6 @@ const VideoDetail = () => {
             console.log('🎯 切换到听写模式');
             console.log('📍 第一句时间:', videoData.transcript[0].start);
 
-            // 立即停止播放
-            setIsPlaying(false);
-
             // 重置所有听写相关状态
             setDictationIndex(0);
             setDictationStats({ correct: 0, wrong: 0, skipped: 0 });
@@ -118,16 +115,34 @@ const VideoDetail = () => {
             // 强制更新 currentTime 为第一句的时间
             setCurrentTime(videoData.transcript[0].start);
 
-            // 延迟执行跳转，确保状态已更新
-            const timer = setTimeout(() => {
+            // 第一步：立即暂停视频
+            setIsPlaying(false);
+
+            // 第二步：跳转视频位置
+            const timer1 = setTimeout(() => {
                 if (playerRef.current) {
                     console.log('🔄 执行视频跳转到:', videoData.transcript[0].start);
                     playerRef.current.seekTo(videoData.transcript[0].start, 'seconds');
-                    console.log('✅ 跳转完成');
                 }
-            }, 200);
+            }, 100);
 
-            return () => clearTimeout(timer);
+            // 第三步：再次确保暂停（防止 seekTo 后自动播放）
+            const timer2 = setTimeout(() => {
+                console.log('⏸️ 强制暂停视频');
+                setIsPlaying(false);
+                if (playerRef.current?.getInternalPlayer) {
+                    const player = playerRef.current.getInternalPlayer();
+                    if (player && typeof player.pause === 'function') {
+                        player.pause();
+                    }
+                }
+                console.log('✅ 跳转完成并已暂停');
+            }, 300);
+
+            return () => {
+                clearTimeout(timer1);
+                clearTimeout(timer2);
+            };
         }
     }, [mode, videoData]);
 
