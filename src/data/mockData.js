@@ -10,6 +10,7 @@ export const mockVideos = [
         difficulty: 4,
         category: "成长",
         isLearned: false,
+        isFavorited: false,
         // 调整后的时间轴，适配本地测试视频
         transcript: [
             { start: 0, text: "So, I'll be speaking to you using language ...", cn: "所以，我将用语言来跟你们讲话……" },
@@ -37,6 +38,7 @@ export const mockVideos = [
         difficulty: 3,
         category: "旅行",
         isLearned: false,
+        isFavorited: false,
         transcript: [
             { start: 0.24, text: "There's something about being here", cn: "在这里有一种特别的感觉" },
             { start: 1.5, text: "that makes me feel beautiful and free.", cn: "让我感到美丽而自由。" },
@@ -83,8 +85,8 @@ export const mockVideos = [
             { word: "performed", type: "adj.", meaning: "表演的，做作的" }
         ]
     },
-    { id: 3, title: "Business English", cover: "/cover.jpg", videoUrl: "", duration: "15:30", author: "TEco Lab", level: "⭐⭐⭐", difficulty: 3, category: "职场", isLearned: false },
-    { id: 4, title: "Travel Vlog", cover: "/cover.jpg", videoUrl: "", duration: "08:20", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "旅行", isLearned: false },
-    { id: 5, title: "Tech News", cover: "/cover.jpg", videoUrl: "", duration: "12:45", author: "TEco Lab", level: "⭐⭐⭐⭐", difficulty: 4, category: "科技", isLearned: false },
-    { id: 6, title: "Cooking Class", cover: "/cover.jpg", videoUrl: "", duration: "20:10", author: "TEco Lab", level: "⭐", difficulty: 1, category: "美食", isLearned: true },
+    { id: 3, title: "Business English", cover: "/cover.jpg", videoUrl: "", duration: "15:30", author: "TEco Lab", level: "⭐⭐⭐", difficulty: 3, category: "职场", isLearned: false, isFavorited: false },
+    { id: 4, title: "Travel Vlog", cover: "/cover.jpg", videoUrl: "", duration: "08:20", author: "TEco Lab", level: "⭐⭐", difficulty: 2, category: "旅行", isLearned: false, isFavorited: false },
+    { id: 5, title: "Tech News", cover: "/cover.jpg", videoUrl: "", duration: "12:45", author: "TEco Lab", level: "⭐⭐⭐⭐", difficulty: 4, category: "科技", isLearned: false, isFavorited: false },
+    { id: 6, title: "Cooking Class", cover: "/cover.jpg", videoUrl: "", duration: "20:10", author: "TEco Lab", level: "⭐", difficulty: 1, category: "美食", isLearned: true, isFavorited: false },
 ];

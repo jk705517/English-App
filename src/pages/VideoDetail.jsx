@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { mockVideos } from '../data/mockData';
 import HighlightedText from '../components/HighlightedText';
+import FloatingControls from '../components/FloatingControls';
 
 // 交互式填空组件
 const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
@@ -326,41 +327,7 @@ const VideoDetail = () => {
                         />
                     </div>
 
-                    {/* 操作工具栏 - 视频播放器正下方 */}
-                    <div className="mt-4 flex items-center gap-3">
-                        {/* 单句循环按钮 */}
-                        <button
-                            onClick={() => setIsLooping(!isLooping)}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLooping
-                                ? 'bg-purple-500 border-purple-500 text-white shadow-md'
-                                : 'bg-white border-gray-300 text-gray-700 hover:border-purple-400 hover:bg-purple-50'
-                                }`}
-                        >
-                            🔁 单句循环
-                        </button>
 
-                        {/* 收藏按钮 */}
-                        <button
-                            onClick={handleToggleFavorite}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isFavorite
-                                ? 'bg-red-500 border-red-500 text-white shadow-md'
-                                : 'bg-white border-gray-300 text-gray-700 hover:border-red-400 hover:bg-red-50'
-                                }`}
-                        >
-                            ❤️ 收藏
-                        </button>
-
-                        {/* 标记已学按钮 */}
-                        <button
-                            onClick={handleToggleLearned}
-                            className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 font-medium transition-all duration-200 ${isLearned
-                                ? 'bg-green-500 border-green-500 text-white shadow-md'
-                                : 'bg-white border-gray-300 text-gray-700 hover:border-green-400 hover:bg-green-50'
-                                }`}
-                        >
-                            ✅ 标记已学
-                        </button>
-                    </div>
 
                     {/* 重点词汇 - 只在电脑端显示 */}
                     <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
@@ -508,6 +475,16 @@ const VideoDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* 浮动控制按钮 */}
+            <FloatingControls
+                isLooping={isLooping}
+                onToggleLoop={() => setIsLooping(!isLooping)}
+                isFavorited={isFavorite}
+                onToggleFavorite={handleToggleFavorite}
+                isLearned={isLearned}
+                onToggleLearned={handleToggleLearned}
+            />
         </div>
     );
 };
