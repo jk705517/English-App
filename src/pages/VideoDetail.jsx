@@ -53,6 +53,9 @@ const VideoDetail = () => {
     const [isUserScrolling, setIsUserScrolling] = useState(false);
     const [clozeCache, setClozeCache] = useState({});
 
+    // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
+    const [isSeeking, setIsSeeking] = useState(false);
+
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
         return localStorage.getItem('studyMode') || 'dual';
@@ -105,44 +108,50 @@ const VideoDetail = () => {
         // 切换到听写模式时，暂停视频并跳到第一句
         if (mode === 'dictation' && videoData?.transcript) {
             console.log('🎯 切换到听写模式');
-            console.log('📍 第一句时间:', videoData.transcript[0].start);
+            const firstSentenceTime = videoData.transcript[0].start;
+            console.log('📍 第一句时间:', firstSentenceTime);
 
             // 重置所有听写相关状态
             setDictationIndex(0);
             setDictationStats({ correct: 0, wrong: 0, skipped: 0 });
             setHasPlayedCurrent(false);
 
-            // 强制更新 currentTime 为第一句的时间
-            setCurrentTime(videoData.transcript[0].start);
+            // 🆕 开启跳转锁定
+            setIsSeeking(true);
 
             // 第一步：立即暂停视频
             setIsPlaying(false);
 
-            // 第二步：跳转视频位置
-            const timer1 = setTimeout(() => {
+            // 第二步：等待状态更新后跳转
+            setTimeout(() => {
                 if (playerRef.current) {
-                    console.log('🔄 执行视频跳转到:', videoData.transcript[0].start);
-                    playerRef.current.seekTo(videoData.transcript[0].start, 'seconds');
-                }
-            }, 100);
+                    console.log('🔄 执行视频跳转到:', firstSentenceTime);
+                    playerRef.current.seekTo(firstSentenceTime, 'seconds');
 
-            // 第三步：再次确保暂停（防止 seekTo 后自动播放）
-            const timer2 = setTimeout(() => {
+                    // 强制更新 currentTime
+                    setCurrentTime(firstSentenceTime);
+                }
+            }, 50);
+
+            // 第三步：确保暂停并解除锁定
+            setTimeout(() => {
                 console.log('⏸️ 强制暂停视频');
                 setIsPlaying(false);
+
+                // 尝试直接操作内部播放器
                 if (playerRef.current?.getInternalPlayer) {
                     const player = playerRef.current.getInternalPlayer();
                     if (player && typeof player.pause === 'function') {
                         player.pause();
                     }
                 }
-                console.log('✅ 跳转完成并已暂停');
-            }, 300);
 
-            return () => {
-                clearTimeout(timer1);
-                clearTimeout(timer2);
-            };
+                // 🆕 解除跳转锁定
+                setTimeout(() => {
+                    setIsSeeking(false);
+                    console.log('✅ 跳转完成，锁定已解除');
+                }, 200);
+            }, 200);
         }
     }, [mode, videoData]);
 
@@ -224,7 +233,19 @@ const VideoDetail = () => {
         localStorage.setItem('favoriteVideoIds', JSON.stringify(favoriteIds));
     };
 
+    // 🆕 修复：handleProgress 增加保护逻辑
     const handleProgress = (state) => {
+        // 如果正在跳转中，忽略进度更新
+        if (isSeeking) {
+            console.log('⏳ 跳转中，忽略进度更新');
+            return;
+        }
+
+        // 听写模式下且视频暂停时，不更新 currentTime
+        if (mode === 'dictation' && !isPlaying) {
+            return;
+        }
+
         setCurrentTime(state.playedSeconds);
 
         if (!videoData?.transcript || !isLooping) return;
@@ -281,11 +302,52 @@ const VideoDetail = () => {
 
         const nextIndex = dictationIndex + 1;
         if (nextIndex < videoData.transcript.length) {
+            // 🆕 开启跳转锁定
+            setIsSeeking(true);
+
             setDictationIndex(nextIndex);
             setHasPlayedCurrent(false); // 重置新句子的播放状态
-            playerRef.current?.seekTo(videoData.transcript[nextIndex].start);
+
+            const nextTime = videoData.transcript[nextIndex].start;
+            setCurrentTime(nextTime); // 同步更新 currentTime
+            playerRef.current?.seekTo(nextTime, 'seconds');
             setIsPlaying(false); // 暂停等待用户输入
+
+            // 🆕 解除跳转锁定
+            setTimeout(() => {
+                setIsSeeking(false);
+            }, 300);
         }
+    };
+
+    // 🆕 听写模式：重播当前句（优化版）
+    const handleReplayDictation = () => {
+        if (!videoData?.transcript) return;
+
+        const currentSubtitle = videoData.transcript[dictationIndex];
+        const nextSubtitle = videoData.transcript[dictationIndex + 1];
+
+        // 开启跳转锁定
+        setIsSeeking(true);
+
+        // 跳转到当前句开始
+        playerRef.current?.seekTo(currentSubtitle.start, 'seconds');
+
+        // 稍等一下再开始播放
+        setTimeout(() => {
+            setIsSeeking(false);
+            setIsPlaying(true);
+            setHasPlayedCurrent(true); // 标记已播放
+
+            // 计算播放时长，在句尾自动暂停
+            const duration = nextSubtitle
+                ? (nextSubtitle.start - currentSubtitle.start) * 1000
+                : 3000; // 如果是最后一句，播放3秒
+
+            setTimeout(() => {
+                setIsPlaying(false);
+            }, duration);
+        }, 100);
     };
 
     if (!videoData) {
@@ -489,21 +551,7 @@ const VideoDetail = () => {
                                     setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
                                     handleNextDictation();
                                 }}
-                                onReplay={() => {
-                                    // 重播当前句子
-                                    const currentSubtitle = videoData.transcript[dictationIndex];
-                                    playerRef.current?.seekTo(currentSubtitle.start);
-                                    setIsPlaying(true);
-                                    setHasPlayedCurrent(true); // 标记已播放
-
-                                    // 自动暂停在句尾
-                                    const nextSubtitle = videoData.transcript[dictationIndex + 1];
-                                    if (nextSubtitle) {
-                                        setTimeout(() => {
-                                            setIsPlaying(false);
-                                        }, (nextSubtitle.start - currentSubtitle.start) * 1000);
-                                    }
-                                }}
+                                onReplay={handleReplayDictation}
                                 hasPlayed={hasPlayedCurrent}
                             />
 
