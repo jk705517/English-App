@@ -77,6 +77,9 @@ const VideoDetail = () => {
         skipped: 0
     });
 
+    // 听写模式：当前正在听写的句子索引
+    const [dictationIndex, setDictationIndex] = useState(0);
+
     // 初始化数据
     useEffect(() => {
         const video = mockVideos.find(v => v.id === parseInt(id));
@@ -95,7 +98,16 @@ const VideoDetail = () => {
     // 监听 mode 变化，自动保存到 localStorage
     useEffect(() => {
         localStorage.setItem('studyMode', mode);
-    }, [mode]);
+
+        // 切换到听写模式时，暂停视频并跳到第一句
+        if (mode === 'dictation' && videoData?.transcript) {
+            setIsPlaying(false);
+            setDictationIndex(0);
+            playerRef.current?.seekTo(videoData.transcript[0].start);
+            // 重置统计
+            setDictationStats({ correct: 0, wrong: 0, skipped: 0 });
+        }
+    }, [mode, videoData]);
 
     // 【修复 2】计算并缓存挖空结果，只在 videoData 变化时执行一次
     useEffect(() => {
@@ -120,9 +132,9 @@ const VideoDetail = () => {
         setClozeCache(cache);
     }, [videoData]);
 
-    // 【修复 1】将自动滚动逻辑移到独立的 useEffect
+    // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
-        if (isUserScrolling || !videoData?.transcript) return;
+        if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
 
         const activeIndex = videoData.transcript.findIndex((item, index) => {
             const nextItem = videoData.transcript[index + 1];
@@ -135,7 +147,7 @@ const VideoDetail = () => {
                 block: 'center'
             });
         }
-    }, [currentTime, isUserScrolling, videoData]);
+    }, [currentTime, isUserScrolling, videoData, mode]);
 
     const handleToggleLearned = () => {
         const newState = !isLearned;
@@ -197,7 +209,9 @@ const VideoDetail = () => {
 
     const handleSeek = (time) => {
         playerRef.current?.seekTo(time);
-        setIsPlaying(true);
+        if (mode !== 'dictation') {
+            setIsPlaying(true);
+        }
     };
 
     const renderClozeText = (text, lineIndex) => {
@@ -222,6 +236,18 @@ const VideoDetail = () => {
                 })}
             </span>
         );
+    };
+
+    // 听写模式：跳到下一句
+    const handleNextDictation = () => {
+        if (!videoData?.transcript) return;
+
+        const nextIndex = dictationIndex + 1;
+        if (nextIndex < videoData.transcript.length) {
+            setDictationIndex(nextIndex);
+            playerRef.current?.seekTo(videoData.transcript[nextIndex].start);
+            setIsPlaying(false); // 暂停等待用户输入
+        }
     };
 
     if (!videoData) {
@@ -296,8 +322,6 @@ const VideoDetail = () => {
                             }}
                         />
                     </div>
-
-
 
                     {/* 重点词汇 - 只在电脑端显示 */}
                     <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
@@ -404,102 +428,100 @@ const VideoDetail = () => {
 
                 {/* 字幕列表 */}
                 <div className="p-3 md:p-4 space-y-2 md:space-y-3">
-                    {videoData.transcript?.map((item, index) => {
-                        const nextItem = videoData.transcript[index + 1];
-                        const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+                    {mode === 'dictation' ? (
+                        /* 听写模式：只显示当前句 */
+                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                            <DictationInput
+                                correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
+                                currentIndex={dictationIndex}
+                                totalCount={videoData.transcript.length}
+                                onCorrect={() => {
+                                    console.log('答对了！');
+                                    setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
+                                    // 1.5秒后自动跳到下一句
+                                    setTimeout(() => {
+                                        handleNextDictation();
+                                    }, 1500);
+                                }}
+                                onWrong={() => {
+                                    setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+                                }}
+                                onSkip={() => {
+                                    console.log('跳过当前句');
+                                    setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+                                    handleNextDictation();
+                                }}
+                                onReplay={() => {
+                                    // 重播当前句子
+                                    const currentSubtitle = videoData.transcript[dictationIndex];
+                                    playerRef.current?.seekTo(currentSubtitle.start);
+                                    setIsPlaying(true);
+                                    // 自动暂停在句尾
+                                    const nextSubtitle = videoData.transcript[dictationIndex + 1];
+                                    if (nextSubtitle) {
+                                        setTimeout(() => {
+                                            setIsPlaying(false);
+                                        }, (nextSubtitle.start - currentSubtitle.start) * 1000);
+                                    }
+                                }}
+                            />
 
-                        return (
-                            <div
-                                key={index}
-                                ref={(el) => transcriptRefs.current[index] = el}
-                                onClick={() => handleSeek(item.start)}
-                                className={`relative pl-6 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
-                                    }`}
-                            >
-                                {/* 蓝色指示条：absolute 绝对定位。它悬浮在 padding 区域内，不占位置，不会挤压文字 */}
+                            {/* 中文翻译（可折叠） */}
+                            <details className="mt-4">
+                                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
+                                    💡 显示中文翻译
+                                </summary>
+                                <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
+                            </details>
+                        </div>
+                    ) : (
+                        /* 其他模式：显示所有字幕 */
+                        videoData.transcript?.map((item, index) => {
+                            const nextItem = videoData.transcript[index + 1];
+                            const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+
+                            return (
                                 <div
-                                    className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
+                                    key={index}
+                                    ref={(el) => transcriptRefs.current[index] = el}
+                                    onClick={() => handleSeek(item.start)}
+                                    className={`relative pl-6 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                         }`}
-                                />
+                                >
+                                    {/* 蓝色指示条 */}
+                                    <div
+                                        className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
+                                            }`}
+                                    />
 
-                                {/* 文字内容：位置被父级 padding 锁定，永远不会动 */}
-                                <div className="flex-1">
-                                    {/* 英文 */}
-                                    <div className="text-base font-medium text-gray-900 leading-loose mb-1">
-                                        {mode === 'cloze' ? (
-                                            renderClozeText(item.text, index)
-                                        ) : mode === 'dictation' ? (
-                                            isActive ? (
-                                                <div className="bg-blue-50 p-4 rounded-lg -mx-2">
-                                                    <DictationInput
-                                                        correctAnswer={item.text}
-                                                        currentIndex={index}
-                                                        totalCount={videoData.transcript.length}
-                                                        onCorrect={() => {
-                                                            console.log('答对了！');
-                                                            setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
-                                                            // 1.5秒后自动跳到下一句
-                                                            setTimeout(() => {
-                                                                if (index < videoData.transcript.length - 1) {
-                                                                    const nextSubtitle = videoData.transcript[index + 1];
-                                                                    playerRef.current?.seekTo(nextSubtitle.start);
-                                                                }
-                                                            }, 1500);
-                                                        }}
-                                                        onWrong={() => {
-                                                            setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
-                                                        }}
-                                                        onSkip={() => {
-                                                            console.log('跳过当前句');
-                                                            setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
-                                                            // 跳转到下一句字幕
-                                                            if (index < videoData.transcript.length - 1) {
-                                                                const nextSubtitle = videoData.transcript[index + 1];
-                                                                playerRef.current?.seekTo(nextSubtitle.start);
-                                                            }
-                                                        }}
-                                                        onReplay={() => {
-                                                            // 重播当前句子
-                                                            playerRef.current?.seekTo(item.start);
-                                                        }}
-                                                    />
-
-                                                    {/* 中文翻译（可折叠） */}
-                                                    <details className="mt-3">
-                                                        <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800">
-                                                            💡 显示中文翻译
-                                                        </summary>
-                                                        <p className="mt-2 text-gray-700 pl-4">{item.cn}</p>
-                                                    </details>
-                                                </div>
+                                    {/* 文字内容 */}
+                                    <div className="flex-1">
+                                        {/* 英文 */}
+                                        <div className="text-base font-medium text-gray-900 leading-loose mb-1">
+                                            {mode === 'cloze' ? (
+                                                renderClozeText(item.text, index)
                                             ) : (
-                                                <div className="text-gray-400 italic">
-                                                    {item.text}
-                                                </div>
-                                            )
-                                        ) : (
-                                            mode === 'cn' ? null : (
-                                                <HighlightedText
-                                                    text={item.text}
-                                                    highlights={item.highlights || []}
-                                                />
-                                            )
-                                        )}
-                                    </div>
+                                                mode === 'cn' ? null : (
+                                                    <HighlightedText
+                                                        text={item.text}
+                                                        highlights={item.highlights || []}
+                                                    />
+                                                )
+                                            )}
+                                        </div>
 
-                                    {/* 中文 */}
-                                    {mode !== 'dictation' && (
+                                        {/* 中文 */}
                                         <div className={`text-sm transition-all duration-300 ${mode === 'en'
                                             ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
                                             : 'text-gray-600'
                                             }`}>
                                             {item.cn}
                                         </div>
-                                    )}
+                                    </div>
                                 </div>
-                            </div>
-                        );
-                    })}
+                            );
+                        })
+                    )}
 
                     {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
                     <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
