@@ -181,6 +181,34 @@ const VideoDetail = () => {
         setClozeCache(cache);
     }, [videoData]);
 
+    // 🆕 听写模式：使用 timeupdate 事件精准检测播放位置
+    useEffect(() => {
+        if (mode !== 'dictation' || !videoData?.transcript) return;
+
+        const player = playerRef.current?.getInternalPlayer();
+        if (!player || typeof player.addEventListener !== 'function') return;
+
+        const handleTimeUpdate = () => {
+            if (!isPlaying || isSeeking) return;
+
+            const currentVideoTime = player.currentTime;
+            const nextSubtitle = videoData.transcript[dictationIndex + 1];
+
+            // 如果播放到了下一句的开始时间，暂停
+            if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.05) {
+                console.log('🛑 timeupdate: 播放到下一句，自动暂停', currentVideoTime, '>=', nextSubtitle.start);
+                player.pause();
+                setIsPlaying(false);
+            }
+        };
+
+        player.addEventListener('timeupdate', handleTimeUpdate);
+
+        return () => {
+            player.removeEventListener('timeupdate', handleTimeUpdate);
+        };
+    }, [mode, dictationIndex, isPlaying, isSeeking, videoData]);
+
     // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
         if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
@@ -240,7 +268,6 @@ const VideoDetail = () => {
     const handleProgress = (state) => {
         // 如果正在跳转中，忽略进度更新
         if (isSeeking) {
-            console.log('⏳ 跳转中，忽略进度更新');
             return;
         }
 
@@ -250,19 +277,6 @@ const VideoDetail = () => {
         }
 
         setCurrentTime(state.playedSeconds);
-
-        // 🆕 听写模式：检测是否播放到下一句，自动暂停
-        if (mode === 'dictation' && isPlaying && videoData?.transcript) {
-            const currentSubtitle = videoData.transcript[dictationIndex];
-            const nextSubtitle = videoData.transcript[dictationIndex + 1];
-
-            // 如果播放到了下一句的开始时间，暂停
-            if (nextSubtitle && state.playedSeconds >= nextSubtitle.start - 0.1) {
-                console.log('🛑 播放到下一句，自动暂停');
-                setIsPlaying(false);
-            }
-            // 如果是最后一句，播放到结束时暂停（通过 onEnded 处理）
-        }
 
         // 单句循环逻辑（非听写模式）
         if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
@@ -436,6 +450,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
+                            progressInterval={100}
                             controls
                             width="100%"
                             height="100%"
