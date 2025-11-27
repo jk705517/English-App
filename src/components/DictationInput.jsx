@@ -25,7 +25,10 @@ const DictationInput = ({
     const [status, setStatus] = useState('editing'); // editing | correct | wrong
     const [showAnswer, setShowAnswer] = useState(false);
     const [hint, setHint] = useState('');
-    const originalInputRef = useRef(''); // 🆕 使用 ref 保存用户原始输入（立即可用）
+
+    // 🆕 FIX: Use State instead of Ref for the snapshot to ensure correct rendering during updates
+    const [diffSnapshot, setDiffSnapshot] = useState('');
+
     const inputRef = useRef(null);
 
     // 自动聚焦
@@ -54,7 +57,7 @@ const DictationInput = ({
                 onCorrect?.();
                 // 重置状态准备下一句
                 setUserInput('');
-                originalInputRef.current = ''; // 🆕 清空原始输入 ref
+                setDiffSnapshot(''); // 🆕 Reset snapshot
                 setStatus('editing');
                 setShowAnswer(false);
                 setHint('');
@@ -68,7 +71,7 @@ const DictationInput = ({
     // 重试
     const handleRetry = () => {
         setUserInput('');
-        originalInputRef.current = ''; // 🆕 清空原始输入 ref
+        setDiffSnapshot(''); // 🆕 Reset snapshot
         setStatus('editing');
         setShowAnswer(false);
         inputRef.current?.focus();
@@ -76,7 +79,7 @@ const DictationInput = ({
 
     // 显示答案
     const handleShowAnswer = () => {
-        originalInputRef.current = userInput; // 🆕 使用 ref 立即保存用户的原始输入
+        setDiffSnapshot(userInput); // 🆕 Capture user input into state BEFORE overwriting
         setShowAnswer(true);
         // 输入框显示正确答案供用户参考
         setUserInput(correctAnswer);
@@ -99,9 +102,9 @@ const DictationInput = ({
     };
 
     // 计算相似度并高亮差异（简化版）
-    // 🆕 使用 originalInputRef（用户原始输入）进行对比
+    // 🆕 Uses diffSnapshot for comparison
     const renderDiff = () => {
-        const userWords = normalizeText(originalInputRef.current).split(' ').filter(w => w);
+        const userWords = normalizeText(diffSnapshot).split(' ').filter(w => w);
         const correctWords = correctAnswer.split(' ');
 
         return correctWords.map((word, index) => {
@@ -152,7 +155,6 @@ const DictationInput = ({
           `}
                     rows={3}
                 />
-
                 {/* 提示文字 */}
                 {hint && status === 'editing' && (
                     <div className="absolute top-2 right-2 text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">
