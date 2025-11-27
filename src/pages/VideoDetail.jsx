@@ -56,6 +56,9 @@ const VideoDetail = () => {
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
     const [isSeeking, setIsSeeking] = useState(false);
 
+    // 🆕 新增：追踪播放速度
+    const [playbackRate, setPlaybackRate] = useState(1);
+
     // 从 localStorage 读取用户上次选择的模式，如果没有则默认为 'dual'
     const [mode, setMode] = useState(() => {
         return localStorage.getItem('studyMode') || 'dual';
@@ -248,7 +251,21 @@ const VideoDetail = () => {
 
         setCurrentTime(state.playedSeconds);
 
-        if (!videoData?.transcript || !isLooping) return;
+        // 🆕 听写模式：检测是否播放到下一句，自动暂停
+        if (mode === 'dictation' && isPlaying && videoData?.transcript) {
+            const currentSubtitle = videoData.transcript[dictationIndex];
+            const nextSubtitle = videoData.transcript[dictationIndex + 1];
+
+            // 如果播放到了下一句的开始时间，暂停
+            if (nextSubtitle && state.playedSeconds >= nextSubtitle.start - 0.1) {
+                console.log('🛑 播放到下一句，自动暂停');
+                setIsPlaying(false);
+            }
+            // 如果是最后一句，播放到结束时暂停（通过 onEnded 处理）
+        }
+
+        // 单句循环逻辑（非听写模式）
+        if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
 
         const activeIndex = videoData.transcript.findIndex((item, index) => {
             const nextItem = videoData.transcript[index + 1];
@@ -265,10 +282,31 @@ const VideoDetail = () => {
         }
     };
 
+    // 🆕 修复：handleSeek 添加跳转锁定
     const handleSeek = (time) => {
-        playerRef.current?.seekTo(time);
+        // 开启跳转锁定
+        setIsSeeking(true);
+
+        // 先同步更新 currentTime
+        setCurrentTime(time);
+
+        // 执行跳转
+        playerRef.current?.seekTo(time, 'seconds');
+
         if (mode !== 'dictation') {
-            setIsPlaying(true);
+            // 稍等一下再开始播放，确保跳转完成
+            setTimeout(() => {
+                setIsPlaying(true);
+                // 解除锁定
+                setTimeout(() => {
+                    setIsSeeking(false);
+                }, 200);
+            }, 100);
+        } else {
+            // 听写模式下直接解除锁定
+            setTimeout(() => {
+                setIsSeeking(false);
+            }, 300);
         }
     };
 
@@ -338,15 +376,7 @@ const VideoDetail = () => {
             setIsSeeking(false);
             setIsPlaying(true);
             setHasPlayedCurrent(true); // 标记已播放
-
-            // 计算播放时长，在句尾自动暂停
-            const duration = nextSubtitle
-                ? (nextSubtitle.start - currentSubtitle.start) * 1000
-                : 3000; // 如果是最后一句，播放3秒
-
-            setTimeout(() => {
-                setIsPlaying(false);
-            }, duration);
+            // 🆕 不再使用 setTimeout 暂停，改为在 handleProgress 中检测
         }, 100);
     };
 
