@@ -25,7 +25,7 @@ const DictationInput = ({
     const [status, setStatus] = useState('editing'); // editing | correct | wrong
     const [showAnswer, setShowAnswer] = useState(false);
     const [hint, setHint] = useState('');
-    const [originalInput, setOriginalInput] = useState(''); // 🆕 保存用户原始输入用于差异对比
+    const originalInputRef = useRef(''); // 🆕 使用 ref 保存用户原始输入（立即可用）
     const inputRef = useRef(null);
 
     // 自动聚焦
@@ -54,7 +54,7 @@ const DictationInput = ({
                 onCorrect?.();
                 // 重置状态准备下一句
                 setUserInput('');
-                setOriginalInput(''); // 🆕 清空原始输入
+                originalInputRef.current = ''; // 🆕 清空原始输入 ref
                 setStatus('editing');
                 setShowAnswer(false);
                 setHint('');
@@ -68,7 +68,7 @@ const DictationInput = ({
     // 重试
     const handleRetry = () => {
         setUserInput('');
-        setOriginalInput(''); // 🆕 清空原始输入
+        originalInputRef.current = ''; // 🆕 清空原始输入 ref
         setStatus('editing');
         setShowAnswer(false);
         inputRef.current?.focus();
@@ -76,9 +76,9 @@ const DictationInput = ({
 
     // 显示答案
     const handleShowAnswer = () => {
-        setOriginalInput(userInput); // 🆕 先保存用户的原始输入
+        originalInputRef.current = userInput; // 🆕 使用 ref 立即保存用户的原始输入
         setShowAnswer(true);
-        // 不再替换 userInput，保持输入框显示正确答案供用户参考
+        // 输入框显示正确答案供用户参考
         setUserInput(correctAnswer);
     };
 
@@ -99,9 +99,9 @@ const DictationInput = ({
     };
 
     // 计算相似度并高亮差异（简化版）
-    // 🆕 使用 originalInput（用户原始输入）进行对比
+    // 🆕 使用 originalInputRef（用户原始输入）进行对比
     const renderDiff = () => {
-        const userWords = normalizeText(originalInput).split(' ').filter(w => w);
+        const userWords = normalizeText(originalInputRef.current).split(' ').filter(w => w);
         const correctWords = correctAnswer.split(' ');
 
         return correctWords.map((word, index) => {
