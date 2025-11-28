@@ -40,7 +40,7 @@ const DictationInput = ({
     const normalizeText = (text) => {
         return text
             .toLowerCase()
-            .replace(/[.,!?;:'"()]/g, '') // 移除标点
+            .replace(/[.,!?;:'\"()]/g, '') // 移除标点
             .replace(/\s+/g, ' ') // 多个空格变一个
             .trim();
     };
@@ -99,26 +99,6 @@ const DictationInput = ({
         } else if (e.key === 'Escape') {
             onSkip?.();
         }
-    };
-
-    // 计算相似度并高亮差异（简化版）
-    // 🆕 Uses diffSnapshot for comparison
-    const renderDiff = () => {
-        const userWords = normalizeText(diffSnapshot).split(' ').filter(w => w);
-        const correctWords = correctAnswer.split(' ');
-
-        return correctWords.map((word, index) => {
-            const userWord = userWords[index] || '';
-            const isCorrect = normalizeText(word) === normalizeText(userWord);
-            return (
-                <span
-                    key={index}
-                    className={isCorrect ? 'text-green-600' : 'text-red-600 font-bold'}
-                >
-                    {word}{' '}
-                </span>
-            );
-        });
     };
 
     return (
@@ -194,8 +174,8 @@ const DictationInput = ({
                         <div className="bg-gray-50 p-3 rounded-lg">
                             <p className="text-sm text-gray-600 mb-1">正确答案：</p>
                             <p className="text-base font-medium">{correctAnswer}</p>
-                            <p className="text-sm text-gray-600 mt-2 mb-1">差异对比：</p>
-                            <p className="text-base">{renderDiff()}</p>
+                            <p className="text-sm text-gray-600 mt-2 mb-1">你的答案：</p>
+                            <p className="text-base font-mono">{diffSnapshot}</p>
                         </div>
                     )}
                 </div>
