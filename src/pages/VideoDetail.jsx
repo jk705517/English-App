@@ -480,9 +480,9 @@ const VideoDetail = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="h-screen bg-gray-50 flex flex-col md:flex-row">
             {/* 左侧：视频、标题、词汇 */}
-            <div className="w-full md:w-3/5 flex flex-col">
+            <div className="w-full md:w-3/5 flex flex-col overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
                     {/* 返回按钮 */}
                     <Link
