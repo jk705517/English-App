@@ -519,7 +519,7 @@ const VideoDetail = () => {
                     </div>
 
                     {/* 视频播放器 */}
-                    <div className="sticky top-0 z-20 md:relative bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
+                    <div className="sticky top-0 z-20 bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
                         <ReactPlayer
                             ref={playerRef}
                             url={videoData.videoUrl}
