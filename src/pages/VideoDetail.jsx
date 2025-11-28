@@ -46,6 +46,7 @@ const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
     const transcriptRefs = useRef([]);
+    const scrollTimeoutRef = useRef(null); // 🆕 添加滚动超时引用
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
@@ -243,6 +244,38 @@ const VideoDetail = () => {
             if (typeof cleanup === 'function') cleanup();
         };
     }, [mode, videoData]);
+
+    // 🆕 监听用户滚动，5秒后恢复自动滚动
+    useEffect(() => {
+        if (!videoData?.transcript || mode === 'dictation') return;
+
+        const subtitleContainer = document.querySelector('.flex-1.bg-white.border-t');
+        if (!subtitleContainer) return;
+
+        const handleScroll = () => {
+            // 用户手动滚动，标记状态
+            setIsUserScrolling(true);
+
+            // 清除之前的定时器
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+
+            // 5秒后恢复自动滚动
+            scrollTimeoutRef.current = setTimeout(() => {
+                setIsUserScrolling(false);
+            }, 5000);
+        };
+
+        subtitleContainer.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            subtitleContainer.removeEventListener('scroll', handleScroll);
+            if (scrollTimeoutRef.current) {
+                clearTimeout(scrollTimeoutRef.current);
+            }
+        };
+    }, [videoData, mode]);
 
     // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
@@ -726,6 +759,8 @@ const VideoDetail = () => {
 
             {/* 浮动控制按钮 */}
             <FloatingControls
+                isPlaying={isPlaying}
+                onTogglePlay={() => setIsPlaying(!isPlaying)}
                 isLooping={isLooping}
                 onToggleLoop={() => setIsLooping(!isLooping)}
                 isFavorited={isFavorite}
