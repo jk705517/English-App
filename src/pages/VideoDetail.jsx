@@ -484,16 +484,31 @@ const VideoDetail = () => {
             {/* 左侧：视频、标题、词汇 */}
             <div className="w-full md:w-3/5 flex flex-col overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
-                    {/* 返回按钮 */}
-                    <Link
-                        to="/"
-                        className="inline-flex items-center text-indigo-600 hover:text-indigo-700 font-medium mb-3 md:mb-4 group"
-                    >
-                        <svg className="w-4 h-4 md:w-5 md:h-5 mr-1 md:mr-2 transform group-hover:-translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
-                        </svg>
-                        ← 返回首页
-                    </Link>
+                    {/* 上一期/下一期导航 */}
+                    <div className="flex gap-3 mb-3 md:mb-4">
+                        {mockVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
+                            <Link
+                                to={`/video/${mockVideos[mockVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
+                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                            >
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                </svg>
+                                上一期
+                            </Link>
+                        )}
+                        {mockVideos.findIndex(v => v.id === parseInt(id)) < mockVideos.length - 1 && (
+                            <Link
+                                to={`/video/${mockVideos[mockVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
+                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                            >
+                                下一期
+                                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                </svg>
+                            </Link>
+                        )}
+                    </div>
 
                     {/* 标题 */}
                     <h1 className="text-xl md:text-3xl font-bold mb-2 md:mb-3">{videoData.title}</h1>
