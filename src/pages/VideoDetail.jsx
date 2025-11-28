@@ -46,13 +46,16 @@ const VideoDetail = () => {
     const { id } = useParams();
     const playerRef = useRef(null);
     const transcriptRefs = useRef([]);
-    const scrollTimeoutRef = useRef(null); // 🆕 添加滚动超时引用
+    const scrollTimeoutRef = useRef(null);
+    const playerPlaceholderRef = useRef(null); // 🆕 播放器占位符引用
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isUserScrolling, setIsUserScrolling] = useState(false);
     const [clozeCache, setClozeCache] = useState({});
+    const [isPlayerFixed, setIsPlayerFixed] = useState(false); // 🆕 播放器是否固定
+    const [playerHeight, setPlayerHeight] = useState(0); // 🆕 播放器高度
 
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
     const [isSeeking, setIsSeeking] = useState(false);
@@ -276,6 +279,38 @@ const VideoDetail = () => {
             }
         };
     }, [videoData, mode]);
+
+    // 🆕 手机端播放器固定逻辑
+    useEffect(() => {
+        const handleScroll = () => {
+            // 只在手机端生效（宽度小于 768px）
+            if (window.innerWidth >= 768) {
+                setIsPlayerFixed(false);
+                return;
+            }
+
+            if (playerPlaceholderRef.current) {
+                const rect = playerPlaceholderRef.current.getBoundingClientRect();
+                const shouldFix = rect.top < 0;
+
+                if (shouldFix && !isPlayerFixed) {
+                    setPlayerHeight(rect.height);
+                    setIsPlayerFixed(true);
+                } else if (!shouldFix && isPlayerFixed) {
+                    setIsPlayerFixed(false);
+                }
+            }
+        };
+
+        // 监听滚动和窗口大小变化
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('resize', handleScroll, { passive: true });
+
+        return () => {
+            window.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('resize', handleScroll);
+        };
+    }, [isPlayerFixed]);
 
     // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
@@ -518,36 +553,48 @@ const VideoDetail = () => {
                         </span>
                     </div>
 
-                    {/* 视频播放器 */}
-                    <div className="sticky top-0 z-20 bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
-                        <ReactPlayer
-                            ref={playerRef}
-                            url={videoData.videoUrl}
-                            playing={isPlaying}
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
-                            onProgress={handleProgress}
-                            progressInterval={100}
-                            controls
-                            width="100%"
-                            height="100%"
-                            style={{ position: 'absolute', top: 0, left: 0 }}
-                            config={{
-                                youtube: {
-                                    playerVars: { showinfo: 1 }
-                                },
-                                file: {
-                                    attributes: {
-                                        controlsList: 'nodownload',
-                                        playsInline: true,  // React 驼峰命名
-                                        'webkit-playsinline': 'true',  // iOS Safari
-                                        'x5-video-player-type': 'h5',  // 微信浏览器
-                                        'x5-video-player-fullscreen': 'false',  // 微信浏览器防止全屏
-                                        'x5-playsinline': 'true'  // 腾讯系浏览器
+                    {/* 🆕 播放器占位符 - 用于检测滚动位置 */}
+                    <div
+                        ref={playerPlaceholderRef}
+                        className="relative bg-black rounded-xl overflow-hidden shadow-2xl"
+                        style={{ paddingTop: '56.25%' }}
+                    >
+                        {/* 🆕 当播放器固定时，显示占位符保持布局 */}
+                        {isPlayerFixed && (
+                            <div style={{ paddingTop: '56.25%' }} />
+                        )}
+
+                        {/* 🆕 播放器 - 根据状态切换定位方式 */}
+                        {!isPlayerFixed && (
+                            <ReactPlayer
+                                ref={playerRef}
+                                url={videoData.videoUrl}
+                                playing={isPlaying}
+                                onPlay={() => setIsPlaying(true)}
+                                onPause={() => setIsPlaying(false)}
+                                onProgress={handleProgress}
+                                progressInterval={100}
+                                controls
+                                width="100%"
+                                height="100%"
+                                style={{ position: 'absolute', top: 0, left: 0 }}
+                                config={{
+                                    youtube: {
+                                        playerVars: { showinfo: 1 }
+                                    },
+                                    file: {
+                                        attributes: {
+                                            controlsList: 'nodownload',
+                                            playsInline: true,
+                                            'webkit-playsinline': 'true',
+                                            'x5-video-player-type': 'h5',
+                                            'x5-video-player-fullscreen': 'false',
+                                            'x5-playsinline': 'true'
+                                        }
                                     }
-                                }
-                            }}
-                        />
+                                }}
+                            />
+                        )}
                     </div>
 
                     {/* 重点词汇 - 只在电脑端显示 */}
@@ -567,6 +614,42 @@ const VideoDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* 🆕 固定播放器 - 手机端滚动时显示 */}
+            {isPlayerFixed && (
+                <div
+                    className="fixed top-0 left-0 right-0 z-50 bg-black"
+                    style={{ height: playerHeight }}
+                >
+                    <ReactPlayer
+                        ref={playerRef}
+                        url={videoData.videoUrl}
+                        playing={isPlaying}
+                        onPlay={() => setIsPlaying(true)}
+                        onPause={() => setIsPlaying(false)}
+                        onProgress={handleProgress}
+                        progressInterval={100}
+                        controls
+                        width="100%"
+                        height="100%"
+                        config={{
+                            youtube: {
+                                playerVars: { showinfo: 1 }
+                            },
+                            file: {
+                                attributes: {
+                                    controlsList: 'nodownload',
+                                    playsInline: true,
+                                    'webkit-playsinline': 'true',
+                                    'x5-video-player-type': 'h5',
+                                    'x5-video-player-fullscreen': 'false',
+                                    'x5-playsinline': 'true'
+                                }
+                            }
+                        }}
+                    />
+                </div>
+            )}
 
             {/* 字幕区域 - 独立滚动 */}
             <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col overflow-y-auto pb-20">
