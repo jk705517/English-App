@@ -539,8 +539,11 @@ const VideoDetail = () => {
                                 file: {
                                     attributes: {
                                         controlsList: 'nodownload',
-                                        playsinline: true,
-                                        'webkit-playsinline': true
+                                        playsInline: true,  // React 驼峰命名
+                                        'webkit-playsinline': 'true',  // iOS Safari
+                                        'x5-video-player-type': 'h5',  // 微信浏览器
+                                        'x5-video-player-fullscreen': 'false',  // 微信浏览器防止全屏
+                                        'x5-playsinline': 'true'  // 腾讯系浏览器
                                     }
                                 }
                             }}
