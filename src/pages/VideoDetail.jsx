@@ -47,15 +47,15 @@ const VideoDetail = () => {
     const playerRef = useRef(null);
     const transcriptRefs = useRef([]);
     const scrollTimeoutRef = useRef(null);
-    const playerPlaceholderRef = useRef(null); // 🆕 播放器占位符引用
+    const playerPlaceholderRef = useRef(null);
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isUserScrolling, setIsUserScrolling] = useState(false);
     const [clozeCache, setClozeCache] = useState({});
-    const [isPlayerFixed, setIsPlayerFixed] = useState(false); // 🆕 播放器是否固定
-    const [playerHeight, setPlayerHeight] = useState(0); // 🆕 播放器高度
+    const [isPlayerFixed, setIsPlayerFixed] = useState(false);
+    const [playerHeight, setPlayerHeight] = useState(0);
 
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
     const [isSeeking, setIsSeeking] = useState(false);
@@ -216,7 +216,6 @@ const VideoDetail = () => {
                 const nextSubtitle = videoData.transcript[idx + 1];
 
                 // 🆕 如果播放到了下一句的开始时间前 0.3 秒，提前暂停
-                // 这样可以避免播放到下一句的开头
                 if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.3) {
                     console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2), '下一句开始:', nextSubtitle.start);
                     player.pause();
@@ -225,7 +224,6 @@ const VideoDetail = () => {
 
                 // 🆕 如果是最后一句，检测是否接近视频结尾
                 if (!nextSubtitle && currentSubtitle) {
-                    // 假设最后一句播放 5 秒后暂停
                     if (currentVideoTime >= currentSubtitle.start + 5) {
                         player.pause();
                         setIsPlaying(false);
@@ -252,19 +250,16 @@ const VideoDetail = () => {
     useEffect(() => {
         if (!videoData?.transcript || mode === 'dictation') return;
 
-        const subtitleContainer = document.querySelector('.flex-1.bg-white.border-t');
+        const subtitleContainer = document.querySelector('.subtitle-scroll-container');
         if (!subtitleContainer) return;
 
         const handleScroll = () => {
-            // 用户手动滚动，标记状态
             setIsUserScrolling(true);
 
-            // 清除之前的定时器
             if (scrollTimeoutRef.current) {
                 clearTimeout(scrollTimeoutRef.current);
             }
 
-            // 5秒后恢复自动滚动
             scrollTimeoutRef.current = setTimeout(() => {
                 setIsUserScrolling(false);
             }, 5000);
@@ -283,7 +278,7 @@ const VideoDetail = () => {
     // 🆕 手机端播放器固定逻辑
     useEffect(() => {
         const handleScroll = () => {
-            // 只在手机端生效（宽度小于 768px）
+            // 只在手机端生效
             if (window.innerWidth >= 768) {
                 setIsPlayerFixed(false);
                 return;
@@ -302,7 +297,6 @@ const VideoDetail = () => {
             }
         };
 
-        // 监听滚动和窗口大小变化
         window.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('resize', handleScroll, { passive: true });
 
@@ -333,7 +327,6 @@ const VideoDetail = () => {
         const newState = !isLearned;
         setIsLearned(newState);
 
-        // 更新 localStorage
         const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
         if (newState) {
             if (!learnedIds.includes(parseInt(id))) {
@@ -352,7 +345,6 @@ const VideoDetail = () => {
         const newState = !isFavorite;
         setIsFavorite(newState);
 
-        // 更新 localStorage
         const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
         if (newState) {
             if (!favoriteIds.includes(parseInt(id))) {
@@ -369,22 +361,18 @@ const VideoDetail = () => {
 
     // 🆕 修复：handleProgress 增加保护逻辑
     const handleProgress = (state) => {
-        // 如果正在跳转中，忽略进度更新
         if (isSeeking) {
             return;
         }
 
-        // 听写模式下且视频暂停时，不更新 currentTime
         if (mode === 'dictation' && !isPlaying) {
             return;
         }
 
         setCurrentTime(state.playedSeconds);
 
-        // 单句循环逻辑（非听写模式）
         if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
 
-        // 找到当前播放位置对应的字幕索引
         let activeIndex = -1;
         for (let i = 0; i < videoData.transcript.length; i++) {
             const item = videoData.transcript[i];
@@ -395,12 +383,10 @@ const VideoDetail = () => {
             }
         }
 
-        // 🆕 修复：检测是否即将播放到下一句，提前跳回
         if (activeIndex !== -1) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 如果有下一句，且当前时间接近下一句开始（提前 0.3 秒跳回）
             if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
                 console.log('🔁 单句循环: 跳回', currentSub.start);
                 playerRef.current?.seekTo(currentSub.start, 'seconds');
@@ -408,28 +394,19 @@ const VideoDetail = () => {
         }
     };
 
-    // 🆕 修复：handleSeek 添加跳转锁定
     const handleSeek = (time) => {
-        // 开启跳转锁定
         setIsSeeking(true);
-
-        // 先同步更新 currentTime
         setCurrentTime(time);
-
-        // 执行跳转
         playerRef.current?.seekTo(time, 'seconds');
 
         if (mode !== 'dictation') {
-            // 稍等一下再开始播放，确保跳转完成
             setTimeout(() => {
                 setIsPlaying(true);
-                // 解除锁定
                 setTimeout(() => {
                     setIsSeeking(false);
                 }, 200);
             }, 100);
         } else {
-            // 听写模式下直接解除锁定
             setTimeout(() => {
                 setIsSeeking(false);
             }, 300);
@@ -460,49 +437,38 @@ const VideoDetail = () => {
         );
     };
 
-    // 听写模式：跳到下一句
     const handleNextDictation = () => {
         if (!videoData?.transcript) return;
 
         const nextIndex = dictationIndex + 1;
         if (nextIndex < videoData.transcript.length) {
-            // 🆕 开启跳转锁定
             setIsSeeking(true);
-
             setDictationIndex(nextIndex);
-            setHasPlayedCurrent(false); // 重置新句子的播放状态
+            setHasPlayedCurrent(false);
 
             const nextTime = videoData.transcript[nextIndex].start;
-            setCurrentTime(nextTime); // 同步更新 currentTime
+            setCurrentTime(nextTime);
             playerRef.current?.seekTo(nextTime, 'seconds');
-            setIsPlaying(false); // 暂停等待用户输入
+            setIsPlaying(false);
 
-            // 🆕 解除跳转锁定
             setTimeout(() => {
                 setIsSeeking(false);
             }, 300);
         }
     };
 
-    // 🆕 听写模式：重播当前句（优化版）
     const handleReplayDictation = () => {
         if (!videoData?.transcript) return;
 
         const currentSubtitle = videoData.transcript[dictationIndex];
-        const nextSubtitle = videoData.transcript[dictationIndex + 1];
 
-        // 开启跳转锁定
         setIsSeeking(true);
-
-        // 跳转到当前句开始
         playerRef.current?.seekTo(currentSubtitle.start, 'seconds');
 
-        // 稍等一下再开始播放
         setTimeout(() => {
             setIsSeeking(false);
             setIsPlaying(true);
-            setHasPlayedCurrent(true); // 标记已播放
-            // 🆕 不再使用 setTimeout 暂停，改为在 handleProgress 中检测
+            setHasPlayedCurrent(true);
         }, 100);
     };
 
@@ -514,10 +480,43 @@ const VideoDetail = () => {
         );
     }
 
+    // 🆕 播放器组件（复用）
+    const VideoPlayer = ({ style = {} }) => (
+        <ReactPlayer
+            ref={playerRef}
+            url={videoData.videoUrl}
+            playing={isPlaying}
+            onPlay={() => setIsPlaying(true)}
+            onPause={() => setIsPlaying(false)}
+            onProgress={handleProgress}
+            progressInterval={100}
+            controls
+            width="100%"
+            height="100%"
+            style={style}
+            config={{
+                youtube: {
+                    playerVars: { showinfo: 1 }
+                },
+                file: {
+                    attributes: {
+                        controlsList: 'nodownload',
+                        playsInline: true,
+                        'webkit-playsinline': 'true',
+                        'x5-video-player-type': 'h5',
+                        'x5-video-player-fullscreen': 'false',
+                        'x5-playsinline': 'true'
+                    }
+                }
+            }}
+        />
+    );
+
     return (
-        <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row">
-            {/* 左侧：视频、标题、词汇 */}
-            <div className="w-full md:w-3/5 flex flex-col">
+        // 🆕 修改：桌面端固定视口高度，禁止整体滚动
+        <div className="min-h-screen md:h-screen bg-gray-50 flex flex-col md:flex-row md:overflow-hidden">
+            {/* 左侧：视频、标题、词汇 - 🆕 桌面端可独立滚动 */}
+            <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
                     {/* 返回按钮 */}
                     <Link
@@ -553,47 +552,18 @@ const VideoDetail = () => {
                         </span>
                     </div>
 
-                    {/* 🆕 播放器占位符 - 用于检测滚动位置 */}
+                    {/* 🆕 播放器区域 */}
                     <div
                         ref={playerPlaceholderRef}
                         className="relative bg-black rounded-xl overflow-hidden shadow-2xl"
-                        style={{ paddingTop: '56.25%' }}
+                        style={{ aspectRatio: '16/9' }}
                     >
-                        {/* 🆕 当播放器固定时，显示占位符保持布局 */}
-                        {isPlayerFixed && (
-                            <div style={{ paddingTop: '56.25%' }} />
-                        )}
+                        {/* 手机端固定时的占位 */}
+                        {isPlayerFixed && <div style={{ aspectRatio: '16/9' }} />}
 
-                        {/* 🆕 播放器 - 根据状态切换定位方式 */}
+                        {/* 正常状态的播放器 */}
                         {!isPlayerFixed && (
-                            <ReactPlayer
-                                ref={playerRef}
-                                url={videoData.videoUrl}
-                                playing={isPlaying}
-                                onPlay={() => setIsPlaying(true)}
-                                onPause={() => setIsPlaying(false)}
-                                onProgress={handleProgress}
-                                progressInterval={100}
-                                controls
-                                width="100%"
-                                height="100%"
-                                style={{ position: 'absolute', top: 0, left: 0 }}
-                                config={{
-                                    youtube: {
-                                        playerVars: { showinfo: 1 }
-                                    },
-                                    file: {
-                                        attributes: {
-                                            controlsList: 'nodownload',
-                                            playsInline: true,
-                                            'webkit-playsinline': 'true',
-                                            'x5-video-player-type': 'h5',
-                                            'x5-video-player-fullscreen': 'false',
-                                            'x5-playsinline': 'true'
-                                        }
-                                    }
-                                }}
-                            />
+                            <VideoPlayer style={{ position: 'absolute', top: 0, left: 0 }} />
                         )}
                     </div>
 
@@ -615,50 +585,24 @@ const VideoDetail = () => {
                 </div>
             </div>
 
-            {/* 🆕 固定播放器 - 手机端滚动时显示 */}
+            {/* 🆕 手机端固定播放器 */}
             {isPlayerFixed && (
                 <div
                     className="fixed top-0 left-0 right-0 z-50 bg-black"
-                    style={{ height: playerHeight }}
+                    style={{ aspectRatio: '16/9' }}
                 >
-                    <ReactPlayer
-                        ref={playerRef}
-                        url={videoData.videoUrl}
-                        playing={isPlaying}
-                        onPlay={() => setIsPlaying(true)}
-                        onPause={() => setIsPlaying(false)}
-                        onProgress={handleProgress}
-                        progressInterval={100}
-                        controls
-                        width="100%"
-                        height="100%"
-                        config={{
-                            youtube: {
-                                playerVars: { showinfo: 1 }
-                            },
-                            file: {
-                                attributes: {
-                                    controlsList: 'nodownload',
-                                    playsInline: true,
-                                    'webkit-playsinline': 'true',
-                                    'x5-video-player-type': 'h5',
-                                    'x5-video-player-fullscreen': 'false',
-                                    'x5-playsinline': 'true'
-                                }
-                            }
-                        }}
-                    />
+                    <VideoPlayer />
                 </div>
             )}
 
-            {/* 字幕区域 - 独立滚动 */}
-            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col overflow-y-auto pb-20">
+            {/* 字幕区域 - 🆕 添加类名用于滚动检测 */}
+            <div className="subtitle-scroll-container flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col overflow-y-auto pb-20">
                 <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white flex items-center justify-between">
                     <h2 className="text-base md:text-lg font-bold flex items-center">
                         📖 字幕
                     </h2>
 
-                    {/* 磨砂玻璃风格多模式工具栏 */}
+                    {/* 模式切换按钮 */}
                     <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full">
                         <button
                             onClick={() => setMode('dual')}
@@ -739,7 +683,6 @@ const VideoDetail = () => {
                 {/* 字幕列表 */}
                 <div className="p-3 md:p-4 space-y-2 md:space-y-3">
                     {mode === 'dictation' ? (
-                        /* 听写模式：只显示当前句 */
                         <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
                             <DictationInput
                                 correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
@@ -748,7 +691,6 @@ const VideoDetail = () => {
                                 onCorrect={() => {
                                     console.log('答对了！');
                                     setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
-                                    // 1.5秒后自动跳到下一句
                                     setTimeout(() => {
                                         handleNextDictation();
                                     }, 1500);
@@ -765,7 +707,6 @@ const VideoDetail = () => {
                                 hasPlayed={hasPlayedCurrent}
                             />
 
-                            {/* 中文翻译（可折叠） */}
                             <details className="mt-4">
                                 <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
                                     💡 显示中文翻译
@@ -774,7 +715,6 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 其他模式：显示所有字幕 */
                         videoData.transcript?.map((item, index) => {
                             const nextItem = videoData.transcript[index + 1];
                             const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
@@ -787,20 +727,16 @@ const VideoDetail = () => {
                                     className={`relative pl-10 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
                                         }`}
                                 >
-                                    {/* 🆕 字幕行编号 */}
                                     <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
                                         {index + 1}
                                     </span>
 
-                                    {/* 蓝色指示条 */}
                                     <div
                                         className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
                                             }`}
                                     />
 
-                                    {/* 文字内容 */}
                                     <div className="flex-1">
-                                        {/* 英文 */}
                                         <div className="text-base font-medium text-gray-900 leading-loose mb-1">
                                             {mode === 'cloze' ? (
                                                 renderClozeText(item.text, index)
@@ -814,7 +750,6 @@ const VideoDetail = () => {
                                             )}
                                         </div>
 
-                                        {/* 中文 */}
                                         <div className={`text-sm transition-all duration-300 ${mode === 'en'
                                             ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
                                             : 'text-gray-600'
@@ -827,7 +762,7 @@ const VideoDetail = () => {
                         })
                     )}
 
-                    {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
+                    {/* 重点词汇 - 只在手机端显示 */}
                     <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
                         <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                         <div className="space-y-3">
