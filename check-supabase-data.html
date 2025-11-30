@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 数据检查</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        .video-card {
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+
+        .field {
+            margin: 5px 0;
+        }
+
+        .field-name {
+            font-weight: bold;
+            color: #333;
+        }
+
+        .has-data {
+            color: green;
+        }
+
+        .no-data {
+            color: red;
+        }
+
+        .empty {
+            color: orange;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 3px;
+            overflow-x: auto;
+            max-height: 200px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Supabase 视频数据完整性检查</h1>
+    <div id="results"></div>
+
+    <script type="module">
+        const SUPABASE_URL = 'https://jdxqxnbqbkfqfcqgwqmz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkeHF4bmJxYmtmcWZjcWd3cW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI4NTk4NzksImV4cCI6MjA0ODQzNTg3OX0.CtJdVQMnMGNaKFPfkOZMbJZrUEhTNxJBqOKNjSFwBXo';
+
+        const { createClient } = supabase;
+        const client = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function checkData() {
+            const { data, error } = await client
+                .from('videos')
+                .select('*')
+                .order('episode', { ascending: false });
+
+            if (error) {
+                document.getElementById('results').innerHTML = `<p style="color: red;">错误: ${error.message}</p>`;
+                return;
+            }
+
+            let html = `<p>找到 ${data.length} 个视频</p>`;
+
+            data.forEach(video => {
+                const checks = {
+                    id: video.id ? '✓' : '✗',
+                    episode: video.episode ? '✓' : '✗',
+                    title: video.title ? '✓' : '✗',
+                    video_url: video.video_url ? '✓' : '✗',
+                    cover: video.cover ? '✓' : '✗',
+                    category: video.category ? '✓' : '✗',
+                    author: video.author ? '✓' : '✗',
+                    level: video.level ? '✓' : '✗',
+                    duration: video.duration ? '✓' : '✗',
+                    transcript: video.transcript && Array.isArray(video.transcript) && video.transcript.length > 0 ? `✓ (${video.transcript.length}条)` : '✗',
+                    vocab: video.vocab && Array.isArray(video.vocab) && video.vocab.length > 0 ? `✓ (${video.vocab.length}个)` : '✗'
+                };
+
+                html += `
+                    <div class="video-card">
+                        <h3>Episode ${video.episode}: ${video.title || '(无标题)'}</h3>
+                        <div class="field">
+                            <span class="field-name">ID:</span> ${checks.id} ${video.id}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Episode:</span> ${checks.episode} ${video.episode}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Title:</span> ${checks.title} ${video.title || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Video URL:</span> ${checks.video_url} ${video.video_url || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Cover:</span> ${checks.cover} ${video.cover ? '有' : '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Category:</span> ${checks.category} ${video.category || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Author:</span> ${checks.author} ${video.author || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Level:</span> ${checks.level} ${video.level || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Duration:</span> ${checks.duration} ${video.duration || '(空)'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Transcript:</span> ${checks.transcript}
+                            ${video.transcript && video.transcript.length > 0 ? `<pre>${JSON.stringify(video.transcript[0], null, 2)}</pre>` : '<span class="no-data">(空或格式错误)</span>'}
+                        </div>
+                        <div class="field">
+                            <span class="field-name">Vocab:</span> ${checks.vocab}
+                            ${video.vocab && video.vocab.length > 0 ? `<pre>${JSON.stringify(video.vocab[0], null, 2)}</pre>` : '<span class="no-data">(空或格式错误)</span>'}
+                        </div>
+                    </div>
+                `;
+            });
+
+            document.getElementById('results').innerHTML = html;
+        }
+
+        checkData();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase 数据调试</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        .section {
+            margin-bottom: 30px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 5px;
+        }
+
+        h2 {
+            color: #333;
+        }
+
+        .error {
+            color: red;
+        }
+
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Supabase 视频数据调试</h1>
+
+    <div class="section">
+        <h2>配置信息</h2>
+        <div id="config"></div>
+    </div>
+
+    <div class="section">
+        <h2>所有视频列表</h2>
+        <div id="allVideos"></div>
+    </div>
+
+    <div class="section">
+        <h2>单个视频详情 (ID=1)</h2>
+        <div id="singleVideo"></div>
+    </div>
+
+    <script type="module">
+        // 读取 .env 文件中的配置
+        const SUPABASE_URL = 'https://jdxqxnbqbkfqfcqgwqmz.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImpkeHF4bmJxYmtmcWZjcWd3cW16Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzI4NTk4NzksImV4cCI6MjA0ODQzNTg3OX0.CtJdVQMnMGNaKFPfkOZMbJZrUEhTNxJBqOKNjSFwBXo';
+
+        document.getElementById('config').innerHTML = `
+            <p><strong>Supabase URL:</strong> ${SUPABASE_URL}</p>
+            <p><strong>Key (前20字符):</strong> ${SUPABASE_ANON_KEY.substring(0, 20)}...</p>
+        `;
+
+        const { createClient } = supabase;
+        const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        // 获取所有视频
+        async function fetchAllVideos() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('videos')
+                    .select('*')
+                    .order('episode', { ascending: false });
+
+                if (error) {
+                    document.getElementById('allVideos').innerHTML = `
+                        <p class="error">错误: ${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                } else {
+                    document.getElementById('allVideos').innerHTML = `
+                        <p class="success">成功获取 ${data.length} 个视频</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                document.getElementById('allVideos').innerHTML = `
+                    <p class="error">异常: ${err.message}</p>
+                `;
+            }
+        }
+
+        // 获取单个视频
+        async function fetchSingleVideo() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('videos')
+                    .select('*')
+                    .eq('id', 1)
+                    .single();
+
+                if (error) {
+                    document.getElementById('singleVideo').innerHTML = `
+                        <p class="error">错误: ${error.message}</p>
+                        <pre>${JSON.stringify(error, null, 2)}</pre>
+                    `;
+                } else {
+                    document.getElementById('singleVideo').innerHTML = `
+                        <p class="success">成功获取视频数据</p>
+                        <h3>字段检查：</h3>
+                        <ul>
+                            <li>title: ${data.title ? '✓' : '✗'}</li>
+                            <li>video_url: ${data.video_url ? '✓' : '✗'}</li>
+                            <li>transcript: ${data.transcript ? '✓ (数组长度: ' + data.transcript.length + ')' : '✗'}</li>
+                            <li>vocab: ${data.vocab ? '✓ (数组长度: ' + data.vocab.length + ')' : '✗'}</li>
+                            <li>author: ${data.author ? '✓' : '✗'}</li>
+                            <li>duration: ${data.duration ? '✓' : '✗'}</li>
+                            <li>level: ${data.level ? '✓' : '✗'}</li>
+                            <li>category: ${data.category ? '✓' : '✗'}</li>
+                        </ul>
+                        <h3>完整数据：</h3>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (err) {
+                document.getElementById('singleVideo').innerHTML = `
+                    <p class="error">异常: ${err.message}</p>
+                `;
+            }
+        }
+
+        // 执行查询
+        fetchAllVideos();
+        fetchSingleVideo();
+    </script>
+</body>
+
+</html>
