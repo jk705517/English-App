@@ -1,14 +1,33 @@
 import { useState, useEffect } from 'react';
-import { mockVideos } from '../data/mockData';
+import { supabase } from '../lib/supabase';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
 function Home() {
+    const [videos, setVideos] = useState([]);
     const [learnedVideoIds, setLearnedVideoIds] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('全部');
 
     // 分类列表
     const categories = ['全部', '日常', '职场', '旅行', '时尚', '美食', '科技', '成长'];
+
+    // 从 Supabase 获取视频数据
+    useEffect(() => {
+        const fetchVideos = async () => {
+            const { data, error } = await supabase
+                .from('videos')
+                .select('*')
+                .order('episode', { ascending: false });
+
+            if (error) {
+                console.error('Error fetching videos:', error);
+            } else {
+                setVideos(data || []);
+            }
+        };
+
+        fetchVideos();
+    }, []);
 
     // 从 localStorage 读取已学习的视频 ID 列表
     useEffect(() => {
@@ -18,11 +37,11 @@ function Home() {
 
     // 筛选视频
     const filteredVideos = selectedCategory === '全部'
-        ? mockVideos
-        : mockVideos.filter(video => video.category === selectedCategory);
+        ? videos
+        : videos.filter(video => video.category === selectedCategory);
 
     // 计算统计数据
-    const totalVideos = mockVideos.length;
+    const totalVideos = videos.length;
     const learnedVideos = learnedVideoIds.length;
     const unlearnedVideos = totalVideos - learnedVideos;
 
@@ -79,8 +98,8 @@ function Home() {
                             key={category}
                             onClick={() => setSelectedCategory(category)}
                             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${selectedCategory === category
-                                    ? 'bg-indigo-600 text-white shadow-md'
-                                    : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
+                                ? 'bg-indigo-600 text-white shadow-md'
+                                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                                 }`}
                         >
                             {category}
