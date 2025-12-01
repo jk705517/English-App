@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { Link } from 'react-router-dom';
 
 /**
  * 词汇弹窗组件
@@ -43,9 +43,11 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
                 </div>
 
                 {/* 音标 */}
-                {vocabInfo.phonetic && (
-                    <div className="text-gray-600 mb-3 font-mono text-sm">
-                        {vocabInfo.phonetic}
+                {(vocabInfo.ipa_us || vocabInfo.ipa_uk || vocabInfo.phonetic) && (
+                    <div className="text-gray-600 mb-3 font-mono text-sm flex gap-3">
+                        {vocabInfo.ipa_us && <span>US: /{vocabInfo.ipa_us}/</span>}
+                        {vocabInfo.ipa_uk && <span>UK: /{vocabInfo.ipa_uk}/</span>}
+                        {!vocabInfo.ipa_us && !vocabInfo.ipa_uk && vocabInfo.phonetic && <span>{vocabInfo.phonetic}</span>}
                     </div>
                 )}
 
@@ -70,7 +72,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
 
                 {/* 例句 */}
                 {vocabInfo.example && (
-                    <div className="border-t pt-3">
+                    <div className="border-t pt-3 mb-3">
                         <p className="text-xs text-gray-500 mb-1">例句</p>
                         <p className="text-sm text-gray-700 italic leading-relaxed">
                             {vocabInfo.example}
@@ -84,35 +86,31 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
                 )}
 
                 {/* 快捷操作按钮 */}
-                <div className="flex gap-2 mt-4 pt-3 border-t">
-                    <button
-                        onClick={() => window.open(`https://www.google.com/search?q=${word}+meaning`, '_blank')}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-red-50 text-red-600 rounded hover:bg-red-100 transition text-sm"
+                <div className="flex flex-col gap-2 mt-4 pt-3 border-t">
+                    <Link
+                        to={`/vocab-detail/${word}`}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm font-medium"
                     >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                            <path fillRule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clipRule="evenodd" />
+                        <span>查看完整卡片</span>
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                         </svg>
-                        Google
-                    </button>
-                    <button
-                        onClick={() => window.open(`https://cn.bing.com/dict/search?q=${word}`, '_blank')}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-blue-50 text-blue-600 rounded hover:bg-blue-100 transition text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M2 6a2 2 0 012-2h6a2 2 0 012 2v8a2 2 0 01-2 2H4a2 2 0 01-2-2V6zM14.553 7.106A1 1 0 0014 8v4a1 1 0 00.553.894l2 1A1 1 0 0018 13V7a1 1 0 00-1.447-.894l-2 1z" />
-                        </svg>
-                        必应
-                    </button>
-                    <button
-                        onClick={() => window.open(`https://dict.youdao.com/search?q=${word}`, '_blank')}
-                        className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-green-50 text-green-600 rounded hover:bg-green-100 transition text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M18 13V5a2 2 0 00-2-2H4a2 2 0 00-2 2v8a2 2 0 002 2h3l3 3 3-3h3a2 2 0 002-2zM5 7a1 1 0 011-1h8a1 1 0 110 2H6a1 1 0 01-1-1zm1 3a1 1 0 100 2h3a1 1 0 100-2H6z" clipRule="evenodd" />
-                        </svg>
-                        有道
-                    </button>
+                    </Link>
+
+                    <div className="flex gap-2">
+                        <button
+                            onClick={() => window.open(`https://www.google.com/search?q=${word}+meaning`, '_blank')}
+                            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition text-sm"
+                        >
+                            Google
+                        </button>
+                        <button
+                            onClick={() => window.open(`https://cn.bing.com/dict/search?q=${word}`, '_blank')}
+                            className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition text-sm"
+                        >
+                            Bing
+                        </button>
+                    </div>
                 </div>
             </div>
         </>

@@ -82,14 +82,14 @@ const HighlightedText = ({ text, highlights = [], className = '' }) => {
                         return <span key={index}>{part.content}</span>;
                     } else {
                         return (
-                            <mark
+                            <span
                                 key={index}
                                 onClick={(e) => handleVocabClick(part.content, part.vocabInfo, e)}
-                                className="bg-yellow-200 hover:bg-yellow-300 cursor-pointer px-1 rounded transition-colors"
+                                className="font-bold border-b-2 border-indigo-500 cursor-pointer hover:text-indigo-600 transition-colors"
                                 title={part.vocabInfo?.meaning || '点击查看释义'}
                             >
                                 {part.content}
-                            </mark>
+                            </span>
                         );
                     }
                 })}

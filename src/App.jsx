@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
 import Home from './pages/Home';
 import VideoDetail from './pages/VideoDetail';
+import VocabDetail from './pages/VocabDetail';
 import Settings from './pages/Settings';
 import Favorites from './pages/Favorites';
 import DataCheck from './pages/DataCheck';
@@ -13,6 +14,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Home />} />
                     <Route path="video/:id" element={<VideoDetail />} />
+                    <Route path="vocab-detail/:word" element={<VocabDetail />} />
                     <Route path="favorites" element={<Favorites />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="data-check" element={<DataCheck />} />
