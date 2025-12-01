@@ -97,9 +97,9 @@ const VideoDetail = () => {
             const { data, error } = await supabase
                 .from('videos')
                 .select('*')
-                .eq('id', parseInt(id))
+                .eq('id', id)
                 .single();
-            
+
             if (error) {
                 console.error('Error fetching video:', error);
             } else {
@@ -125,7 +125,7 @@ const VideoDetail = () => {
                 .from('videos')
                 .select('id, episode')
                 .order('episode', { ascending: false });
-            
+
             if (error) {
                 console.error('Error fetching all videos:', error);
             } else {
