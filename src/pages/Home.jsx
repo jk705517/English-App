@@ -11,7 +11,7 @@ function Home() {
     // 分类列表
     const categories = ['全部', '日常', '职场', '旅行', '时尚', '美食', '科技', '成长'];
 
-    // 从 Supabase 获取视频数据
+    // 从 Supabase 获取视频数据 (Force rebuild for Supabase config)
     useEffect(() => {
         const fetchVideos = async () => {
             const { data, error } = await supabase
