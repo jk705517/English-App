@@ -614,7 +614,7 @@ const VideoDetail = () => {
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
                             {videoData.vocab?.map((item, index) => (
-                                <div key={index} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100">
+                                <div key={index} data-vocab-word={item.word} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
                                     <div className="flex items-end mb-2">
                                         <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-sm text-gray-500">{item.type}</span>
@@ -868,7 +868,7 @@ const VideoDetail = () => {
                         <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                         <div className="space-y-3">
                             {videoData.vocab?.map((item, index) => (
-                                <div key={index} className="p-3 bg-white rounded-lg border border-indigo-100">
+                                <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
                                     <div className="flex items-end mb-1">
                                         <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-xs text-gray-500">{item.type}</span>

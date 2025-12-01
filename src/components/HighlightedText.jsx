@@ -85,7 +85,7 @@ const HighlightedText = ({ text, highlights = [], className = '' }) => {
                             <span
                                 key={index}
                                 onClick={(e) => handleVocabClick(part.content, part.vocabInfo, e)}
-                                className="font-bold border-b-2 border-indigo-500 cursor-pointer hover:text-indigo-600 transition-colors"
+                                className="font-bold border-b-2 border-indigo-500 bg-indigo-50 px-0.5 cursor-pointer hover:bg-indigo-100 hover:text-indigo-700 transition-colors rounded-sm"
                                 title={part.vocabInfo?.meaning || '点击查看释义'}
                             >
                                 {part.content}
