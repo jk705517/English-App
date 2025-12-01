@@ -826,7 +826,8 @@ const VideoDetail = () => {
                                                     <HighlightedText
                                                         text={item.text}
                                                         highlights={videoData.vocab || []}
-                                                        onPauseVideo={() => setIsPlaying(false)}
+                                                        onPauseVideo={() => {
+                                                            
                                                     />
                                                 )
                                             )}
