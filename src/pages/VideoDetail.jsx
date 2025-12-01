@@ -606,6 +606,15 @@ const VideoDetail = () => {
                                         <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-sm text-gray-500">{item.type}</span>
                                     </div>
+
+                                    {/* 音标展示 */}
+                                    {(item.ipa_us || item.ipa_uk) && (
+                                        <div className="flex gap-3 text-xs text-gray-500 mb-2 font-mono">
+                                            {item.ipa_us && <span>US: /{item.ipa_us}/</span>}
+                                            {item.ipa_uk && <span>UK: /{item.ipa_uk}/</span>}
+                                        </div>
+                                    )}
+
                                     <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
 
                                     {/* 例句展示 */}
@@ -823,6 +832,15 @@ const VideoDetail = () => {
                                         <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-xs text-gray-500">{item.type}</span>
                                     </div>
+
+                                    {/* 手机端音标展示 */}
+                                    {(item.ipa_us || item.ipa_uk) && (
+                                        <div className="flex gap-2 text-xs text-gray-500 mb-1.5 font-mono">
+                                            {item.ipa_us && <span>US: /{item.ipa_us}/</span>}
+                                            {item.ipa_uk && <span>UK: /{item.ipa_uk}/</span>}
+                                        </div>
+                                    )}
+
                                     <p className="text-sm text-gray-600 font-medium mb-2">{item.meaning}</p>
 
                                     {/* 手机端例句 */}
