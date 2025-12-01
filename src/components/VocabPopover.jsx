@@ -1,5 +1,5 @@
 /**
- * 词汇弹窗组件
+ * 词汇弹窗组件 v2.0 - Google + 有道双按钮版本
  * @param {string} word - 单词
  * @param {object} vocabInfo - 词汇信息 { phonetic, meaning, example }
  * @param {function} onClose - 关闭回调
