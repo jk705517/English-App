@@ -827,7 +827,14 @@ const VideoDetail = () => {
                                                         text={item.text}
                                                         highlights={videoData.vocab || []}
                                                         onPauseVideo={() => {
-                                                            
+                                                            console.log('⏸️ 视频暂停');
+                                                            setIsPlaying(false);
+                                                            if (playerRef.current?.getInternalPlayer) {
+                                                                const p = playerRef.current.getInternalPlayer();
+                                                                if (p?.pauseVideo) p.pauseVideo();
+                                                                else if (p?.pause) p.pause();
+                                                            }
+                                                        }}
                                                     />
                                                 )
                                             )}
