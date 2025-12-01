@@ -6,8 +6,9 @@ import VocabPopover from './VocabPopover';
  * @param {string} text - 原文本
  * @param {array} highlights - 高亮词汇数组 [{ word, phonetic, type, meaning, definition, example, exampleCn }]
  * @param {string} className - 额外样式类
+ * @param {function} onPauseVideo - 暂停视频回调
  */
-const HighlightedText = ({ text, highlights = [], className = '' }) => {
+const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }) => {
     const [activeVocab, setActiveVocab] = useState(null);
     const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
 
@@ -102,6 +103,7 @@ const HighlightedText = ({ text, highlights = [], className = '' }) => {
                     vocabInfo={activeVocab.vocabInfo}
                     position={popoverPosition}
                     onClose={closePopover}
+                    onPauseVideo={onPauseVideo}
                 />
             )}
         </>

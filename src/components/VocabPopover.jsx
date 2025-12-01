@@ -3,8 +3,9 @@
  * @param {string} word - 单词
  * @param {object} vocabInfo - 词汇信息 { phonetic, meaning, example }
  * @param {function} onClose - 关闭回调
+ * @param {function} onPauseVideo - 暂停视频回调
  */
-const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
+const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
     return (
         <>
             {/* 遮罩层 - 点击关闭 */}
@@ -40,22 +41,16 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
                     <h3 className="text-xl font-bold text-gray-800">{word}</h3>
                 </div>
 
-                {/* 音标 */}
-                {(vocabInfo.ipa_us || vocabInfo.ipa_uk || vocabInfo.phonetic) && (
-                    <div className="mb-3 space-y-1">
+                {/* 音标 - 只显示美音 */}
+                {(vocabInfo.ipa_us || vocabInfo.phonetic) && (
+                    <div className="mb-3">
                         {vocabInfo.ipa_us && (
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="text-xs text-gray-400 font-medium w-8">US</span>
                                 <span className="font-mono text-indigo-600">/{vocabInfo.ipa_us}/</span>
                             </div>
                         )}
-                        {vocabInfo.ipa_uk && (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-xs text-gray-400 font-medium w-8">UK</span>
-                                <span className="font-mono text-indigo-600">/{vocabInfo.ipa_uk}/</span>
-                            </div>
-                        )}
-                        {!vocabInfo.ipa_us && !vocabInfo.ipa_uk && vocabInfo.phonetic && (
+                        {!vocabInfo.ipa_us && vocabInfo.phonetic && (
                             <div className="font-mono text-sm text-indigo-600">{vocabInfo.phonetic}</div>
                         )}
                     </div>
@@ -99,6 +94,9 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
                 <div className="flex flex-col gap-2 mt-4 pt-3 border-t">
                     <button
                         onClick={() => {
+                            // 暂停视频
+                            if (onPauseVideo) onPauseVideo();
+
                             // 滚动到词汇卡片
                             const vocabCards = document.querySelectorAll('[data-vocab-word]');
                             const targetCard = Array.from(vocabCards).find(
@@ -124,7 +122,10 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
 
                     <div className="flex gap-2">
                         <button
-                            onClick={() => window.open(`https://www.google.com/search?q=${word}+meaning`, '_blank')}
+                            onClick={() => {
+                                if (onPauseVideo) onPauseVideo();
+                                window.open(`https://www.google.com/search?q=${word}+meaning`, '_blank');
+                            }}
                             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition text-sm"
                         >
                             <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
@@ -133,7 +134,10 @@ const VocabPopover = ({ word, vocabInfo, onClose, position }) => {
                             Google
                         </button>
                         <button
-                            onClick={() => window.open(`https://dict.youdao.com/result?word=${word}&lang=en`, '_blank')}
+                            onClick={() => {
+                                if (onPauseVideo) onPauseVideo();
+                                window.open(`https://dict.youdao.com/result?word=${word}&lang=en`, '_blank');
+                            }}
                             className="flex-1 flex items-center justify-center gap-1 px-3 py-2 bg-gray-50 text-gray-600 rounded hover:bg-gray-100 transition text-sm"
                         >
                             <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">

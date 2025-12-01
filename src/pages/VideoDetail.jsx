@@ -620,39 +620,20 @@ const VideoDetail = () => {
                                         <span className="text-sm text-gray-500">{item.type}</span>
                                     </div>
 
-                                    {/* 音标展示 */}
-                                    {(item.ipa_us || item.ipa_uk) && (
-                                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-500 mb-2 font-mono">
-                                            {item.ipa_us && (
-                                                <div className="flex items-center gap-1 whitespace-nowrap">
-                                                    <span className="text-gray-400">US</span>
-                                                    <span>/{item.ipa_us}/</span>
-                                                    <button
-                                                        onClick={() => speak(item.word, 'en-US')}
-                                                        className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                        title="美式发音"
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {item.ipa_uk && (
-                                                <div className="flex items-center gap-1 whitespace-nowrap">
-                                                    <span className="text-gray-400">UK</span>
-                                                    <span>/{item.ipa_uk}/</span>
-                                                    <button
-                                                        onClick={() => speak(item.word, 'en-GB')}
-                                                        className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                        title="英式发音"
-                                                    >
-                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
+                                    {/* 音标展示 - 只显示美音 */}
+                                    {item.ipa_us && (
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-2 font-mono">
+                                            <span className="text-gray-400">US</span>
+                                            <span>/{item.ipa_us}/</span>
+                                            <button
+                                                onClick={() => speak(item.word, 'en-US')}
+                                                className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                title="美式发音"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     )}
 
@@ -845,6 +826,7 @@ const VideoDetail = () => {
                                                     <HighlightedText
                                                         text={item.text}
                                                         highlights={videoData.vocab || []}
+                                                        onPauseVideo={() => setIsPlaying(false)}
                                                     />
                                                 )
                                             )}
@@ -874,37 +856,19 @@ const VideoDetail = () => {
                                         <span className="text-xs text-gray-500">{item.type}</span>
                                     </div>
 
-                                    {/* 手机端音标展示 */}
-                                    {(item.ipa_us || item.ipa_uk) && (
-                                        <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs text-gray-500 mb-1.5 font-mono">
-                                            {item.ipa_us && (
-                                                <div className="flex items-center gap-1 whitespace-nowrap">
-                                                    <span className="text-gray-400">US</span>
-                                                    <span>/{item.ipa_us}/</span>
-                                                    <button
-                                                        onClick={() => speak(item.word, 'en-US')}
-                                                        className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {item.ipa_uk && (
-                                                <div className="flex items-center gap-1 whitespace-nowrap">
-                                                    <span className="text-gray-400">UK</span>
-                                                    <span>/{item.ipa_uk}/</span>
-                                                    <button
-                                                        onClick={() => speak(item.word, 'en-GB')}
-                                                        className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                    >
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
+                                    {/* 手机端音标展示 - 只显示美音 */}
+                                    {item.ipa_us && (
+                                        <div className="flex items-center gap-2 text-xs text-gray-500 mb-1.5 font-mono">
+                                            <span className="text-gray-400">US</span>
+                                            <span>/{item.ipa_us}/</span>
+                                            <button
+                                                onClick={() => speak(item.word, 'en-US')}
+                                                className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                            >
+                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                </svg>
+                                            </button>
                                         </div>
                                     )}
 
