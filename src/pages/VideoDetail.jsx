@@ -519,7 +519,7 @@ const VideoDetail = () => {
                     <div className="flex gap-3 mb-3 md:mb-4">
                         {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                             <Link
-                                to={`/video/${mockVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
+                                to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
                                 className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
                             >
                                 <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -530,7 +530,7 @@ const VideoDetail = () => {
                         )}
                         {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
                             <Link
-                                to={`/video/${mockVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
+                                to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
                                 className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
                             >
                                 下一期
