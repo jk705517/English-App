@@ -22,6 +22,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
                     top: `${position.y}px`,
                     transform: 'translateY(10px)'
                 }}
+                onClick={(e) => e.stopPropagation()}
             >
                 {/* 关闭按钮 */}
                 <button
@@ -93,7 +94,8 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
                 {/* 快捷操作按钮 */}
                 <div className="flex flex-col gap-2 mt-4 pt-3 border-t">
                     <button
-                        onClick={() => {
+                        onClick={(e) => {
+                            e.stopPropagation();
                             console.log('🔴 查看完整卡片 - 暂停视频');
                             // 暂停视频
                             if (onPauseVideo) {
@@ -128,7 +130,8 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
 
                     <div className="flex gap-2">
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 console.log('🔴 Google - 暂停视频');
                                 if (onPauseVideo) {
                                     console.log('✅ onPauseVideo存在，调用中...');
@@ -146,7 +149,8 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
                             Google
                         </button>
                         <button
-                            onClick={() => {
+                            onClick={(e) => {
+                                e.stopPropagation();
                                 console.log('🔴 有道 - 暂停视频');
                                 if (onPauseVideo) {
                                     console.log('✅ onPauseVideo存在，调用中...');
