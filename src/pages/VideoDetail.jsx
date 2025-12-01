@@ -818,21 +818,6 @@ const VideoDetail = () => {
                                     {/* 文字内容 */}
                                     <div className="flex-1">
                                         {/* 英文 */}
-                                        <div className="text-base font-medium text-gray-900 leading-loose mb-1">
-                                            {mode === 'cloze' ? (
-                                                renderClozeText(item.text, index)
-                                            ) : (
-                                                mode === 'cn' ? null : (
-                                                    <HighlightedText
-                                                        text={item.text}
-                                                        highlights={videoData.vocab || []}
-                                                        onPauseVideo={() => setIsPlaying(false)}
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-
-                                        {/* 中文 */}
                                         <div className={`text-sm transition-all duration-300 ${mode === 'en'
                                             ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
                                             : 'text-gray-600'
