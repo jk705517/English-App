@@ -606,7 +606,30 @@ const VideoDetail = () => {
                                         <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-sm text-gray-500">{item.type}</span>
                                     </div>
-                                    <p className="text-gray-600 font-medium">{item.meaning}</p>
+                                    <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
+
+                                    {/* 例句展示 */}
+                                    {item.examples && item.examples.length > 0 && (
+                                        <div className="mb-3 space-y-2">
+                                            {item.examples.map((ex, i) => (
+                                                <div key={i} className="text-sm">
+                                                    <p className="text-gray-800">{ex.en}</p>
+                                                    <p className="text-gray-500 text-xs">{ex.cn}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* 搭配展示 */}
+                                    {item.collocations && item.collocations.length > 0 && (
+                                        <div className="flex flex-wrap gap-2">
+                                            {item.collocations.map((col, i) => (
+                                                <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-xs rounded border border-indigo-100">
+                                                    {col}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
@@ -800,7 +823,30 @@ const VideoDetail = () => {
                                         <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-xs text-gray-500">{item.type}</span>
                                     </div>
-                                    <p className="text-sm text-gray-600 font-medium">{item.meaning}</p>
+                                    <p className="text-sm text-gray-600 font-medium mb-2">{item.meaning}</p>
+
+                                    {/* 手机端例句 */}
+                                    {item.examples && item.examples.length > 0 && (
+                                        <div className="mb-2 space-y-2 border-t border-indigo-50 pt-2">
+                                            {item.examples.map((ex, i) => (
+                                                <div key={i} className="text-xs">
+                                                    <p className="text-gray-800 mb-0.5">{ex.en}</p>
+                                                    <p className="text-gray-500">{ex.cn}</p>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+
+                                    {/* 手机端搭配 */}
+                                    {item.collocations && item.collocations.length > 0 && (
+                                        <div className="flex flex-wrap gap-1.5 pt-1">
+                                            {item.collocations.map((col, i) => (
+                                                <span key={i} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded">
+                                                    {col}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>
