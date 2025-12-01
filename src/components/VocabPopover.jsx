@@ -8,13 +8,16 @@
 const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
     return (
         <>
-            {/* 遮罩层 - 点击关闭 */}
+            {/* 遮罩层 - 点击关闭（需要阻止事件冒泡，避免触发字幕行 onClick） */}
             <div
                 className="fixed inset-0 z-40"
-                onClick={onClose}
+                onClick={(e) => {
+                    e.stopPropagation();
+                    onClose();
+                }}
             />
 
-            {/* 弹窗主体 */}
+            {/* 弹窗主体 - 本身也要阻止事件冒泡 */}
             <div
                 className="fixed z-50 bg-white rounded-lg shadow-2xl border border-gray-200 p-5 max-w-sm"
                 style={{
@@ -24,9 +27,12 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo }) => {
                 }}
                 onClick={(e) => e.stopPropagation()}
             >
-                {/* 关闭按钮 */}
+                {/* 关闭按钮：也需要 stopPropagation，避免触发父级字幕行点击 */}
                 <button
-                    onClick={onClose}
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onClose();
+                    }}
                     className="absolute top-3 right-3 text-gray-400 hover:text-gray-600 transition"
                 >
                     <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
