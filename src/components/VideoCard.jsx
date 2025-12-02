@@ -14,6 +14,14 @@ function VideoCard({ video }) {
                     alt={video.title}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-300"
                 />
+
+                {/* 第几期标签 */}
+                {video.episode && (
+                    <div className="absolute top-2 left-2 bg-black/60 backdrop-blur-sm text-white text-xs px-2 py-1 rounded font-medium">
+                        第 {video.episode} 期
+                    </div>
+                )}
+
                 {/* 时长标签 */}
                 <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded flex items-center gap-1">
                     <Clock className="w-3 h-3" />
@@ -40,13 +48,8 @@ function VideoCard({ video }) {
                         <User className="w-4 h-4" />
                         <span>{video.author}</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                        {[...Array(5)].map((_, i) => (
-                            <Star
-                                key={i}
-                                className={`w-3 h-3 ${i < video.difficulty ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
-                            />
-                        ))}
+                    <div className="text-yellow-500 tracking-widest text-xs">
+                        {video.level}
                     </div>
                 </div>
 
