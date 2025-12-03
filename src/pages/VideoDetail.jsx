@@ -185,7 +185,12 @@ const VideoDetail = () => {
             setTimeout(() => {
                 if (playerRef.current) {
                     console.log('🔄 执行视频跳转到:', firstSentenceTime);
-                    playerRef.current.seekTo(firstSentenceTime, 'seconds');
+                    // 兼容原生 video 和 ReactPlayer
+                    if (playerRef.current.seekTo) {
+                        playerRef.current.seekTo(firstSentenceTime, 'seconds');
+                    } else {
+                        playerRef.current.currentTime = firstSentenceTime;
+                    }
 
                     // 强制更新 currentTime
                     setCurrentTime(firstSentenceTime);
@@ -203,6 +208,9 @@ const VideoDetail = () => {
                     if (player && typeof player.pause === 'function') {
                         player.pause();
                     }
+                } else if (playerRef.current?.pause) {
+                    // 原生 video
+                    playerRef.current.pause();
                 }
 
                 // 🆕 解除跳转锁定
@@ -251,7 +259,9 @@ const VideoDetail = () => {
 
         // 延迟获取 player，确保 ReactPlayer 已经挂载
         const setupListener = () => {
-            const player = playerRef.current?.getInternalPlayer();
+            // 兼容原生 video 和 ReactPlayer
+            const player = playerRef.current?.getInternalPlayer ? playerRef.current.getInternalPlayer() : playerRef.current;
+
             if (!player || typeof player.addEventListener !== 'function') {
                 // 如果还没准备好，稍后重试
                 setTimeout(setupListener, 500);
@@ -377,6 +387,18 @@ const VideoDetail = () => {
             return;
         }
 
+        // 听写模式下且视频暂停时，不更新 currentTime
+        // if (mode === 'dictation' && !isPlaying) {
+        //     return;
+        // }
+
+        setCurrentTime(state.playedSeconds);
+
+        // 单句循环逻辑（非听写模式）
+        if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
+
+        // 找到当前播放位置对应的字幕索引
+        let activeIndex = -1;
         for (let i = 0; i < videoData.transcript.length; i++) {
             const item = videoData.transcript[i];
             const nextItem = videoData.transcript[i + 1];
@@ -394,7 +416,12 @@ const VideoDetail = () => {
             // 如果有下一句，且当前时间接近下一句开始（提前 0.3 秒跳回）
             if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
                 console.log('🔁 单句循环: 跳回', currentSub.start);
-                playerRef.current?.seekTo(currentSub.start, 'seconds');
+                // 兼容原生 video 和 ReactPlayer
+                if (playerRef.current?.seekTo) {
+                    playerRef.current.seekTo(currentSub.start, 'seconds');
+                } else if (playerRef.current) {
+                    playerRef.current.currentTime = currentSub.start;
+                }
             }
         }
     }, [isSeeking, mode, isPlaying, videoData, isLooping]);
@@ -408,7 +435,12 @@ const VideoDetail = () => {
         setCurrentTime(time);
 
         // 执行跳转
-        playerRef.current?.seekTo(time, 'seconds');
+        // 兼容原生 video 和 ReactPlayer
+        if (playerRef.current?.seekTo) {
+            playerRef.current.seekTo(time, 'seconds');
+        } else if (playerRef.current) {
+            playerRef.current.currentTime = time;
+        }
 
         if (mode !== 'dictation') {
             // 稍等一下再开始播放，确保跳转完成
@@ -465,7 +497,14 @@ const VideoDetail = () => {
 
             const nextTime = videoData.transcript[nextIndex].start;
             setCurrentTime(nextTime); // 同步更新 currentTime
-            playerRef.current?.seekTo(nextTime, 'seconds');
+
+            // 兼容原生 video 和 ReactPlayer
+            if (playerRef.current?.seekTo) {
+                playerRef.current.seekTo(nextTime, 'seconds');
+            } else if (playerRef.current) {
+                playerRef.current.currentTime = nextTime;
+            }
+
             setIsPlaying(false); // 暂停等待用户输入
 
             // 解除锁定
@@ -489,7 +528,12 @@ const VideoDetail = () => {
         setIsSeeking(true);
 
         // 跳转到当前句开始
-        playerRef.current?.seekTo(currentSubtitle.start, 'seconds');
+        // 兼容原生 video 和 ReactPlayer
+        if (playerRef.current?.seekTo) {
+            playerRef.current.seekTo(currentSubtitle.start, 'seconds');
+        } else if (playerRef.current) {
+            playerRef.current.currentTime = currentSubtitle.start;
+        }
 
         // 稍等一下再开始播放
         setTimeout(() => {
@@ -500,6 +544,26 @@ const VideoDetail = () => {
         }, 100);
     };
 
+    // 🚀 性能优化：Memoize ReactPlayer props to prevent re-renders
+    const playerConfig = useMemo(() => ({
+        youtube: {
+            playerVars: { showinfo: 1 }
+        },
+        file: {
+            attributes: {
+                preload: 'auto',  // 🆕 预加载视频
+                controlsList: 'nodownload',
+                playsInline: true,
+                'webkit-playsinline': 'true',
+                'x5-video-player-type': 'h5',
+                'x5-video-player-fullscreen': 'false',
+                'x5-playsinline': 'true'
+            }
+        }
+    }), []);
+
+    const playerStyle = useMemo(() => ({ position: 'absolute', top: 0, left: 0 }), []);
+    const handlePlay = useCallback(() => setIsPlaying(true), []);
     const handlePause = useCallback(() => setIsPlaying(false), []);
 
     if (!videoData) {
@@ -566,7 +630,26 @@ const VideoDetail = () => {
 
                     {/* 视频播放器 */}
                     <div className="sticky top-0 z-20 md:relative bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
-                        <ReactPlayer
+                        {/* 🧪 性能测试：使用原生 video 标签替代 ReactPlayer */}
+                        <video
+                            ref={playerRef}
+                            src={videoData.video_url}
+                            className="absolute top-0 left-0 w-full h-full"
+                            controls
+                            playsInline
+                            webkit-playsinline="true"
+                            x5-video-player-type="h5"
+                            x5-playsinline="true"
+                            preload="auto"
+                            onPlay={() => setIsPlaying(true)}
+                            onPause={() => setIsPlaying(false)}
+                            onTimeUpdate={(e) => {
+                                const time = e.target.currentTime;
+                                // 模拟 ReactPlayer 的 progress 对象
+                                handleProgress({ playedSeconds: time });
+                            }}
+                        />
+                        {/* <ReactPlayer
                             ref={playerRef}
                             url={videoData.video_url}
                             playing={isPlaying}
@@ -579,7 +662,7 @@ const VideoDetail = () => {
                             height="100%"
                             style={playerStyle}
                             config={playerConfig}
-                        />
+                        /> */}
                     </div>
 
                     {/* 重点词汇 - 只在电脑端显示 */}
