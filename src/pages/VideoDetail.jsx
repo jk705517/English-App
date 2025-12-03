@@ -64,13 +64,13 @@ const VideoDetail = () => {
     const { user } = useAuth();
     const playerRef = useRef(null);
     const transcriptRefs = useRef([]);
-    const scrollTimeoutRef = useRef(null); // 🆕 添加滚动超时引用
+    // const scrollTimeoutRef = useRef(null); // Removed
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [allVideos, setAllVideos] = useState([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
-    const [isUserScrolling, setIsUserScrolling] = useState(false);
+    const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true); // 🆕 控制是否自动跟随
     const [clozeCache, setClozeCache] = useState({});
 
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
@@ -331,37 +331,32 @@ const VideoDetail = () => {
         };
     }, [mode, videoData]);
 
-    // 🆕 监听用户滚动，5秒后恢复自动滚动
+    // 🆕 监听用户手动滚动，暂停自动跟随
     useEffect(() => {
         if (!videoData?.transcript || mode === 'dictation') return;
 
         const subtitleContainer = document.querySelector('.flex-1.bg-white.border-t');
         if (!subtitleContainer) return;
 
-        const handleScroll = () => {
-            // 用户手动滚动，标记状态
-            setIsUserScrolling(true);
-
-            // 清除之前的定时器
-            if (scrollTimeoutRef.current) {
-                clearTimeout(scrollTimeoutRef.current);
+        const handleUserScroll = () => {
+            // 只有当自动跟随开启时，才需要关闭它
+            // 这样可以避免重复渲染
+            if (isAutoScrollEnabled) {
+                console.log('👆 用户手动滚动，暂停自动跟随');
+                setIsAutoScrollEnabled(false);
             }
-
-            // 5秒后恢复自动滚动
-            scrollTimeoutRef.current = setTimeout(() => {
-                setIsUserScrolling(false);
-            }, 5000);
         };
 
-        subtitleContainer.addEventListener('scroll', handleScroll, { passive: true });
+        // 监听滚轮和触摸移动，这些通常意味着用户在手动控制
+        subtitleContainer.addEventListener('wheel', handleUserScroll, { passive: true });
+        subtitleContainer.addEventListener('touchmove', handleUserScroll, { passive: true });
+        // 也可以监听 mousedown/touchstart 来更激进地捕获交互，但 wheel/touchmove 通常足够且误触少
 
         return () => {
-            subtitleContainer.removeEventListener('scroll', handleScroll);
-            if (scrollTimeoutRef.current) {
-                clearTimeout(scrollTimeoutRef.current);
-            }
+            subtitleContainer.removeEventListener('wheel', handleUserScroll);
+            subtitleContainer.removeEventListener('touchmove', handleUserScroll);
         };
-    }, [videoData, mode]);
+    }, [videoData, mode, isAutoScrollEnabled]);
 
     // 🚀 性能优化：使用 useMemo 缓存活跃字幕索引计算
     // 避免在每次 render 时都遍历字幕数组
@@ -376,7 +371,8 @@ const VideoDetail = () => {
 
     // 恢复自动滚动功能（使用 smooth 滚动）
     useEffect(() => {
-        if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
+        // 如果用户手动暂停了跟随，或者在听写模式，则不自动滚动
+        if (!isAutoScrollEnabled || !videoData?.transcript || mode === 'dictation') return;
 
         if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
             transcriptRefs.current[activeIndex].scrollIntoView({
@@ -384,7 +380,19 @@ const VideoDetail = () => {
                 block: 'center'
             });
         }
-    }, [activeIndex, isUserScrolling, videoData, mode]);
+    }, [activeIndex, isAutoScrollEnabled, videoData, mode]);
+
+    // 🆕 恢复自动跟随的处理函数
+    const handleResumeFollow = () => {
+        setIsAutoScrollEnabled(true);
+        // 立即滚动一次
+        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
+            transcriptRefs.current[activeIndex].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    };
 
     const handleToggleLearned = async () => {
         const newLearnedState = !isLearned;
@@ -493,8 +501,8 @@ const VideoDetail = () => {
                             <ClozeInput
                                 key={i}
                                 originalWord={word}
-                                onFocus={() => setIsUserScrolling(true)}
-                                onBlur={() => setIsUserScrolling(false)}
+                                onFocus={() => setIsAutoScrollEnabled(false)}
+                                onBlur={() => { }}
                             />
                         );
                     }
@@ -965,6 +973,21 @@ const VideoDetail = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* 🆕 "回到当前"悬浮按钮 */}
+                {!isAutoScrollEnabled && (
+                    <div className="sticky bottom-4 flex justify-center w-full pointer-events-none z-20">
+                        <button
+                            onClick={handleResumeFollow}
+                            className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                            </svg>
+                            <span className="text-sm font-medium">回到当前播放</span>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* 底部悬浮控制栏 */}
