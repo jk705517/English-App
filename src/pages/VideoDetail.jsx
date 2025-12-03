@@ -824,27 +824,41 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 🚀 性能优化：使用 SubtitleItem 组件以减少 re-render */
-                        videoData.transcript?.map((item, index) => {
-                            const isActive = index === activeIndex;
+                        /* 🚀 虚拟滚动优化：只渲染可见范围的字幕 */
+                        (() => {
+                            if (!videoData.transcript) return null;
 
-                            return (
-                                <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
-                                    <SubtitleItem
-                                        item={item}
-                                        index={index}
-                                        isActive={isActive}
-                                        mode={mode}
-                                        clozePattern={clozeCache[index]}
-                                        vocab={videoData.vocab}
-                                        onSeek={handleSeek}
-                                        playerRef={playerRef}
-                                        renderClozeText={renderClozeText}
-                                        onSetIsPlaying={setIsPlaying}
-                                    />
-                                </div>
-                            );
-                        })
+                            // 计算可见范围（当前播放位置 ±20 行）
+                            const RENDER_RANGE = 20;
+                            const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
+                            const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
+
+                            // 只渲染可见范围内的字幕
+                            const visibleSubtitles = [];
+                            for (let index = startIndex; index <= endIndex; index++) {
+                                const item = videoData.transcript[index];
+                                const isActive = index === activeIndex;
+
+                                visibleSubtitles.push(
+                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                        <SubtitleItem
+                                            item={item}
+                                            index={index}
+                                            isActive={isActive}
+                                            mode={mode}
+                                            clozePattern={clozeCache[index]}
+                                            vocab={videoData.vocab}
+                                            onSeek={handleSeek}
+                                            playerRef={playerRef}
+                                            renderClozeText={renderClozeText}
+                                            onSetIsPlaying={setIsPlaying}
+                                        />
+                                    </div>
+                                );
+                            }
+
+                            return visibleSubtitles;
+                        })()
                     )}
 
                     {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
