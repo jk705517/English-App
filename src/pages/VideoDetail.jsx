@@ -356,7 +356,7 @@ const VideoDetail = () => {
 
         if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
             transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'auto',  // 手机端用 auto 代替 smooth，减少渲染开销
+                behavior: 'smooth',
                 block: 'center'
             });
         }
@@ -826,8 +826,7 @@ const VideoDetail = () => {
                     ) : (
                         /* 🚀 性能优化：使用 SubtitleItem 组件以减少 re-render */
                         videoData.transcript?.map((item, index) => {
-                            const nextItem = videoData.transcript[index + 1];
-                            const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+                            const isActive = index === activeIndex;
 
                             return (
                                 <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
