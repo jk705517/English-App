@@ -634,8 +634,50 @@ const VideoDetail = () => {
                         )}
                     </div>
 
-                    {/* 标题 */}
-                    <h1 className="text-xl md:text-3xl font-bold mb-2 md:mb-3">{videoData.title}</h1>
+                    {/* 标题区域：标题 + 操作按钮 */}
+                    <div className="flex items-start justify-between mb-2 md:mb-3">
+                        <h1 className="text-xl md:text-3xl font-bold flex-1 mr-4">{videoData.title}</h1>
+
+                        {/* 收藏和已学按钮 - 移到这里 */}
+                        <div className="flex gap-2 shrink-0">
+                            <button
+                                onClick={handleToggleFavorite}
+                                className={`p-2 rounded-full transition-colors ${isFavorite
+                                        ? 'bg-yellow-100 text-yellow-500 hover:bg-yellow-200'
+                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                    }`}
+                                title={isFavorite ? "取消收藏" : "收藏视频"}
+                            >
+                                {isFavorite ? (
+                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                    </svg>
+                                )}
+                            </button>
+                            <button
+                                onClick={handleToggleLearned}
+                                className={`p-2 rounded-full transition-colors ${isLearned
+                                        ? 'bg-green-100 text-green-500 hover:bg-green-200'
+                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                    }`}
+                                title={isLearned ? "标记未学" : "标记已学"}
+                            >
+                                {isLearned ? (
+                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                    </svg>
+                                ) : (
+                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                )}
+                            </button>
+                        </div>
+                    </div>
 
                     {/* 元数据 */}
                     <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
@@ -974,17 +1016,17 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* 🆕 "回到当前"悬浮按钮 */}
+                {/* 🆕 "回到当前"悬浮按钮 - 移到左下角，避免遮挡 */}
                 {!isAutoScrollEnabled && (
-                    <div className="sticky bottom-4 flex justify-center w-full pointer-events-none z-20">
+                    <div className="fixed bottom-8 left-4 z-50 md:absolute md:bottom-4 md:left-1/2 md:-translate-x-1/2 md:z-20">
                         <button
                             onClick={handleResumeFollow}
-                            className="pointer-events-auto flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
+                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                             </svg>
-                            <span className="text-sm font-medium">回到当前播放</span>
+                            <span className="text-sm font-medium">回到当前</span>
                         </button>
                     </div>
                 )}
@@ -1000,16 +1042,21 @@ const VideoDetail = () => {
                 onPlayPause={() => {
                     const newIsPlaying = !isPlaying;
                     setIsPlaying(newIsPlaying);
+
                     if (playerRef.current) {
-                        // 兼容原生 video 和 ReactPlayer
-                        if (playerRef.current.getInternalPlayer) {
+                        // 优先尝试直接调用原生 video 方法
+                        if (playerRef.current.play && playerRef.current.pause) {
+                            if (newIsPlaying) {
+                                playerRef.current.play().catch(e => console.error("Play failed:", e));
+                            } else {
+                                playerRef.current.pause();
+                            }
+                        }
+                        // 兼容 ReactPlayer (虽然现在主要用原生 video)
+                        else if (playerRef.current.getInternalPlayer) {
                             const player = playerRef.current.getInternalPlayer();
                             if (newIsPlaying) player.playVideo ? player.playVideo() : player.play();
                             else player.pauseVideo ? player.pauseVideo() : player.pause();
-                        } else if (playerRef.current.play) {
-                            // 原生 video
-                            if (newIsPlaying) playerRef.current.play();
-                            else playerRef.current.pause();
                         }
                     }
                 }}
