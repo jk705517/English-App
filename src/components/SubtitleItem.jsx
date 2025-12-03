@@ -1,6 +1,5 @@
 import React, { memo } from 'react';
 import HighlightedText from './HighlightedText';
-import ClozeInput from './ClozeInput';
 
 // 🚀 性能优化：字幕行组件（使用 React.memo 避免不必要的 re-render）
 // 只在 isActive 或 item 内容变化时才重新渲染
@@ -61,8 +60,8 @@ const SubtitleItem = memo(({
 
                 {/* 中文 */}
                 <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                        ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
-                        : 'text-gray-600'
+                    ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
+                    : 'text-gray-600'
                     }`}>
                     {item.cn}
                 </div>
