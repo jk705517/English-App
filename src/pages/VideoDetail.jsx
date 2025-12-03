@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { supabase } from '../services/supabaseClient';
@@ -6,6 +6,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
 import HighlightedText from '../components/HighlightedText';
+import SubtitleItem from '../components/SubtitleItem';
 import FloatingControls from '../components/FloatingControls';
 import DictationInput from '../components/DictationInput';
 
@@ -430,7 +431,7 @@ const VideoDetail = () => {
     };
 
     // 🆕 修复：handleSeek 添加跳转锁定
-    const handleSeek = (time) => {
+    const handleSeek = useCallback((time) => {
         // 开启跳转锁定
         setIsSeeking(true);
 
@@ -455,9 +456,9 @@ const VideoDetail = () => {
                 setIsSeeking(false);
             }, 300);
         }
-    };
+    }, [mode]);
 
-    const renderClozeText = (text, lineIndex) => {
+    const renderClozeText = useCallback((text, lineIndex) => {
         const words = text.split(' ');
         const clozePattern = clozeCache[lineIndex] || [];
 
@@ -479,7 +480,7 @@ const VideoDetail = () => {
                 })}
             </span>
         );
-    };
+    }, [clozeCache]);
 
     // 听写模式：跳到下一句
     const handleNextDictation = () => {
@@ -498,10 +499,13 @@ const VideoDetail = () => {
             playerRef.current?.seekTo(nextTime, 'seconds');
             setIsPlaying(false); // 暂停等待用户输入
 
-            // 🆕 解除跳转锁定
+            // 解除锁定
             setTimeout(() => {
                 setIsSeeking(false);
             }, 300);
+        } else {
+            console.log('🎉 听写完成！');
+            // 可以添加完成提示
         }
     };
 
@@ -598,7 +602,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
-                            progressInterval={300}
+                            progressInterval={200}
                             controls
                             width="100%"
                             height="100%"
@@ -820,63 +824,25 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 其他模式：显示所有字幕 */
+                        /* 🚀 性能优化：使用 SubtitleItem 组件以减少 re-render */
                         videoData.transcript?.map((item, index) => {
                             const nextItem = videoData.transcript[index + 1];
                             const isActive = currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
 
                             return (
-                                <div
-                                    key={index}
-                                    ref={(el) => transcriptRefs.current[index] = el}
-                                    onClick={() => handleSeek(item.start)}
-                                    className={`relative pl-10 pr-4 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
-                                        }`}
-                                >
-                                    {/* 🆕 字幕行编号 */}
-                                    <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-400'}`}>
-                                        {index + 1}
-                                    </span>
-
-                                    {/* 蓝色指示条 */}
-                                    <div
-                                        className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
-                                            }`}
+                                <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                    <SubtitleItem
+                                        item={item}
+                                        index={index}
+                                        isActive={isActive}
+                                        mode={mode}
+                                        clozePattern={clozeCache[index]}
+                                        vocab={videoData.vocab}
+                                        onSeek={handleSeek}
+                                        playerRef={playerRef}
+                                        renderClozeText={renderClozeText}
+                                        onSetIsPlaying={setIsPlaying}
                                     />
-
-                                    {/* 文字内容 */}
-                                    <div className="flex-1">
-                                        {/* 英文 */}
-                                        <div className="text-base font-medium text-gray-900 leading-loose mb-1">
-                                            {mode === 'cloze' ? (
-                                                renderClozeText(item.text, index)
-                                            ) : (
-                                                mode === 'cn' ? null : (
-                                                    <HighlightedText
-                                                        text={item.text}
-                                                        highlights={videoData.vocab || []}
-                                                        onPauseVideo={() => {
-                                                            console.log('⏸️ 视频暂停');
-                                                            setIsPlaying(false);
-                                                            if (playerRef.current?.getInternalPlayer) {
-                                                                const p = playerRef.current.getInternalPlayer();
-                                                                if (p?.pauseVideo) p.pauseVideo();
-                                                                else if (p?.pause) p.pause();
-                                                            }
-                                                        }}
-                                                    />
-                                                )
-                                            )}
-                                        </div>
-
-                                        {/* 中文 */}
-                                        <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                                            ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
-                                            : 'text-gray-600'
-                                            }`}>
-                                            {item.cn}
-                                        </div>
-                                    </div>
                                 </div>
                             );
                         })
