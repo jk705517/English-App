@@ -592,7 +592,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
-                            progressInterval={100}
+                            progressInterval={200}
                             controls
                             width="100%"
                             height="100%"

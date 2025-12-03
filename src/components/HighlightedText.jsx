@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo, memo } from 'react';
 import VocabPopover from './VocabPopover';
 
 /**
@@ -33,47 +33,53 @@ const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }
         return <span className={className}>{text}</span>;
     }
 
-    // 构建正则表达式匹配所有高亮词（忽略大小写）
-    const words = highlights.map(h => h.word.toLowerCase());
-    const pattern = new RegExp(`\\b(${words.join('|')})\\b`, 'gi');
+    // 🚀 性能优化：使用 useMemo 缓存文本分割结果
+    // 只在 text 或 highlights 变化时重新计算，避免每次父组件 re-render 都执行正则匹配
+    const parts = useMemo(() => {
+        // 构建正则表达式匹配所有高亮词（忽略大小写）
+        const words = highlights.map(h => h.word.toLowerCase());
+        const pattern = new RegExp(`\\b(${words.join('|')})\\b`, 'gi');
 
-    // 分割文本并高亮匹配的词汇
-    const parts = [];
-    let lastIndex = 0;
-    let match;
+        // 分割文本并高亮匹配的词汇
+        const result = [];
+        let lastIndex = 0;
+        let match;
 
-    while ((match = pattern.exec(text)) !== null) {
-        // 添加匹配前的普通文本
-        if (match.index > lastIndex) {
-            parts.push({
+        while ((match = pattern.exec(text)) !== null) {
+            // 添加匹配前的普通文本
+            if (match.index > lastIndex) {
+                result.push({
+                    type: 'text',
+                    content: text.slice(lastIndex, match.index)
+                });
+            }
+
+            // 找到对应的词汇信息
+            const matchedWord = match[0];
+            const vocabInfo = highlights.find(
+                h => h.word.toLowerCase() === matchedWord.toLowerCase()
+            );
+
+            // 添加高亮词汇
+            result.push({
+                type: 'highlight',
+                content: matchedWord,
+                vocabInfo
+            });
+
+            lastIndex = pattern.lastIndex;
+        }
+
+        // 添加剩余的普通文本
+        if (lastIndex < text.length) {
+            result.push({
                 type: 'text',
-                content: text.slice(lastIndex, match.index)
+                content: text.slice(lastIndex)
             });
         }
 
-        // 找到对应的词汇信息
-        const matchedWord = match[0];
-        const vocabInfo = highlights.find(
-            h => h.word.toLowerCase() === matchedWord.toLowerCase()
-        );
-
-        // 添加高亮词汇
-        parts.push({
-            type: 'highlight',
-            content: matchedWord,
-            vocabInfo
-        });
-
-        lastIndex = pattern.lastIndex;
-    }
-
-    // 添加剩余的普通文本
-    if (lastIndex < text.length) {
-        parts.push({
-            type: 'text',
-            content: text.slice(lastIndex)
-        });
-    }
+        return result;
+    }, [text, highlights]);
 
     return (
         <>
@@ -110,4 +116,5 @@ const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }
     );
 };
 
-export default HighlightedText;
+// 🚀 使用 React.memo 包装组件，只在 props 变化时才 re-render
+export default memo(HighlightedText);
