@@ -94,10 +94,6 @@ const VideoDetail = () => {
         loadLearnedStatus();
     }, [id, user]);
 
-
-
-
-
     // 管理"收藏"状态
     const [isFavorite, setIsFavorite] = useState(false);
     useEffect(() => {
@@ -366,18 +362,6 @@ const VideoDetail = () => {
     const handleToggleLearned = async () => {
         const newLearnedState = !isLearned;
         setIsLearned(newLearnedState); // Optimistic update
-
-
-
-
-
-
-
-
-
-
-
-
 
         await progressService.toggleLearnedVideo(user, Number(id), isLearned);
     };
@@ -825,26 +809,20 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 🧪 终极测试：只渲染当前这一行字幕 */
+                        /* 🔬 最终诊断：只渲染纯文本，不用任何组件 */
                         (() => {
                             if (!videoData.transcript || activeIndex === -1) return null;
 
                             const item = videoData.transcript[activeIndex];
 
                             return (
-                                <div key={activeIndex} ref={(el) => transcriptRefs.current[activeIndex] = el}>
-                                    <SubtitleItem
-                                        item={item}
-                                        index={activeIndex}
-                                        isActive={true}
-                                        mode={mode}
-                                        clozePattern={clozeCache[activeIndex]}
-                                        vocab={videoData.vocab}
-                                        onSeek={handleSeek}
-                                        playerRef={playerRef}
-                                        renderClozeText={renderClozeText}
-                                        onSetIsPlaying={setIsPlaying}
-                                    />
+                                <div className="p-4 bg-indigo-50 rounded-lg">
+                                    <div className="text-lg font-bold text-gray-900 mb-2">
+                                        #{activeIndex + 1}: {item.text}
+                                    </div>
+                                    <div className="text-sm text-gray-600">
+                                        {item.cn}
+                                    </div>
                                 </div>
                             );
                         })()
