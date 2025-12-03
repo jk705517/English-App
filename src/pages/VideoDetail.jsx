@@ -382,7 +382,9 @@ const VideoDetail = () => {
             return;
         }
 
-        setCurrentTime(state.playedSeconds);
+        // 🧪 诊断测试：暂停更新时间，检查是否是 React 渲染导致的卡顿
+        // setCurrentTime(state.playedSeconds);
+        console.log('Progress:', state.playedSeconds);
 
         // 单句循环逻辑（非听写模式）
         if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
