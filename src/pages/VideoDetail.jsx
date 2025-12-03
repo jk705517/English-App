@@ -138,9 +138,6 @@ const VideoDetail = () => {
         fetchVideoData();
 
         // Check favorite status
-
-
-
         const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
         setIsFavorite(favoriteIds.includes(parseInt(id)));
     }, [id]);
@@ -346,18 +343,17 @@ const VideoDetail = () => {
         });
     }, [currentTime, videoData]);
 
+    // 恢复自动滚动功能（使用 smooth 滚动）
+    useEffect(() => {
+        if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
 
-    // 🧪 测试：完全禁用自动滚动
-    // useEffect(() => {
-    //     if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
-
-    //     if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
-    //         transcriptRefs.current[activeIndex].scrollIntoView({
-    //             behavior: 'auto',
-    //             block: 'center'
-    //         });
-    //     }
-    // }, [activeIndex, isUserScrolling, videoData, mode]);
+        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
+            transcriptRefs.current[activeIndex].scrollIntoView({
+                behavior: 'smooth',
+                block: 'center'
+            });
+        }
+    }, [activeIndex, isUserScrolling, videoData, mode]);
 
     const handleToggleLearned = async () => {
         const newLearnedState = !isLearned;
@@ -375,7 +371,7 @@ const VideoDetail = () => {
     };
 
     // 🆕 修复：handleProgress 增加保护逻辑
-    const handleProgress = (state) => {
+    const handleProgress = useCallback((state) => {
         // 如果正在跳转中，忽略进度更新
         if (isSeeking) {
             return;
@@ -413,7 +409,7 @@ const VideoDetail = () => {
                 playerRef.current?.seekTo(currentSub.start, 'seconds');
             }
         }
-    };
+    }, [isSeeking, mode, isPlaying, videoData, isLooping]);
 
     // 🆕 修复：handleSeek 添加跳转锁定
     const handleSeek = useCallback((time) => {
@@ -516,6 +512,27 @@ const VideoDetail = () => {
         }, 100);
     };
 
+    // 🚀 性能优化：Memoize ReactPlayer props to prevent re-renders
+    const playerConfig = useMemo(() => ({
+        youtube: {
+            playerVars: { showinfo: 1 }
+        },
+        file: {
+            attributes: {
+                controlsList: 'nodownload',
+                playsInline: true,
+                'webkit-playsinline': 'true',
+                'x5-video-player-type': 'h5',
+                'x5-video-player-fullscreen': 'false',
+                'x5-playsinline': 'true'
+            }
+        }
+    }), []);
+
+    const playerStyle = useMemo(() => ({ position: 'absolute', top: 0, left: 0 }), []);
+    const handlePlay = useCallback(() => setIsPlaying(true), []);
+    const handlePause = useCallback(() => setIsPlaying(false), []);
+
     if (!videoData) {
         return (
             <div className="min-h-screen flex items-center justify-center">
@@ -584,29 +601,15 @@ const VideoDetail = () => {
                             ref={playerRef}
                             url={videoData.video_url}
                             playing={isPlaying}
-                            onPlay={() => setIsPlaying(true)}
-                            onPause={() => setIsPlaying(false)}
+                            onPlay={handlePlay}
+                            onPause={handlePause}
                             onProgress={handleProgress}
-                            progressInterval={1000}  // 测试：1秒更新一次
+                            progressInterval={500}
                             controls
                             width="100%"
                             height="100%"
-                            style={{ position: 'absolute', top: 0, left: 0 }}
-                            config={{
-                                youtube: {
-                                    playerVars: { showinfo: 1 }
-                                },
-                                file: {
-                                    attributes: {
-                                        controlsList: 'nodownload',
-                                        playsInline: true,  // React 驼峰命名
-                                        'webkit-playsinline': 'true',  // iOS Safari
-                                        'x5-video-player-type': 'h5',  // 微信浏览器
-                                        'x5-video-player-fullscreen': 'false',  // 微信浏览器防止全屏
-                                        'x5-playsinline': 'true'  // 腾讯系浏览器
-                                    }
-                                }
-                            }}
+                            style={playerStyle}
+                            config={playerConfig}
                         />
                     </div>
 
@@ -809,22 +812,40 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 🔬 最终诊断：只渲染纯文本，不用任何组件 */
+                        /* 🚀 虚拟滚动优化：只渲染可见范围的字幕 */
                         (() => {
-                            if (!videoData.transcript || activeIndex === -1) return null;
+                            if (!videoData.transcript) return null;
 
-                            const item = videoData.transcript[activeIndex];
+                            // 计算可见范围（当前播放位置 ±20 行）
+                            const RENDER_RANGE = 20;
+                            const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
+                            const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
 
-                            return (
-                                <div className="p-4 bg-indigo-50 rounded-lg">
-                                    <div className="text-lg font-bold text-gray-900 mb-2">
-                                        #{activeIndex + 1}: {item.text}
+                            // 只渲染可见范围内的字幕
+                            const visibleSubtitles = [];
+                            for (let index = startIndex; index <= endIndex; index++) {
+                                const item = videoData.transcript[index];
+                                const isActive = index === activeIndex;
+
+                                visibleSubtitles.push(
+                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                        <SubtitleItem
+                                            item={item}
+                                            index={index}
+                                            isActive={isActive}
+                                            mode={mode}
+                                            clozePattern={clozeCache[index]}
+                                            vocab={videoData.vocab}
+                                            onSeek={handleSeek}
+                                            playerRef={playerRef}
+                                            renderClozeText={renderClozeText}
+                                            onSetIsPlaying={setIsPlaying}
+                                        />
                                     </div>
-                                    <div className="text-sm text-gray-600">
-                                        {item.cn}
-                                    </div>
-                                </div>
-                            );
+                                );
+                            }
+
+                            return visibleSubtitles;
                         })()
                     )}
 
