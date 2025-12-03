@@ -377,20 +377,6 @@ const VideoDetail = () => {
             return;
         }
 
-        // 听写模式下且视频暂停时，不更新 currentTime
-        if (mode === 'dictation' && !isPlaying) {
-            return;
-        }
-
-        // 🧪 诊断测试：暂停更新时间，检查是否是 React 渲染导致的卡顿
-        // setCurrentTime(state.playedSeconds);
-        console.log('Progress:', state.playedSeconds);
-
-        // 单句循环逻辑（非听写模式）
-        if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
-
-        // 找到当前播放位置对应的字幕索引
-        let activeIndex = -1;
         for (let i = 0; i < videoData.transcript.length; i++) {
             const item = videoData.transcript[i];
             const nextItem = videoData.transcript[i + 1];
@@ -514,25 +500,6 @@ const VideoDetail = () => {
         }, 100);
     };
 
-    // 🚀 性能优化：Memoize ReactPlayer props to prevent re-renders
-    const playerConfig = useMemo(() => ({
-        youtube: {
-            playerVars: { showinfo: 1 }
-        },
-        file: {
-            attributes: {
-                controlsList: 'nodownload',
-                playsInline: true,
-                'webkit-playsinline': 'true',
-                'x5-video-player-type': 'h5',
-                'x5-video-player-fullscreen': 'false',
-                'x5-playsinline': 'true'
-            }
-        }
-    }), []);
-
-    const playerStyle = useMemo(() => ({ position: 'absolute', top: 0, left: 0 }), []);
-    const handlePlay = useCallback(() => setIsPlaying(true), []);
     const handlePause = useCallback(() => setIsPlaying(false), []);
 
     if (!videoData) {
