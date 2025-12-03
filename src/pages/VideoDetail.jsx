@@ -825,40 +825,28 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 🚀 虚拟滚动优化：只渲染可见范围的字幕 */
+                        /* 🧪 终极测试：只渲染当前这一行字幕 */
                         (() => {
-                            if (!videoData.transcript) return null;
+                            if (!videoData.transcript || activeIndex === -1) return null;
 
-                            // 计算可见范围（当前播放位置 ±20 行）
-                            const RENDER_RANGE = 10;  // 超激进优化：只渲染20行
-                            const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
-                            const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
+                            const item = videoData.transcript[activeIndex];
 
-                            // 只渲染可见范围内的字幕
-                            const visibleSubtitles = [];
-                            for (let index = startIndex; index <= endIndex; index++) {
-                                const item = videoData.transcript[index];
-                                const isActive = index === activeIndex;
-
-                                visibleSubtitles.push(
-                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
-                                        <SubtitleItem
-                                            item={item}
-                                            index={index}
-                                            isActive={isActive}
-                                            mode={mode}
-                                            clozePattern={clozeCache[index]}
-                                            vocab={videoData.vocab}
-                                            onSeek={handleSeek}
-                                            playerRef={playerRef}
-                                            renderClozeText={renderClozeText}
-                                            onSetIsPlaying={setIsPlaying}
-                                        />
-                                    </div>
-                                );
-                            }
-
-                            return visibleSubtitles;
+                            return (
+                                <div key={activeIndex} ref={(el) => transcriptRefs.current[activeIndex] = el}>
+                                    <SubtitleItem
+                                        item={item}
+                                        index={activeIndex}
+                                        isActive={true}
+                                        mode={mode}
+                                        clozePattern={clozeCache[activeIndex]}
+                                        vocab={videoData.vocab}
+                                        onSeek={handleSeek}
+                                        playerRef={playerRef}
+                                        renderClozeText={renderClozeText}
+                                        onSetIsPlaying={setIsPlaying}
+                                    />
+                                </div>
+                            );
                         })()
                     )}
 
