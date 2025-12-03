@@ -1018,7 +1018,7 @@ const VideoDetail = () => {
 
                 {/* 🆕 "回到当前"悬浮按钮 - 移到左下角，避免遮挡 */}
                 {!isAutoScrollEnabled && (
-                    <div className="fixed bottom-24 left-4 z-50 md:absolute md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-20">
+                    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 md:bottom-8">
                         <button
                             onClick={handleResumeFollow}
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
@@ -1026,7 +1026,7 @@ const VideoDetail = () => {
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
                             </svg>
-                            <span className="text-sm font-medium">回到当前</span>
+                            <span className="text-sm font-medium">返回播放</span>
                         </button>
                     </div>
                 )}
@@ -1044,18 +1044,28 @@ const VideoDetail = () => {
                     setIsPlaying(newIsPlaying);
 
                     console.log('⏯️ Toggle Play/Pause:', newIsPlaying);
+                    console.log('🎬 playerRef.current:', playerRef.current);
+                    console.log('🔍 playerRef.current type:', typeof playerRef.current);
 
                     if (playerRef.current) {
+                        console.log('✅ playerRef exists');
+                        console.log('🔑 playerRef.current.play type:', typeof playerRef.current.play);
+                        console.log('🔑 playerRef.current.pause type:', typeof playerRef.current.pause);
+
                         // 1. 尝试直接调用原生 video 方法 (最可靠)
                         if (typeof playerRef.current.play === 'function') {
+                            console.log('🎯 Using native video element methods');
                             if (newIsPlaying) {
+                                console.log('▶️ Calling play()');
                                 playerRef.current.play().catch(e => console.error("❌ Play failed:", e));
                             } else {
+                                console.log('⏸️ Calling pause()');
                                 playerRef.current.pause();
                             }
                         }
                         // 2. 尝试 ReactPlayer 的 getInternalPlayer
                         else if (playerRef.current.getInternalPlayer) {
+                            console.log('🎯 Using ReactPlayer getInternalPlayer');
                             const internalPlayer = playerRef.current.getInternalPlayer();
                             if (internalPlayer) {
                                 if (newIsPlaying) {
@@ -1065,7 +1075,11 @@ const VideoDetail = () => {
                                     if (typeof internalPlayer.pause === 'function') internalPlayer.pause();
                                     else if (typeof internalPlayer.pauseVideo === 'function') internalPlayer.pauseVideo();
                                 }
+                            } else {
+                                console.error('❌ getInternalPlayer returned null');
                             }
+                        } else {
+                            console.error('❌ No valid play/pause method found on playerRef');
                         }
                     } else {
                         console.error('❌ Player ref is null');
