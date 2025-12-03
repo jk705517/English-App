@@ -47,7 +47,10 @@ const SubtitleItem = memo(({
                                 onPauseVideo={() => {
                                     console.log('⏸️ 视频暂停');
                                     onSetIsPlaying(false);
-                                    if (playerRef.current?.getInternalPlayer) {
+                                    // 兼容原生 video 和 ReactPlayer
+                                    if (playerRef.current && typeof playerRef.current.pause === 'function') {
+                                        playerRef.current.pause();
+                                    } else if (playerRef.current?.getInternalPlayer) {
                                         const p = playerRef.current.getInternalPlayer();
                                         if (p?.pauseVideo) p.pauseVideo();
                                         else if (p?.pause) p.pause();

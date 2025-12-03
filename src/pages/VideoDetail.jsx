@@ -882,44 +882,26 @@ const VideoDetail = () => {
                             </details>
                         </div>
                     ) : (
-                        /* 🚀 虚拟滚动优化：只渲染可见范围的字幕 */
-                        (() => {
-                            if (!videoData.transcript) return null;
-
-                            // 计算可见范围（当前播放位置 ±20 行）
-                            // 📱 移动端优化：减少渲染范围到 ±5 行
-                            const isMobile = window.innerWidth < 768;
-                            const RENDER_RANGE = isMobile ? 5 : 20;
-
-                            const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
-                            const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
-
-                            // 只渲染可见范围内的字幕
-                            const visibleSubtitles = [];
-                            for (let index = startIndex; index <= endIndex; index++) {
-                                const item = videoData.transcript[index];
-                                const isActive = index === activeIndex;
-
-                                visibleSubtitles.push(
-                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
-                                        <SubtitleItem
-                                            item={item}
-                                            index={index}
-                                            isActive={isActive}
-                                            mode={mode}
-                                            clozePattern={clozeCache[index]}
-                                            vocab={videoData.vocab}
-                                            onSeek={handleSeek}
-                                            playerRef={playerRef}
-                                            renderClozeText={renderClozeText}
-                                            onSetIsPlaying={setIsPlaying}
-                                        />
-                                    </div>
-                                );
-                            }
-
-                            return visibleSubtitles;
-                        })()
+                        /* 恢复完整渲染，解决跳动问题 */
+                        videoData.transcript.map((item, index) => {
+                            const isActive = index === activeIndex;
+                            return (
+                                <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                    <SubtitleItem
+                                        item={item}
+                                        index={index}
+                                        isActive={isActive}
+                                        mode={mode}
+                                        clozePattern={clozeCache[index]}
+                                        vocab={videoData.vocab}
+                                        onSeek={handleSeek}
+                                        playerRef={playerRef}
+                                        renderClozeText={renderClozeText}
+                                        onSetIsPlaying={setIsPlaying}
+                                    />
+                                </div>
+                            );
+                        })
                     )}
 
                     {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
@@ -965,27 +947,16 @@ const VideoDetail = () => {
                                         )}
                                     </div>
 
-                                    <p className="text-sm text-gray-600 font-medium mb-2">{item.meaning}</p>
+                                    <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
 
-                                    {/* 手机端例句 */}
+                                    {/* 手机端例句展示 */}
                                     {item.examples && item.examples.length > 0 && (
-                                        <div className="mb-2 space-y-2 border-t border-indigo-50 pt-2">
-                                            {item.examples.map((ex, i) => (
+                                        <div className="mb-2 space-y-1">
+                                            {item.examples.slice(0, 1).map((ex, i) => (
                                                 <div key={i} className="text-xs">
-                                                    <p className="text-gray-800 mb-0.5">{ex.en}</p>
-                                                    <p className="text-gray-500">{ex.cn}</p>
+                                                    <p className="text-gray-800">{ex.en}</p>
+                                                    <p className="text-gray-500 text-[10px]">{ex.cn}</p>
                                                 </div>
-                                            ))}
-                                        </div>
-                                    )}
-
-                                    {/* 手机端搭配 */}
-                                    {item.collocations && item.collocations.length > 0 && (
-                                        <div className="flex flex-wrap gap-1.5 pt-1">
-                                            {item.collocations.map((col, i) => (
-                                                <span key={i} className="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[10px] rounded">
-                                                    {col}
-                                                </span>
                                             ))}
                                         </div>
                                     )}
@@ -996,16 +967,45 @@ const VideoDetail = () => {
                 </div>
             </div>
 
-            {/* 浮动控制按钮 */}
+            {/* 底部悬浮控制栏 */}
             <FloatingControls
                 isPlaying={isPlaying}
-                onTogglePlay={() => setIsPlaying(!isPlaying)}
                 isLooping={isLooping}
-                onToggleLoop={() => setIsLooping(!isLooping)}
-                isFavorited={isFavorite}
-                onToggleFavorite={handleToggleFavorite}
+                playbackRate={playbackRate}
                 isLearned={isLearned}
+                isFavorite={isFavorite}
+                onPlayPause={() => {
+                    const newIsPlaying = !isPlaying;
+                    setIsPlaying(newIsPlaying);
+                    if (playerRef.current) {
+                        // 兼容原生 video 和 ReactPlayer
+                        if (playerRef.current.getInternalPlayer) {
+                            const player = playerRef.current.getInternalPlayer();
+                            if (newIsPlaying) player.playVideo ? player.playVideo() : player.play();
+                            else player.pauseVideo ? player.pauseVideo() : player.pause();
+                        } else if (playerRef.current.play) {
+                            // 原生 video
+                            if (newIsPlaying) playerRef.current.play();
+                            else playerRef.current.pause();
+                        }
+                    }
+                }}
+                onToggleLoop={() => setIsLooping(!isLooping)}
+                onChangeSpeed={() => {
+                    const speeds = [0.75, 1, 1.25, 1.5];
+                    const nextSpeed = speeds[(speeds.indexOf(playbackRate) + 1) % speeds.length];
+                    setPlaybackRate(nextSpeed);
+                    // 兼容原生 video 和 ReactPlayer
+                    if (playerRef.current?.getInternalPlayer) {
+                        const player = playerRef.current.getInternalPlayer();
+                        if (player.setPlaybackRate) player.setPlaybackRate(nextSpeed);
+                        else player.playbackRate = nextSpeed;
+                    } else if (playerRef.current) {
+                        playerRef.current.playbackRate = nextSpeed;
+                    }
+                }}
                 onToggleLearned={handleToggleLearned}
+                onToggleFavorite={handleToggleFavorite}
             />
         </div>
     );
