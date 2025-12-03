@@ -76,6 +76,9 @@ const VideoDetail = () => {
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
     const [isSeeking, setIsSeeking] = useState(false);
 
+    // 🆕 新增：缓冲状态
+    const [isBuffering, setIsBuffering] = useState(false);
+
     // 🆕 新增：追踪播放速度
     const [playbackRate, setPlaybackRate] = useState(1);
 
@@ -255,7 +258,7 @@ const VideoDetail = () => {
 
     // 🆕 听写模式：使用 timeupdate 事件精准检测播放位置
     useEffect(() => {
-        if (mode !== 'dictation' || !videoData?.transcript) return;
+        if (!videoData?.transcript) return;
 
         // 延迟获取 player，确保 ReactPlayer 已经挂载
         const setupListener = () => {
@@ -273,34 +276,52 @@ const VideoDetail = () => {
 
                 if (!playing || seeking) return;
 
-                const currentVideoTime = player.currentTime;
-                const currentSubtitle = videoData.transcript[idx];
-                const nextSubtitle = videoData.transcript[idx + 1];
+                // 听写模式逻辑
+                if (mode === 'dictation') {
+                    const currentVideoTime = player.currentTime;
+                    const currentSubtitle = videoData.transcript[idx];
+                    const nextSubtitle = videoData.transcript[idx + 1];
 
-                // 🆕 如果播放到了下一句的开始时间前 0.3 秒，提前暂停
-                // 这样可以避免播放到下一句的开头
-                if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.3) {
-                    console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2), '下一句开始:', nextSubtitle.start);
-                    player.pause();
-                    setIsPlaying(false);
-                }
-
-                // 🆕 如果是最后一句，检测是否接近视频结尾
-                if (!nextSubtitle && currentSubtitle) {
-                    // 假设最后一句播放 5 秒后暂停
-                    if (currentVideoTime >= currentSubtitle.start + 5) {
+                    // 🆕 如果播放到了下一句的开始时间前 0.3 秒，提前暂停
+                    // 这样可以避免播放到下一句的开头
+                    if (nextSubtitle && currentVideoTime >= nextSubtitle.start - 0.3) {
+                        console.log('🛑 timeupdate: 自动暂停 at', currentVideoTime.toFixed(2), '下一句开始:', nextSubtitle.start);
                         player.pause();
                         setIsPlaying(false);
+                    }
+
+                    // 🆕 如果是最后一句，检测是否接近视频结尾
+                    if (!nextSubtitle && currentSubtitle) {
+                        // 假设最后一句播放 5 秒后暂停
+                        if (currentVideoTime >= currentSubtitle.start + 5) {
+                            player.pause();
+                            setIsPlaying(false);
+                        }
                     }
                 }
             };
 
-            console.log('✅ timeupdate 监听器已添加');
+            // 🆕 缓冲事件监听
+            const handleWaiting = () => {
+                console.log('⏳ 视频缓冲中...');
+                setIsBuffering(true);
+            };
+
+            const handlePlaying = () => {
+                console.log('▶️ 视频开始播放');
+                setIsBuffering(false);
+            };
+
+            console.log('✅ 播放器事件监听器已添加');
             player.addEventListener('timeupdate', handleTimeUpdate);
+            player.addEventListener('waiting', handleWaiting);
+            player.addEventListener('playing', handlePlaying);
 
             return () => {
-                console.log('🗑️ timeupdate 监听器已移除');
+                console.log('🗑️ 播放器事件监听器已移除');
                 player.removeEventListener('timeupdate', handleTimeUpdate);
+                player.removeEventListener('waiting', handleWaiting);
+                player.removeEventListener('playing', handlePlaying);
             };
         };
 
@@ -630,6 +651,17 @@ const VideoDetail = () => {
 
                     {/* 视频播放器 */}
                     <div className="sticky top-0 z-20 md:relative bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
+                        {isBuffering && (
+                            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+                                <div className="text-white font-bold flex flex-col items-center">
+                                    <svg className="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                    <span>缓冲中...</span>
+                                </div>
+                            </div>
+                        )}
                         {/* 🧪 性能测试：使用原生 video 标签替代 ReactPlayer */}
                         <video
                             ref={playerRef}
@@ -649,20 +681,6 @@ const VideoDetail = () => {
                                 handleProgress({ playedSeconds: time });
                             }}
                         />
-                        {/* <ReactPlayer
-                            ref={playerRef}
-                            url={videoData.video_url}
-                            playing={isPlaying}
-                            onPlay={handlePlay}
-                            onPause={handlePause}
-                            onProgress={handleProgress}
-                            progressInterval={500}
-                            controls
-                            width="100%"
-                            height="100%"
-                            style={playerStyle}
-                            config={playerConfig}
-                        /> */}
                     </div>
 
                     {/* 重点词汇 - 只在电脑端显示 */}
@@ -869,7 +887,10 @@ const VideoDetail = () => {
                             if (!videoData.transcript) return null;
 
                             // 计算可见范围（当前播放位置 ±20 行）
-                            const RENDER_RANGE = 20;
+                            // 📱 移动端优化：减少渲染范围到 ±5 行
+                            const isMobile = window.innerWidth < 768;
+                            const RENDER_RANGE = isMobile ? 5 : 20;
+
                             const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
                             const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
 
