@@ -350,17 +350,18 @@ const VideoDetail = () => {
         });
     }, [currentTime, videoData]);
 
-    // 【修复】听写模式下禁用自动滚动
-    useEffect(() => {
-        if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
 
-        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
-            transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'auto',  // 超激进优化：禁用平滑滚动
-                block: 'center'
-            });
-        }
-    }, [activeIndex, isUserScrolling, videoData, mode]);
+    // 🧪 测试：完全禁用自动滚动
+    // useEffect(() => {
+    //     if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
+
+    //     if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
+    //         transcriptRefs.current[activeIndex].scrollIntoView({
+    //             behavior: 'auto',
+    //             block: 'center'
+    //         });
+    //     }
+    // }, [activeIndex, isUserScrolling, videoData, mode]);
 
     const handleToggleLearned = async () => {
         const newLearnedState = !isLearned;
@@ -602,7 +603,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
-                            progressInterval={500}  // 超激进优化：降低更新频率
+                            progressInterval={1000}  // 测试：1秒更新一次
                             controls
                             width="100%"
                             height="100%"
