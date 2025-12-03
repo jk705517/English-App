@@ -1,9 +1,13 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { progressService } from '../services/progressService';
+import { favoritesService } from '../services/favoritesService';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
 function Home() {
+    const { user } = useAuth();
     const [videos, setVideos] = useState([]);
     const [learnedVideoIds, setLearnedVideoIds] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('全部');
@@ -11,7 +15,7 @@ function Home() {
     // 分类列表
     const categories = ['全部', '日常', '职场', '旅行', '时尚', '美食', '科技', '成长'];
 
-    // 从 Supabase 获取视频数据 (Force rebuild for Supabase config)
+    // 从 Supabase 获取视频数据
     useEffect(() => {
         const fetchVideos = async () => {
             const { data, error } = await supabase
@@ -29,11 +33,14 @@ function Home() {
         fetchVideos();
     }, []);
 
-    // 从 localStorage 读取已学习的视频 ID 列表
+    // 加载已学习的视频 ID 列表
     useEffect(() => {
-        const storedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-        setLearnedVideoIds(storedIds);
-    }, []);
+        const loadProgress = async () => {
+            const ids = await progressService.loadLearnedVideoIds(user);
+            setLearnedVideoIds(ids);
+        };
+        loadProgress();
+    }, [user]);
 
     // 筛选视频
     const filteredVideos = selectedCategory === '全部'
@@ -49,11 +56,14 @@ function Home() {
         <div className="max-w-7xl mx-auto">
             {/* 页面标题 */}
             <div className="mb-8">
+                <div className="mb-4 text-sm font-medium text-indigo-600">
+                    {user ? `当前用户：${user.email}` : '当前未登录'}
+                </div>
                 <h1 className="text-4xl font-bold text-gray-800 mb-2">
                     欢迎来到 BiuBiu English
                 </h1>
                 <p className="text-gray-600">
-                    开始你的英语学习之旅
+                    每一段都有一句能用的
                 </p>
             </div>
 
@@ -80,7 +90,7 @@ function Home() {
                 </div>
 
                 <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify之间">
                         <div>
                             <p className="text-orange-100 text-sm mb-1">未学习</p>
                             <p className="text-4xl font-bold">{unlearnedVideos}</p>
@@ -110,7 +120,7 @@ function Home() {
 
             {/* 视频列表标题 */}
             <div className="mb-6">
-                <h2 className="text-2xl font-bold text-gray-800">课程列表</h2>
+                <h2 className="text-2xl font-bold text-gray-800">视频列表</h2>
             </div>
 
             {/* 视频卡片网格 */}
@@ -120,7 +130,7 @@ function Home() {
                         key={video.id}
                         video={{
                             ...video,
-                            isLearned: learnedVideoIds.includes(video.id)
+                            isLearned: learnedVideoIds.includes(video.id),
                         }}
                     />
                 ))}

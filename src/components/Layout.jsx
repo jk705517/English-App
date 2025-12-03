@@ -27,7 +27,7 @@ function Layout() {
                         </div>
                         <div>
                             <h1 className="text-xl font-bold text-gray-800">BiuBiu English</h1>
-                            <p className="text-xs text-gray-500">英语学习平台</p>
+                            <p className="text-xs text-gray-500">英文原声片段</p>
                         </div>
                     </div>
                 </div>

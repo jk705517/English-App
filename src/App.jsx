@@ -6,6 +6,7 @@ import VocabDetail from './pages/VocabDetail';
 import Settings from './pages/Settings';
 import Favorites from './pages/Favorites';
 import DataCheck from './pages/DataCheck';
+import Auth from './pages/Auth';
 
 function App() {
     return (
@@ -18,6 +19,7 @@ function App() {
                     <Route path="favorites" element={<Favorites />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="data-check" element={<DataCheck />} />
+                    <Route path="login" element={<Auth />} />
                 </Route>
             </Routes>
         </BrowserRouter>

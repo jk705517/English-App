@@ -1,7 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
-import { supabase } from '../lib/supabase';
+import { supabase } from '../services/supabaseClient';
+import { useAuth } from '../contexts/AuthContext';
+import { progressService } from '../services/progressService';
+import { favoritesService } from '../services/favoritesService';
 import HighlightedText from '../components/HighlightedText';
 import FloatingControls from '../components/FloatingControls';
 import DictationInput from '../components/DictationInput';
@@ -57,6 +60,7 @@ const speak = (text, lang = 'en-US') => {
 
 const VideoDetail = () => {
     const { id } = useParams();
+    const { user } = useAuth();
     const playerRef = useRef(null);
     const transcriptRefs = useRef([]);
     const scrollTimeoutRef = useRef(null); // 🆕 添加滚动超时引用
@@ -79,17 +83,30 @@ const VideoDetail = () => {
         return localStorage.getItem('studyMode') || 'dual';
     });
 
-    // 管理"已学"状态 - 从 localStorage 读取
-    const [isLearned, setIsLearned] = useState(() => {
-        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-        return learnedIds.includes(parseInt(id));
-    });
+    // 管理"已学"状态
+    const [isLearned, setIsLearned] = useState(false);
+    useEffect(() => {
+        const loadLearnedStatus = async () => {
+            const learnedIds = await progressService.loadLearnedVideoIds(user);
+            setIsLearned(learnedIds.includes(Number(id)));
+        };
+        loadLearnedStatus();
+    }, [id, user]);
 
-    // 管理"收藏"状态 - 从 localStorage 读取
-    const [isFavorite, setIsFavorite] = useState(() => {
-        const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
-        return favoriteIds.includes(parseInt(id));
-    });
+
+
+
+
+    // 管理"收藏"状态
+    const [isFavorite, setIsFavorite] = useState(false);
+    useEffect(() => {
+        const loadFavoriteStatus = async () => {
+            const favoriteIds = await favoritesService.loadFavoriteVideoIds(user);
+
+            setIsFavorite(favoriteIds.includes(Number(id)));
+        };
+        loadFavoriteStatus();
+    }, [id, user]);
 
     // 听写模式统计
     const [dictationStats, setDictationStats] = useState({
@@ -123,9 +140,9 @@ const VideoDetail = () => {
 
         fetchVideoData();
 
-        // Check learned and favorite status
-        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-        setIsLearned(learnedIds.includes(parseInt(id)));
+        // Check favorite status
+
+
 
         const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
         setIsFavorite(favoriteIds.includes(parseInt(id)));
@@ -338,42 +355,31 @@ const VideoDetail = () => {
         }
     }, [currentTime, isUserScrolling, videoData, mode]);
 
-    const handleToggleLearned = () => {
-        const newState = !isLearned;
-        setIsLearned(newState);
+    const handleToggleLearned = async () => {
+        const newLearnedState = !isLearned;
+        setIsLearned(newLearnedState); // Optimistic update
 
-        // 更新 localStorage
-        const learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-        if (newState) {
-            if (!learnedIds.includes(parseInt(id))) {
-                learnedIds.push(parseInt(id));
-            }
-        } else {
-            const index = learnedIds.indexOf(parseInt(id));
-            if (index > -1) {
-                learnedIds.splice(index, 1);
-            }
-        }
-        localStorage.setItem('learnedVideoIds', JSON.stringify(learnedIds));
+
+
+
+
+
+
+
+
+
+
+
+
+        await progressService.toggleLearnedVideo(user, Number(id), isLearned);
     };
 
-    const handleToggleFavorite = () => {
-        const newState = !isFavorite;
-        setIsFavorite(newState);
+    const handleToggleFavorite = async () => {
+        const newFavoriteState = !isFavorite;
+        setIsFavorite(newFavoriteState); // Optimistic update
 
-        // 更新 localStorage
-        const favoriteIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
-        if (newState) {
-            if (!favoriteIds.includes(parseInt(id))) {
-                favoriteIds.push(parseInt(id));
-            }
-        } else {
-            const index = favoriteIds.indexOf(parseInt(id));
-            if (index > -1) {
-                favoriteIds.splice(index, 1);
-            }
-        }
-        localStorage.setItem('favoriteVideoIds', JSON.stringify(favoriteIds));
+        await favoritesService.toggleFavoriteVideo(user, Number(id), isFavorite);
+
     };
 
     // 🆕 修复：handleProgress 增加保护逻辑
