@@ -356,7 +356,7 @@ const VideoDetail = () => {
 
         if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
             transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'smooth',
+                behavior: 'auto',  // 超激进优化：禁用平滑滚动
                 block: 'center'
             });
         }
@@ -602,7 +602,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
-                            progressInterval={200}
+                            progressInterval={500}  // 超激进优化：降低更新频率
                             controls
                             width="100%"
                             height="100%"
@@ -829,7 +829,7 @@ const VideoDetail = () => {
                             if (!videoData.transcript) return null;
 
                             // 计算可见范围（当前播放位置 ±20 行）
-                            const RENDER_RANGE = 20;
+                            const RENDER_RANGE = 10;  // 超激进优化：只渲染20行
                             const startIndex = Math.max(0, activeIndex - RENDER_RANGE);
                             const endIndex = Math.min(videoData.transcript.length - 1, activeIndex + RENDER_RANGE);
 
