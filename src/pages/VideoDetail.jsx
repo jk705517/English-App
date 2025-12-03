@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { supabase } from '../services/supabaseClient';
@@ -338,22 +338,28 @@ const VideoDetail = () => {
         };
     }, [videoData, mode]);
 
+    // 🚀 性能优化：使用 useMemo 缓存活跃字幕索引计算
+    // 避免在每次 render 时都遍历字幕数组
+    const activeIndex = useMemo(() => {
+        if (!videoData?.transcript) return -1;
+
+        return videoData.transcript.findIndex((item, index) => {
+            const nextItem = videoData.transcript[index + 1];
+            return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
+        });
+    }, [currentTime, videoData]);
+
     // 【修复】听写模式下禁用自动滚动
     useEffect(() => {
         if (isUserScrolling || !videoData?.transcript || mode === 'dictation') return;
 
-        const activeIndex = videoData.transcript.findIndex((item, index) => {
-            const nextItem = videoData.transcript[index + 1];
-            return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
-        });
-
         if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
             transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'smooth',
+                behavior: 'auto',  // 手机端用 auto 代替 smooth，减少渲染开销
                 block: 'center'
             });
         }
-    }, [currentTime, isUserScrolling, videoData, mode]);
+    }, [activeIndex, isUserScrolling, videoData, mode]);
 
     const handleToggleLearned = async () => {
         const newLearnedState = !isLearned;
@@ -592,7 +598,7 @@ const VideoDetail = () => {
                             onPlay={() => setIsPlaying(true)}
                             onPause={() => setIsPlaying(false)}
                             onProgress={handleProgress}
-                            progressInterval={200}
+                            progressInterval={300}
                             controls
                             width="100%"
                             height="100%"
