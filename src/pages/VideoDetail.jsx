@@ -810,7 +810,7 @@ const VideoDetail = () => {
             </div>
 
             {/* 字幕区域 - 独立滚动 */}
-            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col overflow-y-auto pb-20 relative">
+            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative">
                 <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white flex items-center justify-between">
                     <h2 className="text-base md:text-lg font-bold flex items-center">
                         📖 字幕
@@ -866,152 +866,155 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* 听写模式统计面板 */}
-                {mode === 'dictation' && (
-                    <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
-                        <div className="flex justify-around">
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
-                                <div className="text-xs text-gray-600">答对</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-red-600">{dictationStats.wrong}</div>
-                                <div className="text-xs text-gray-600">答错</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-gray-600">{dictationStats.skipped}</div>
-                                <div className="text-xs text-gray-600">跳过</div>
-                            </div>
-                            <div className="text-center">
-                                <div className="text-2xl font-bold text-blue-600">
-                                    {dictationStats.correct + dictationStats.wrong + dictationStats.skipped > 0
-                                        ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
-                                        : 0}%
+                {/* 滚动内容区域 */}
+                <div className="flex-1 overflow-y-auto pb-20">
+                    {/* 听写模式统计面板 */}
+                    {mode === 'dictation' && (
+                        <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
+                            <div className="flex justify-around">
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
+                                    <div className="text-xs text-gray-600">答对</div>
                                 </div>
-                                <div className="text-xs text-gray-600">正确率</div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-red-600">{dictationStats.wrong}</div>
+                                    <div className="text-xs text-gray-600">答错</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-gray-600">{dictationStats.skipped}</div>
+                                    <div className="text-xs text-gray-600">跳过</div>
+                                </div>
+                                <div className="text-center">
+                                    <div className="text-2xl font-bold text-blue-600">
+                                        {dictationStats.correct + dictationStats.wrong + dictationStats.skipped > 0
+                                            ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
+                                            : 0}%
+                                    </div>
+                                    <div className="text-xs text-gray-600">正确率</div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                )}
-
-                {/* 字幕列表 */}
-                <div className="p-3 md:p-4 space-y-2 md:space-y-3">
-                    {mode === 'dictation' ? (
-                        /* 听写模式：只显示当前句 */
-                        <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
-                            <DictationInput
-                                correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
-                                currentIndex={dictationIndex}
-                                totalCount={videoData.transcript.length}
-                                onCorrect={() => {
-                                    console.log('答对了！');
-                                    setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
-                                    // 1.5秒后自动跳到下一句
-                                    setTimeout(() => {
-                                        handleNextDictation();
-                                    }, 1500);
-                                }}
-                                onWrong={() => {
-                                    setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
-                                }}
-                                onSkip={() => {
-                                    console.log('跳过当前句');
-                                    setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
-                                    handleNextDictation();
-                                }}
-                                onReplay={handleReplayDictation}
-                                hasPlayed={hasPlayedCurrent}
-                            />
-
-                            {/* 中文翻译（可折叠） */}
-                            <details className="mt-4">
-                                <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
-                                    💡 显示中文翻译
-                                </summary>
-                                <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
-                            </details>
-                        </div>
-                    ) : (
-                        /* 恢复完整渲染，解决跳动问题 */
-                        videoData.transcript.map((item, index) => {
-                            const isActive = index === activeIndex;
-                            return (
-                                <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
-                                    <SubtitleItem
-                                        item={item}
-                                        index={index}
-                                        isActive={isActive}
-                                        mode={mode}
-                                        clozePattern={clozeCache[index]}
-                                        vocab={videoData.vocab}
-                                        onSeek={handleSeek}
-                                        playerRef={playerRef}
-                                        renderClozeText={renderClozeText}
-                                        onSetIsPlaying={setIsPlaying}
-                                    />
-                                </div>
-                            );
-                        })
                     )}
 
-                    {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
-                    <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
-                        <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
-                        <div className="space-y-3">
-                            {videoData.vocab?.map((item, index) => (
-                                <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
-                                    <div className="flex items-end mb-1">
-                                        <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
-                                        <span className="text-xs text-gray-500">{item.type}</span>
+                    {/* 字幕列表 */}
+                    <div className="p-3 md:p-4 space-y-2 md:space-y-3">
+                        {mode === 'dictation' ? (
+                            /* 听写模式：只显示当前句 */
+                            <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                                <DictationInput
+                                    correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
+                                    currentIndex={dictationIndex}
+                                    totalCount={videoData.transcript.length}
+                                    onCorrect={() => {
+                                        console.log('答对了！');
+                                        setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
+                                        // 1.5秒后自动跳到下一句
+                                        setTimeout(() => {
+                                            handleNextDictation();
+                                        }, 1500);
+                                    }}
+                                    onWrong={() => {
+                                        setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+                                    }}
+                                    onSkip={() => {
+                                        console.log('跳过当前句');
+                                        setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+                                        handleNextDictation();
+                                    }}
+                                    onReplay={handleReplayDictation}
+                                    hasPlayed={hasPlayedCurrent}
+                                />
+
+                                {/* 中文翻译（可折叠） */}
+                                <details className="mt-4">
+                                    <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
+                                        💡 显示中文翻译
+                                    </summary>
+                                    <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
+                                </details>
+                            </div>
+                        ) : (
+                            /* 恢复完整渲染，解决跳动问题 */
+                            videoData.transcript.map((item, index) => {
+                                const isActive = index === activeIndex;
+                                return (
+                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                        <SubtitleItem
+                                            item={item}
+                                            index={index}
+                                            isActive={isActive}
+                                            mode={mode}
+                                            clozePattern={clozeCache[index]}
+                                            vocab={videoData.vocab}
+                                            onSeek={handleSeek}
+                                            playerRef={playerRef}
+                                            renderClozeText={renderClozeText}
+                                            onSetIsPlaying={setIsPlaying}
+                                        />
                                     </div>
+                                );
+                            })
+                        )}
 
-                                    {/* 手机端音标展示 - 美音和英音 */}
-                                    <div className="flex flex-col gap-1 mb-1.5">
-                                        {item.ipa_us && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">US</span>
-                                                <span>/{item.ipa_us}/</span>
-                                                <button
-                                                    onClick={() => speak(item.word, 'en-US')}
-                                                    className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                        {item.ipa_uk && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">UK</span>
-                                                <span>/{item.ipa_uk}/</span>
-                                                <button
-                                                    onClick={() => speak(item.word, 'en-GB')}
-                                                    className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
-                                                >
-                                                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
-
-                                    {/* 手机端例句展示 */}
-                                    {item.examples && item.examples.length > 0 && (
-                                        <div className="mb-2 space-y-1">
-                                            {item.examples.slice(0, 1).map((ex, i) => (
-                                                <div key={i} className="text-xs">
-                                                    <p className="text-gray-800">{ex.en}</p>
-                                                    <p className="text-gray-500 text-[10px]">{ex.cn}</p>
-                                                </div>
-                                            ))}
+                        {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
+                        <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
+                            <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
+                            <div className="space-y-3">
+                                {videoData.vocab?.map((item, index) => (
+                                    <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                        <div className="flex items-end mb-1">
+                                            <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
+                                            <span className="text-xs text-gray-500">{item.type}</span>
                                         </div>
-                                    )}
-                                </div>
-                            ))}
+
+                                        {/* 手机端音标展示 - 美音和英音 */}
+                                        <div className="flex flex-col gap-1 mb-1.5">
+                                            {item.ipa_us && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">US</span>
+                                                    <span>/{item.ipa_us}/</span>
+                                                    <button
+                                                        onClick={() => speak(item.word, 'en-US')}
+                                                        className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                            {item.ipa_uk && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">UK</span>
+                                                    <span>/{item.ipa_uk}/</span>
+                                                    <button
+                                                        onClick={() => speak(item.word, 'en-GB')}
+                                                        className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                    >
+                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
+
+                                        {/* 手机端例句展示 */}
+                                        {item.examples && item.examples.length > 0 && (
+                                            <div className="mb-2 space-y-1">
+                                                {item.examples.slice(0, 1).map((ex, i) => (
+                                                    <div key={i} className="text-xs">
+                                                        <p className="text-gray-800">{ex.en}</p>
+                                                        <p className="text-gray-500 text-[10px]">{ex.cn}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1024,7 +1027,8 @@ const VideoDetail = () => {
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
+                                <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
                             </svg>
                             <span className="text-sm font-medium">返回播放</span>
                         </button>
