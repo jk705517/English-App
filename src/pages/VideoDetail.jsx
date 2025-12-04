@@ -59,10 +59,31 @@ const speak = (text, lang = 'en-US') => {
     window.speechSynthesis.speak(utterance);
 };
 
+// 🆕 继续播放小条组件
+const MiniBar = ({ onResume, title }) => (
+    <div
+        className="fixed top-0 left-0 right-0 z-50 bg-white/90 backdrop-blur-md shadow-md px-4 py-3 flex items-center justify-between animate-slide-down cursor-pointer border-b border-gray-200"
+        onClick={onResume}
+    >
+        <div className="flex items-center gap-3 overflow-hidden w-full">
+            <div className="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
+                <svg className="w-4 h-4 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                </svg>
+            </div>
+            <span className="text-sm font-medium text-gray-900 truncate flex-1">继续播放: {title}</span>
+            <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" />
+            </svg>
+        </div>
+    </div>
+);
+
 const VideoDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
     const playerRef = useRef(null);
+    const playerContainerRef = useRef(null); // 🆕
     const transcriptRefs = useRef([]);
     // const scrollTimeoutRef = useRef(null); // Removed
     const [currentTime, setCurrentTime] = useState(0);
@@ -71,6 +92,7 @@ const VideoDetail = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true); // 🆕 控制是否自动跟随
+    const [showMiniBar, setShowMiniBar] = useState(false); // 🆕
     const [clozeCache, setClozeCache] = useState({});
 
     // 🆕 新增：跳转锁定标志，防止 onProgress 干扰
@@ -358,6 +380,36 @@ const VideoDetail = () => {
         };
     }, [videoData, mode, isAutoScrollEnabled]);
 
+    // 🆕 监听播放器可见性，控制 MiniBar 显示
+    useEffect(() => {
+        const observer = new IntersectionObserver(
+            ([entry]) => {
+                // 当播放器完全离开视口且未播放时，显示 MiniBar
+                if (!entry.isIntersecting && !isPlaying) {
+                    setShowMiniBar(true);
+                } else {
+                    setShowMiniBar(false);
+                }
+            },
+            { threshold: 0 }
+        );
+
+        if (playerContainerRef.current) {
+            observer.observe(playerContainerRef.current);
+        }
+
+        return () => observer.disconnect();
+    }, [isPlaying]);
+
+    // 🆕 恢复播放/滚动回顶部
+    const handleResumePlay = () => {
+        if (playerContainerRef.current) {
+            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // 可选：点击后自动播放
+            // setIsPlaying(true);
+        }
+    };
+
     // 🚀 性能优化：使用 useMemo 缓存活跃字幕索引计算
     // 避免在每次 render 时都遍历字幕数组
     const activeIndex = useMemo(() => {
@@ -609,7 +661,7 @@ const VideoDetail = () => {
             <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
                     {/* 上一期/下一期导航 */}
-                    <div className="flex gap-3 mb-3 md:mb-4">
+                    <div className="flex gap-3 mb-3 md:mb-4 pt-12 md:pt-0">
                         {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                             <Link
                                 to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
@@ -700,7 +752,12 @@ const VideoDetail = () => {
                     </div>
 
                     {/* 视频播放器 */}
-                    <div className="sticky top-0 z-20 md:relative bg-black rounded-xl overflow-hidden shadow-2xl" style={{ paddingTop: '56.25%' }}>
+                    {showMiniBar && <MiniBar onResume={handleResumePlay} title={videoData.title} />}
+                    <div
+                        ref={playerContainerRef}
+                        className={`${isPlaying ? 'sticky top-0 z-50' : 'relative'} bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300`}
+                        style={{ paddingTop: '56.25%' }}
+                    >
                         {isBuffering && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
                                 <div className="text-white font-bold flex flex-col items-center">
