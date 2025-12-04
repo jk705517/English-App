@@ -55,47 +55,12 @@ const speak = (text, lang = 'en-US') => {
     window.speechSynthesis.speak(utterance);
 };
 
-// 继续播放小条组件 (手机端固定在底部)
-const MiniBar = ({ onResume, title }) => (
-    <div
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-white/95 backdrop-blur-md shadow-[0_-4px_20px_rgba(0,0,0,0.1)] px-4 py-3 flex items-center justify-between cursor-pointer border-t border-gray-200"
-        onClick={onResume}
-    >
-        <div className="flex items-center gap-3 overflow-hidden w-full">
-            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shrink-0 shadow-sm">
-                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                </svg>
-            </div>
-            <div className="flex-1 min-w-0">
-                <span className="text-sm font-medium text-gray-900 truncate block">返回播放</span>
-                <span className="text-xs text-gray-500 truncate block">{title}</span>
-            </div>
-            <svg className="w-5 h-5 text-indigo-500 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 10l7-7m0 0l7 7m-7-7v18" />
-            </svg>
-        </div>
-    </div>
-);
-
-// 返回播放按钮 (PC端固定在右侧)
-const ReturnToPlayButton = ({ onResume, title }) => (
-    <button
-        onClick={onResume}
-        className="fixed right-6 bottom-40 z-30 hidden md:flex items-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all hover:scale-105"
-    >
-        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-        </svg>
-        <span className="text-sm font-medium">返回播放</span>
-    </button>
-);
-
 const VideoDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
+    const leftColumnRef = useRef(null);
     const transcriptRefs = useRef([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
@@ -104,7 +69,8 @@ const VideoDetail = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
-    const [showReturnToPlay, setShowReturnToPlay] = useState(false);
+    const [showMiniPlayer, setShowMiniPlayer] = useState(false); // 显示顶部迷你播放器
+    const [isMiniPlayerMode, setIsMiniPlayerMode] = useState(false); // 迷你播放器模式（只显示播放器）
     const [clozeCache, setClozeCache] = useState({});
     const [isSeeking, setIsSeeking] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
@@ -173,21 +139,33 @@ const VideoDetail = () => {
         fetchAllVideos();
     }, []);
 
-    // Scroll detection for return-to-play button
+    // Scroll detection for mini-player (when paused and scrolled away)
     useEffect(() => {
-        if (!playerContainerRef.current) return;
+        if (!playerContainerRef.current || !leftColumnRef.current) return;
 
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                // Show return button when video is NOT in view
-                setShowReturnToPlay(!entry.isIntersecting);
-            },
-            { threshold: 0.1 }
-        );
+        const handleScroll = () => {
+            if (!playerContainerRef.current) return;
 
-        observer.observe(playerContainerRef.current);
-        return () => observer.disconnect();
-    }, [videoData]);
+            const rect = playerContainerRef.current.getBoundingClientRect();
+            const isVideoOutOfView = rect.bottom < 60; // Video is scrolled above viewport
+
+            // Only show mini-player when paused and video is out of view
+            if (!isPlaying && isVideoOutOfView && !isMiniPlayerMode) {
+                setShowMiniPlayer(true);
+            } else {
+                setShowMiniPlayer(false);
+            }
+        };
+
+        const scrollContainer = leftColumnRef.current;
+        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
+        window.addEventListener('scroll', handleScroll, { passive: true });
+
+        return () => {
+            scrollContainer.removeEventListener('scroll', handleScroll);
+            window.removeEventListener('scroll', handleScroll);
+        };
+    }, [isPlaying, isMiniPlayerMode, videoData]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
@@ -411,14 +389,22 @@ const VideoDetail = () => {
         await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
     };
 
-    // Resume play and scroll to video
-    const handleResumePlay = () => {
-        setShowReturnToPlay(false);
+    // 从迷你播放器恢复：只显示播放器，继续播放
+    const handleResumeFromMiniPlayer = () => {
+        setShowMiniPlayer(false);
+        setIsMiniPlayerMode(true); // 进入迷你播放器模式
         setIsPlaying(true);
         if (playerRef.current) playerRef.current.play();
-        if (playerContainerRef.current) {
-            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+        // 滚动到播放器位置
+        if (leftColumnRef.current) {
+            leftColumnRef.current.scrollTo({ top: 0, behavior: 'smooth' });
         }
+    };
+
+    // 退出迷你播放器模式（显示完整内容）
+    const handleExitMiniPlayerMode = () => {
+        setIsMiniPlayerMode(false);
     };
 
     // Toggle play/pause
@@ -455,97 +441,134 @@ const VideoDetail = () => {
 
     return (
         <div className="min-h-screen md:h-screen bg-gray-50 flex flex-col md:flex-row">
-            {/* 返回播放按钮 - 手机端底部小条 */}
-            {showReturnToPlay && <MiniBar title={videoData.title} onResume={handleResumePlay} />}
-
-            {/* 返回播放按钮 - PC端右侧浮动按钮 */}
-            {showReturnToPlay && <ReturnToPlayButton title={videoData.title} onResume={handleResumePlay} />}
+            {/* 顶部迷你播放器 - 暂停状态下滚动时显示 */}
+            {showMiniPlayer && (
+                <div
+                    className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black to-black/90 px-4 py-2 cursor-pointer"
+                    onClick={handleResumeFromMiniPlayer}
+                >
+                    <div className="flex items-center justify-between max-w-screen-xl mx-auto">
+                        <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg">
+                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                                </svg>
+                            </div>
+                            <div className="text-white">
+                                <div className="text-sm font-medium">继续播放</div>
+                                <div className="text-xs text-gray-300 truncate max-w-[200px] md:max-w-none">{videoData.title}</div>
+                            </div>
+                        </div>
+                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                    </div>
+                </div>
+            )}
 
             {/* 左侧：视频、标题、词汇 */}
-            <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
+            <div ref={leftColumnRef} className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
-                    {/* 上一期/下一期导航 */}
-                    <div className="flex gap-3 mb-3 md:mb-4 pt-12 md:pt-0">
-                        {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
-                            <Link
-                                to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
-                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
-                            >
-                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                </svg>
-                                上一期
-                            </Link>
-                        )}
-                        {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
-                            <Link
-                                to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
-                                className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
-                            >
-                                下一期
-                                <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                </svg>
-                            </Link>
-                        )}
-                    </div>
-
-                    {/* 标题区域 */}
-                    <div className="flex items-start justify-between mb-2 md:mb-3">
-                        <h1 className="text-xl md:text-3xl font-bold flex-1 mr-4">{videoData.title}</h1>
-                        <div className="flex gap-2 shrink-0">
-                            <button
-                                onClick={handleToggleFavorite}
-                                className={`p-2 rounded-full transition-colors ${isFavorite ? 'bg-yellow-100 text-yellow-500 hover:bg-yellow-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                title={isFavorite ? "取消收藏" : "收藏视频"}
-                            >
-                                {isFavorite ? (
-                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                    </svg>
+                    {/* 迷你播放器模式下隐藏导航和标题 */}
+                    {!isMiniPlayerMode && (
+                        <>
+                            {/* 上一期/下一期导航 */}
+                            <div className="flex gap-3 mb-3 md:mb-4">
+                                {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
+                                    <Link
+                                        to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
+                                        className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                                    >
+                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        上一期
+                                    </Link>
                                 )}
-                            </button>
-                            <button
-                                onClick={handleToggleLearned}
-                                className={`p-2 rounded-full transition-colors ${isLearned ? 'bg-green-100 text-green-500 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                title={isLearned ? "标记未学" : "标记已学"}
-                            >
-                                {isLearned ? (
-                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
-                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                                    </svg>
-                                ) : (
-                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                    </svg>
+                                {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
+                                    <Link
+                                        to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
+                                        className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                                    >
+                                        下一期
+                                        <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </Link>
                                 )}
-                            </button>
-                        </div>
-                    </div>
+                            </div>
 
-                    {/* 元数据 */}
-                    <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
-                        <span className="flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                            {/* 标题区域 */}
+                            <div className="flex items-start justify-between mb-2 md:mb-3">
+                                <h1 className="text-xl md:text-3xl font-bold flex-1 mr-4">{videoData.title}</h1>
+                                <div className="flex gap-2 shrink-0">
+                                    <button
+                                        onClick={handleToggleFavorite}
+                                        className={`p-2 rounded-full transition-colors ${isFavorite ? 'bg-yellow-100 text-yellow-500 hover:bg-yellow-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                        title={isFavorite ? "取消收藏" : "收藏视频"}
+                                    >
+                                        {isFavorite ? (
+                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                    <button
+                                        onClick={handleToggleLearned}
+                                        className={`p-2 rounded-full transition-colors ${isLearned ? 'bg-green-100 text-green-500 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
+                                        title={isLearned ? "标记未学" : "标记已学"}
+                                    >
+                                        {isLearned ? (
+                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                                            </svg>
+                                        ) : (
+                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                            </svg>
+                                        )}
+                                    </button>
+                                </div>
+                            </div>
+
+                            {/* 元数据 */}
+                            <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
+                                <span className="flex items-center">
+                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
+                                    </svg>
+                                    {videoData.author}
+                                </span>
+                                <span className="flex items-center">
+                                    <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
+                                        <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                    </svg>
+                                    {videoData.duration}
+                                </span>
+                                <span className="flex items-center">{videoData.level}</span>
+                                <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                                    {videoData.category}
+                                </span>
+                            </div>
+                        </>
+                    )}
+
+                    {/* 迷你播放器模式下显示退出按钮 */}
+                    {isMiniPlayerMode && (
+                        <button
+                            onClick={handleExitMiniPlayerMode}
+                            className="mb-3 flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600 transition-colors"
+                        >
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
                             </svg>
-                            {videoData.author}
-                        </span>
-                        <span className="flex items-center">
-                            <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
-                            </svg>
-                            {videoData.duration}
-                        </span>
-                        <span className="flex items-center">{videoData.level}</span>
-                        <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
-                            {videoData.category}
-                        </span>
-                    </div>
+                            显示完整内容
+                        </button>
+                    )}
 
                     {/* 视频播放器 */}
                     <div
@@ -580,68 +603,70 @@ const VideoDetail = () => {
                         />
                     </div>
 
-                    {/* 重点词汇 - 只在电脑端显示 */}
-                    <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
-                        <h3 className="text-xl font-bold mb-4">重点词汇</h3>
-                        <div className="grid grid-cols-3 gap-4">
-                            {videoData.vocab?.map((item, index) => (
-                                <div key={index} data-vocab-word={item.word} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
-                                    <div className="flex items-end mb-2">
-                                        <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
-                                        <span className="text-sm text-gray-500">{item.type}</span>
-                                    </div>
+                    {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
+                    {!isMiniPlayerMode && (
+                        <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
+                            <h3 className="text-xl font-bold mb-4">重点词汇</h3>
+                            <div className="grid grid-cols-3 gap-4">
+                                {videoData.vocab?.map((item, index) => (
+                                    <div key={index} data-vocab-word={item.word} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                        <div className="flex items-end mb-2">
+                                            <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
+                                            <span className="text-sm text-gray-500">{item.type}</span>
+                                        </div>
 
-                                    <div className="flex flex-col gap-1 mb-2">
-                                        {item.ipa_us && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">US</span>
-                                                <span>/{item.ipa_us}/</span>
-                                                <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                        {item.ipa_uk && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">UK</span>
-                                                <span>/{item.ipa_uk}/</span>
-                                                <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
-
-                                    {item.examples && item.examples.length > 0 && (
-                                        <div className="mb-3 space-y-2">
-                                            {item.examples.map((ex, i) => (
-                                                <div key={i} className="text-sm">
-                                                    <p className="text-gray-800">{ex.en}</p>
-                                                    <p className="text-gray-500 text-xs">{ex.cn}</p>
+                                        <div className="flex flex-col gap-1 mb-2">
+                                            {item.ipa_us && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">US</span>
+                                                    <span>/{item.ipa_us}/</span>
+                                                    <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
-                                            ))}
+                                            )}
+                                            {item.ipa_uk && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">UK</span>
+                                                    <span>/{item.ipa_uk}/</span>
+                                                    <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
 
-                                    {item.collocations && item.collocations.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {item.collocations.map((col, i) => (
-                                                <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-xs rounded border border-indigo-100">
-                                                    {col}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
+
+                                        {item.examples && item.examples.length > 0 && (
+                                            <div className="mb-3 space-y-2">
+                                                {item.examples.map((ex, i) => (
+                                                    <div key={i} className="text-sm">
+                                                        <p className="text-gray-800">{ex.en}</p>
+                                                        <p className="text-gray-500 text-xs">{ex.cn}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {item.collocations && item.collocations.length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {item.collocations.map((col, i) => (
+                                                    <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-xs rounded border border-indigo-100">
+                                                        {col}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
                         </div>
-                    </div>
+                    )}
                 </div>
             </div>
 
@@ -663,7 +688,7 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-20">
+                <div className="flex-1 overflow-y-auto pb-24 md:pb-20">
                     {mode === 'dictation' && (
                         <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
                             <div className="flex justify-around">
@@ -805,6 +830,36 @@ const VideoDetail = () => {
                         </div>
                     </div>
                 </div>
+
+                {/* 返回播放按钮 - PC端：字幕区底部固定 */}
+                {!isPlaying && !isMiniPlayerMode && (
+                    <div className="hidden md:block absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
+                        <button
+                            onClick={handleResumeFromMiniPlayer}
+                            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            </svg>
+                            返回播放
+                        </button>
+                    </div>
+                )}
+
+                {/* 返回播放按钮 - 手机端：页面底部固定 */}
+                {!isPlaying && !isMiniPlayerMode && (
+                    <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-sm border-t border-gray-200 z-40">
+                        <button
+                            onClick={handleResumeFromMiniPlayer}
+                            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
+                        >
+                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            </svg>
+                            返回播放
+                        </button>
+                    </div>
+                )}
 
                 {/* 浮动控制按钮 */}
                 <FloatingControls
