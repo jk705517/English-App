@@ -88,6 +88,7 @@ const VideoDetail = () => {
     // const scrollTimeoutRef = useRef(null); // Removed
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
+    const [activeIndex, setActiveIndex] = useState(-1); // 🆕 当前播放的字幕索引
     const [allVideos, setAllVideos] = useState([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
@@ -375,123 +376,6 @@ const VideoDetail = () => {
         // 也可以监听 mousedown/touchstart 来更激进地捕获交互，但 wheel/touchmove 通常足够且误触少
 
         return () => {
-            subtitleContainer.removeEventListener('wheel', handleUserScroll);
-            subtitleContainer.removeEventListener('touchmove', handleUserScroll);
-        };
-    }, [videoData, mode, isAutoScrollEnabled]);
-
-    // 🆕 监听播放器可见性，控制 MiniBar 显示
-    useEffect(() => {
-        const observer = new IntersectionObserver(
-            ([entry]) => {
-                // 当播放器完全离开视口且未播放时，显示 MiniBar
-                if (!entry.isIntersecting && !isPlaying) {
-                    setShowMiniBar(true);
-                } else {
-                    setShowMiniBar(false);
-                }
-            },
-            { threshold: 0 }
-        );
-
-        if (playerContainerRef.current) {
-            observer.observe(playerContainerRef.current);
-        }
-
-        return () => observer.disconnect();
-    }, [isPlaying]);
-
-    // 🆕 恢复播放/滚动回顶部
-    const handleResumePlay = () => {
-        if (playerContainerRef.current) {
-            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            // 可选：点击后自动播放
-            // setIsPlaying(true);
-        }
-    };
-
-    // 🚀 性能优化：使用 useMemo 缓存活跃字幕索引计算
-    // 避免在每次 render 时都遍历字幕数组
-    const activeIndex = useMemo(() => {
-        if (!videoData?.transcript) return -1;
-
-        return videoData.transcript.findIndex((item, index) => {
-            const nextItem = videoData.transcript[index + 1];
-            return currentTime >= item.start && (!nextItem || currentTime < nextItem.start);
-        });
-    }, [currentTime, videoData]);
-
-    // 恢复自动滚动功能（使用 smooth 滚动）
-    useEffect(() => {
-        // 如果用户手动暂停了跟随，或者在听写模式，则不自动滚动
-        if (!isAutoScrollEnabled || !videoData?.transcript || mode === 'dictation') return;
-
-        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
-            transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }
-    }, [activeIndex, isAutoScrollEnabled, videoData, mode]);
-
-    // 🆕 恢复自动跟随的处理函数
-    const handleResumeFollow = () => {
-        setIsAutoScrollEnabled(true);
-        // 立即滚动一次
-        if (activeIndex !== -1 && transcriptRefs.current[activeIndex]) {
-            transcriptRefs.current[activeIndex].scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
-            });
-        }
-    };
-
-    const handleToggleLearned = async () => {
-        const newLearnedState = !isLearned;
-        setIsLearned(newLearnedState); // Optimistic update
-
-        await progressService.toggleLearnedVideo(user, Number(id), isLearned);
-    };
-
-    const handleToggleFavorite = async () => {
-        const newFavoriteState = !isFavorite;
-        setIsFavorite(newFavoriteState); // Optimistic update
-
-        await favoritesService.toggleFavoriteVideo(user, Number(id), isFavorite);
-
-    };
-
-    // 🆕 修复：handleProgress 增加保护逻辑
-    const handleProgress = useCallback((state) => {
-        // 如果正在跳转中，忽略进度更新
-        if (isSeeking) {
-            return;
-        }
-
-        // 听写模式下且视频暂停时，不更新 currentTime
-        // if (mode === 'dictation' && !isPlaying) {
-        //     return;
-        // }
-
-        setCurrentTime(state.playedSeconds);
-
-        // 单句循环逻辑（非听写模式）
-        if (!videoData?.transcript || !isLooping || mode === 'dictation') return;
-
-        // 找到当前播放位置对应的字幕索引
-        let activeIndex = -1;
-        for (let i = 0; i < videoData.transcript.length; i++) {
-            const item = videoData.transcript[i];
-            const nextItem = videoData.transcript[i + 1];
-            if (state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start)) {
-                activeIndex = i;
-                break;
-            }
-        }
-
-        // 🆕 修复：检测是否即将播放到下一句，提前跳回
-        if (activeIndex !== -1) {
-            const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
             // 如果有下一句，且当前时间接近下一句开始（提前 0.3 秒跳回）
@@ -657,6 +541,15 @@ const VideoDetail = () => {
 
     return (
         <div className="min-h-screen md:h-screen bg-gray-50 flex flex-col md:flex-row">
+            {/* 🆕 继续播放小条 */}
+            {showMiniBar && (
+                <MiniBar
+                    title={videoData.title}
+                    onResume={() => {
+                        setIsPlaying(true);
+                    }}
+                />
+            )}
             {/* 左侧：视频、标题、词汇 */}
             <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
@@ -1055,116 +948,293 @@ const VideoDetail = () => {
                                                 </div>
                                             )}
                                         </div>
-
-                                        <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
-
-                                        {/* 手机端例句展示 */}
-                                        {item.examples && item.examples.length > 0 && (
-                                            <div className="mb-2 space-y-1">
-                                                {item.examples.slice(0, 1).map((ex, i) => (
-                                                    <div key={i} className="text-xs">
-                                                        <p className="text-gray-800">{ex.en}</p>
-                                                        <p className="text-gray-500 text-[10px]">{ex.cn}</p>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
+                            ))}
                                     </div>
-                                ))}
-                            </div>
+                    </div>
                         </div>
                     </div>
-                </div>
 
-                {/* 🆕 "回到当前"悬浮按钮 - 移到左下角，避免遮挡 */}
-                {!isAutoScrollEnabled && (
-                    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 md:absolute md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-20">
-                        <button
-                            onClick={handleResumeFollow}
-                            className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
-                        >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <circle cx="12" cy="12" r="10" strokeWidth="2" />
-                                <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
-                            </svg>
-                            <span className="text-sm font-medium">返回播放</span>
-                        </button>
+                    {/* 字幕区域 - 独立滚动 */}
+                    <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative">
+                        <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white flex items-center justify-between">
+                            <h2 className="text-base md:text-lg font-bold flex items-center">
+                                📖 字幕
+                            </h2>
+
+                            {/* 磨砂玻璃风格多模式工具栏 */}
+                            <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full">
+                                <button
+                                    onClick={() => setMode('dual')}
+                                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'dual'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    双语
+                                </button>
+                                <button
+                                    onClick={() => setMode('en')}
+                                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'en'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    英
+                                </button>
+                                <button
+                                    onClick={() => setMode('cn')}
+                                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'cn'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    中
+                                </button>
+                                <button
+                                    onClick={() => setMode('cloze')}
+                                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'cloze'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    挖空
+                                </button>
+                                <button
+                                    onClick={() => setMode('dictation')}
+                                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === 'dictation'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                >
+                                    听写
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* 滚动内容区域 */}
+                        <div className="flex-1 overflow-y-auto pb-20">
+                            {/* 听写模式统计面板 */}
+                            {mode === 'dictation' && (
+                                <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
+                                    <div className="flex justify-around">
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
+                                            <div className="text-xs text-gray-600">答对</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-red-600">{dictationStats.wrong}</div>
+                                            <div className="text-xs text-gray-600">答错</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-gray-600">{dictationStats.skipped}</div>
+                                            <div className="text-xs text-gray-600">跳过</div>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="text-2xl font-bold text-blue-600">
+                                                {dictationStats.correct + dictationStats.wrong + dictationStats.skipped > 0
+                                                    ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
+                                                    : 0}%
+                                            </div>
+                                            <div className="text-xs text-gray-600">正确率</div>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* 字幕列表 */}
+                            <div className="p-3 md:p-4 space-y-2 md:space-y-3">
+                                {mode === 'dictation' ? (
+                                    /* 听写模式：只显示当前句 */
+                                    <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                                        <DictationInput
+                                            correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
+                                            currentIndex={dictationIndex}
+                                            totalCount={videoData.transcript.length}
+                                            onCorrect={() => {
+                                                console.log('答对了！');
+                                                setDictationStats(prev => ({ ...prev, correct: prev.correct + 1 }));
+                                                // 1.5秒后自动跳到下一句
+                                                setTimeout(() => {
+                                                    handleNextDictation();
+                                                }, 1500);
+                                            }}
+                                            onWrong={() => {
+                                                setDictationStats(prev => ({ ...prev, wrong: prev.wrong + 1 }));
+                                            }}
+                                            onSkip={() => {
+                                                console.log('跳过当前句');
+                                                setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
+                                                handleNextDictation();
+                                            }}
+                                            onReplay={handleReplayDictation}
+                                            hasPlayed={hasPlayedCurrent}
+                                        />
+
+                                        {/* 中文翻译（可折叠） */}
+                                        <details className="mt-4">
+                                            <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
+                                                💡 显示中文翻译
+                                            </summary>
+                                            <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
+                                        </details>
+                                    </div>
+                                ) : (
+                                    /* 恢复完整渲染，解决跳动问题 */
+                                    videoData.transcript.map((item, index) => {
+                                        const isActive = index === activeIndex;
+                                        return (
+                                            <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                                <SubtitleItem
+                                                    item={item}
+                                                    index={index}
+                                                    isActive={isActive}
+                                                    mode={mode}
+                                                    clozePattern={clozeCache[index]}
+                                                    vocab={videoData.vocab}
+                                                    onSeek={handleSeek}
+                                                    playerRef={playerRef}
+                                                    renderClozeText={renderClozeText}
+                                                    onSetIsPlaying={setIsPlaying}
+                                                />
+                                            </div>
+                                        );
+                                    })
+                                )}
+
+                                {/* 重点词汇 - 只在手机端显示，放在字幕列表底部 */}
+                                <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
+                                    <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
+                                    <div className="space-y-3">
+                                        {videoData.vocab?.map((item, index) => (
+                                            <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                                <div className="flex items-end mb-1">
+                                                    <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
+                                                    <span className="text-xs text-gray-500">{item.type}</span>
+                                                </div>
+
+                                                {/* 手机端音标展示 - 美音和英音 */}
+                                                <div className="flex flex-col gap-1 mb-1.5">
+                                                    {item.ipa_us && (
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                            <span className="text-gray-400 w-4">US</span>
+                                                            <span>/{item.ipa_us}/</span>
+                                                            <button
+                                                                onClick={() => speak(item.word, 'en-US')}
+                                                                className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                    {item.ipa_uk && (
+                                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                            <span className="text-gray-400 w-4">UK</span>
+                                                            <span>/{item.ipa_uk}/</span>
+                                                            <button
+                                                                onClick={() => speak(item.word, 'en-GB')}
+                                                                className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                                            >
+                                                                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                                </svg>
+                                                            </button>
+                                                        </div>
+                                                    )}
+                                                </div>
+
+                                                <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
+
+                                                {/* 手机端例句展示 */}
+                                                {item.examples && item.examples.length > 0 && (
+                                                    <div className="mb-2 space-y-1">
+                                                        {item.examples.slice(0, 1).map((ex, i) => (
+                                                            <div key={i} className="text-xs">
+                                                                <p className="text-gray-800">{ex.en}</p>
+                                                                <p className="text-gray-500 text-[10px]">{ex.cn}</p>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* 🆕 "回到当前"悬浮按钮 - 移到左下角，避免遮挡 */}
+                        {!isAutoScrollEnabled && !isPlaying && (
+                            <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 md:absolute md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-20">
+                                <button
+                                    onClick={handleResumeFollow}
+                                    className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="12" r="10" strokeWidth="2" />
+                                        <circle cx="12" cy="12" r="3" fill="currentColor" stroke="none" />
+                                    </svg>
+                                    <span className="text-sm font-medium">返回播放</span>
+                                </button>
+                            </div>
+                        )}
                     </div>
-                )}
-            </div>
 
-            {/* 底部悬浮控制栏 */}
-            <FloatingControls
-                isPlaying={isPlaying}
-                isLooping={isLooping}
-                playbackRate={playbackRate}
-                isLearned={isLearned}
-                isFavorite={isFavorite}
-                onTogglePlay={() => {
-                    const newIsPlaying = !isPlaying;
-                    setIsPlaying(newIsPlaying);
+                    {/* 底部悬浮控制栏 */}
+                    <FloatingControls
+                        isPlaying={isPlaying}
+                        isLooping={isLooping}
+                        playbackRate={playbackRate}
+                        isLearned={isLearned}
+                        isFavorite={isFavorite}
+                        onTogglePlay={() => {
+                            const newIsPlaying = !isPlaying;
+                            setIsPlaying(newIsPlaying);
 
-                    console.log('⏯️ Toggle Play/Pause:', newIsPlaying);
-                    console.log('🎬 playerRef.current:', playerRef.current);
-                    console.log('🔍 playerRef.current type:', typeof playerRef.current);
-
-                    if (playerRef.current) {
-                        console.log('✅ playerRef exists');
-                        console.log('🔑 playerRef.current.play type:', typeof playerRef.current.play);
-                        console.log('🔑 playerRef.current.pause type:', typeof playerRef.current.pause);
-
-                        // 1. 尝试直接调用原生 video 方法 (最可靠)
-                        if (typeof playerRef.current.play === 'function') {
-                            console.log('🎯 Using native video element methods');
-                            if (newIsPlaying) {
-                                console.log('▶️ Calling play()');
-                                playerRef.current.play().catch(e => console.error("❌ Play failed:", e));
-                            } else {
-                                console.log('⏸️ Calling pause()');
-                                playerRef.current.pause();
-                            }
-                        }
-                        // 2. 尝试 ReactPlayer 的 getInternalPlayer
-                        else if (playerRef.current.getInternalPlayer) {
-                            console.log('🎯 Using ReactPlayer getInternalPlayer');
-                            const internalPlayer = playerRef.current.getInternalPlayer();
-                            if (internalPlayer) {
-                                if (newIsPlaying) {
-                                    if (typeof internalPlayer.play === 'function') internalPlayer.play();
-                                    else if (typeof internalPlayer.playVideo === 'function') internalPlayer.playVideo();
-                                } else {
-                                    if (typeof internalPlayer.pause === 'function') internalPlayer.pause();
-                                    else if (typeof internalPlayer.pauseVideo === 'function') internalPlayer.pauseVideo();
+                            if (playerRef.current) {
+                                // 1. 尝试直接调用原生 video 方法 (最可靠)
+                                if (typeof playerRef.current.play === 'function') {
+                                    if (newIsPlaying) {
+                                        playerRef.current.play().catch(e => console.error("❌ Play failed:", e));
+                                    } else {
+                                        playerRef.current.pause();
+                                    }
                                 }
-                            } else {
-                                console.error('❌ getInternalPlayer returned null');
+                                // 2. 尝试 ReactPlayer 的 getInternalPlayer
+                                else if (playerRef.current.getInternalPlayer) {
+                                    const internalPlayer = playerRef.current.getInternalPlayer();
+                                    if (internalPlayer) {
+                                        if (newIsPlaying) {
+                                            if (typeof internalPlayer.play === 'function') internalPlayer.play();
+                                            else if (typeof internalPlayer.playVideo === 'function') internalPlayer.playVideo();
+                                        } else {
+                                            if (typeof internalPlayer.pause === 'function') internalPlayer.pause();
+                                            else if (typeof internalPlayer.pauseVideo === 'function') internalPlayer.pauseVideo();
+                                        }
+                                    }
+                                }
                             }
-                        } else {
-                            console.error('❌ No valid play/pause method found on playerRef');
-                        }
-                    } else {
-                        console.error('❌ Player ref is null');
-                    }
-                }}
-                onToggleLoop={() => setIsLooping(!isLooping)}
-                onChangeSpeed={() => {
-                    const speeds = [0.75, 1, 1.25, 1.5];
-                    const nextSpeed = speeds[(speeds.indexOf(playbackRate) + 1) % speeds.length];
-                    setPlaybackRate(nextSpeed);
-                    // 兼容原生 video 和 ReactPlayer
-                    if (playerRef.current?.getInternalPlayer) {
-                        const player = playerRef.current.getInternalPlayer();
-                        if (player.setPlaybackRate) player.setPlaybackRate(nextSpeed);
-                        else player.playbackRate = nextSpeed;
-                    } else if (playerRef.current) {
-                        playerRef.current.playbackRate = nextSpeed;
-                    }
-                }}
-                onToggleLearned={handleToggleLearned}
-                onToggleFavorite={handleToggleFavorite}
-            />
-        </div>
-    );
+                        }}
+                        onToggleLoop={() => setIsLooping(!isLooping)}
+                        onChangeSpeed={() => {
+                            const speeds = [0.75, 1, 1.25, 1.5];
+                            const nextSpeed = speeds[(speeds.indexOf(playbackRate) + 1) % speeds.length];
+                            setPlaybackRate(nextSpeed);
+                            // 兼容原生 video 和 ReactPlayer
+                            if (playerRef.current?.getInternalPlayer) {
+                                const player = playerRef.current.getInternalPlayer();
+                                if (player.setPlaybackRate) player.setPlaybackRate(nextSpeed);
+                                else player.playbackRate = nextSpeed;
+                            } else if (playerRef.current) {
+                                playerRef.current.playbackRate = nextSpeed;
+                            }
+                        }}
+                        onToggleLearned={handleToggleLearned}
+                        onToggleFavorite={handleToggleFavorite}
+                    />
+                </div>
+                );
 };
 
-export default VideoDetail;
+                export default VideoDetail;
