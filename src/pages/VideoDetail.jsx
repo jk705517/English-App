@@ -60,7 +60,6 @@ const VideoDetail = () => {
     const { user } = useAuth();
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
-    const leftColumnRef = useRef(null);
     const transcriptRefs = useRef([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
@@ -69,8 +68,10 @@ const VideoDetail = () => {
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
-    const [showMiniPlayer, setShowMiniPlayer] = useState(false); // 显示顶部迷你播放器
-    const [isMiniPlayerMode, setIsMiniPlayerMode] = useState(false); // 迷你播放器模式（只显示播放器）
+    // 移动端：是否显示顶部"继续播放"小条（暂停+播放器被滚动隐藏时）
+    const [showMobileMiniBar, setShowMobileMiniBar] = useState(false);
+    // 移动端：是否处于"继续播放"模式（只显示播放器）
+    const [isMobileResumeMode, setIsMobileResumeMode] = useState(false);
     const [clozeCache, setClozeCache] = useState({});
     const [isSeeking, setIsSeeking] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
@@ -139,33 +140,31 @@ const VideoDetail = () => {
         fetchAllVideos();
     }, []);
 
-    // Scroll detection for mini-player (when paused and scrolled away)
+    // 移动端：监听滚动，判断是否显示"继续播放"小条
     useEffect(() => {
-        if (!playerContainerRef.current || !leftColumnRef.current) return;
+        if (!playerContainerRef.current) return;
 
         const handleScroll = () => {
             if (!playerContainerRef.current) return;
 
             const rect = playerContainerRef.current.getBoundingClientRect();
-            const isVideoOutOfView = rect.bottom < 60; // Video is scrolled above viewport
+            // 播放器底部滚动到视口顶部以上时，认为播放器被滚动隐藏
+            const isPlayerHidden = rect.bottom < 50;
 
-            // Only show mini-player when paused and video is out of view
-            if (!isPlaying && isVideoOutOfView && !isMiniPlayerMode) {
-                setShowMiniPlayer(true);
+            // 只有在暂停状态、播放器被隐藏、且不在继续播放模式时，才显示小条
+            if (!isPlaying && isPlayerHidden && !isMobileResumeMode) {
+                setShowMobileMiniBar(true);
             } else {
-                setShowMiniPlayer(false);
+                setShowMobileMiniBar(false);
             }
         };
 
-        const scrollContainer = leftColumnRef.current;
-        scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
         window.addEventListener('scroll', handleScroll, { passive: true });
 
         return () => {
-            scrollContainer.removeEventListener('scroll', handleScroll);
             window.removeEventListener('scroll', handleScroll);
         };
-    }, [isPlaying, isMiniPlayerMode, videoData]);
+    }, [isPlaying, isMobileResumeMode, videoData]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
@@ -389,22 +388,35 @@ const VideoDetail = () => {
         await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
     };
 
-    // 从迷你播放器恢复：只显示播放器，继续播放
-    const handleResumeFromMiniPlayer = () => {
-        setShowMiniPlayer(false);
-        setIsMiniPlayerMode(true); // 进入迷你播放器模式
-        setIsPlaying(true);
-        if (playerRef.current) playerRef.current.play();
-
+    // 移动端：点击"继续播放"小条，进入继续播放模式
+    const handleMobileResume = () => {
+        setShowMobileMiniBar(false);
+        setIsMobileResumeMode(true);
         // 滚动到播放器位置
-        if (leftColumnRef.current) {
-            leftColumnRef.current.scrollTo({ top: 0, behavior: 'smooth' });
+        if (playerContainerRef.current) {
+            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
+        // 开始播放
+        setTimeout(() => {
+            setIsPlaying(true);
+            if (playerRef.current) playerRef.current.play();
+        }, 300);
     };
 
-    // 退出迷你播放器模式（显示完整内容）
-    const handleExitMiniPlayerMode = () => {
-        setIsMiniPlayerMode(false);
+    // 移动端：退出继续播放模式
+    const handleExitMobileResumeMode = () => {
+        setIsMobileResumeMode(false);
+    };
+
+    // PC端：返回播放
+    const handlePCReturnToPlay = () => {
+        if (playerContainerRef.current) {
+            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        setTimeout(() => {
+            setIsPlaying(true);
+            if (playerRef.current) playerRef.current.play();
+        }, 300);
     };
 
     // Toggle play/pause
@@ -439,47 +451,40 @@ const VideoDetail = () => {
         );
     }
 
+    // 判断是否为移动端
+    const isMobile = typeof window !== 'undefined' && window.innerWidth < 768;
+
     return (
         <div className="min-h-screen md:h-screen bg-gray-50 flex flex-col md:flex-row">
-            {/* 顶部迷你播放器 - 暂停状态下滚动时显示 */}
-            {showMiniPlayer && (
+            {/* ========== 移动端：顶部"继续播放"小条 ========== */}
+            {showMobileMiniBar && (
                 <div
-                    className="fixed top-0 left-0 right-0 z-50 bg-gradient-to-b from-black to-black/90 px-4 py-2 cursor-pointer"
-                    onClick={handleResumeFromMiniPlayer}
+                    className="md:hidden fixed top-0 left-0 right-0 z-50 bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 cursor-pointer shadow-lg"
+                    onClick={handleMobileResume}
                 >
-                    <div className="flex items-center justify-between max-w-screen-xl mx-auto">
-                        <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-indigo-600 rounded-full flex items-center justify-center shadow-lg">
-                                <svg className="w-5 h-5 text-white ml-0.5" fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <div className="text-white">
-                                <div className="text-sm font-medium">继续播放</div>
-                                <div className="text-xs text-gray-300 truncate max-w-[200px] md:max-w-none">{videoData.title}</div>
-                            </div>
-                        </div>
-                        <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    <div className="flex items-center justify-center gap-2 text-white">
+                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                         </svg>
+                        <span className="font-medium">继续播放</span>
                     </div>
                 </div>
             )}
 
             {/* 左侧：视频、标题、词汇 */}
-            <div ref={leftColumnRef} className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
+            <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
-                    {/* 迷你播放器模式下隐藏导航和标题 */}
-                    {!isMiniPlayerMode && (
+                    {/* 移动端继续播放模式下隐藏导航和标题 */}
+                    {!isMobileResumeMode && (
                         <>
-                            {/* 上一期/下一期导航 */}
-                            <div className="flex gap-3 mb-3 md:mb-4">
+                            {/* 上一期/下一期导航 - 确保完全可见 */}
+                            <div className="flex gap-3 mb-3 md:mb-4 mt-1">
                                 {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                                     <Link
                                         to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
-                                        className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                                        className="inline-flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm md:text-base"
                                     >
-                                        <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                         </svg>
                                         上一期
@@ -488,10 +493,10 @@ const VideoDetail = () => {
                                 {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
                                     <Link
                                         to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
-                                        className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                                        className="inline-flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm md:text-base"
                                     >
                                         下一期
-                                        <svg className="w-4 h-4 ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <svg className="w-4 h-4 ml-1 md:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                         </svg>
                                     </Link>
@@ -508,11 +513,11 @@ const VideoDetail = () => {
                                         title={isFavorite ? "取消收藏" : "收藏视频"}
                                     >
                                         {isFavorite ? (
-                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20">
                                                 <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
                                             </svg>
                                         ) : (
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                             </svg>
                                         )}
@@ -523,11 +528,11 @@ const VideoDetail = () => {
                                         title={isLearned ? "标记未学" : "标记已学"}
                                     >
                                         {isLearned ? (
-                                            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20">
                                                 <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                                             </svg>
                                         ) : (
-                                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                             </svg>
                                         )}
@@ -557,11 +562,11 @@ const VideoDetail = () => {
                         </>
                     )}
 
-                    {/* 迷你播放器模式下显示退出按钮 */}
-                    {isMiniPlayerMode && (
+                    {/* 移动端继续播放模式下显示退出按钮 */}
+                    {isMobileResumeMode && (
                         <button
-                            onClick={handleExitMiniPlayerMode}
-                            className="mb-3 flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600 transition-colors"
+                            onClick={handleExitMobileResumeMode}
+                            className="md:hidden mb-3 flex items-center gap-2 text-sm text-gray-600 hover:text-indigo-600 transition-colors"
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
@@ -573,7 +578,10 @@ const VideoDetail = () => {
                     {/* 视频播放器 */}
                     <div
                         ref={playerContainerRef}
-                        className={`${isPlaying ? 'sticky top-0 z-40' : 'relative'} bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300`}
+                        className={`
+                            bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300
+                            ${isPlaying ? 'sticky top-0 z-40' : 'relative'}
+                        `}
                         style={{ paddingTop: '56.25%' }}
                     >
                         {isBuffering && (
@@ -604,7 +612,7 @@ const VideoDetail = () => {
                     </div>
 
                     {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
-                    {!isMiniPlayerMode && (
+                    {!isMobileResumeMode && (
                         <div className="hidden md:block mt-6 p-6 bg-white rounded-xl shadow-sm">
                             <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                             <div className="grid grid-cols-3 gap-4">
@@ -688,7 +696,7 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto pb-24 md:pb-20">
+                <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
                     {mode === 'dictation' && (
                         <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
                             <div className="flex justify-around">
@@ -831,26 +839,26 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* 返回播放按钮 - PC端：字幕区底部固定 */}
-                {!isPlaying && !isMiniPlayerMode && (
-                    <div className="hidden md:block absolute bottom-0 left-0 right-0 p-4 bg-gradient-to-t from-white via-white to-transparent">
-                        <button
-                            onClick={handleResumeFromMiniPlayer}
-                            className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
-                        >
-                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                            </svg>
-                            返回播放
-                        </button>
-                    </div>
-                )}
+                {/* ========== PC端：返回播放按钮 ========== */}
+                {/* 按钮尺寸缩小、有播放图标、距离底部有间距 */}
+                <div className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2">
+                    <button
+                        onClick={handlePCReturnToPlay}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full font-medium shadow-lg hover:bg-indigo-700 transition-all hover:scale-105 text-sm"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                        返回播放
+                    </button>
+                </div>
 
-                {/* 返回播放按钮 - 手机端：页面底部固定 */}
-                {!isPlaying && !isMiniPlayerMode && (
+                {/* ========== 移动端：返回播放按钮 ========== */}
+                {/* 仅在非继续播放模式下显示 */}
+                {!isMobileResumeMode && (
                     <div className="md:hidden fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-sm border-t border-gray-200 z-40">
                         <button
-                            onClick={handleResumeFromMiniPlayer}
+                            onClick={handleMobileResume}
                             className="w-full py-3 bg-indigo-600 text-white rounded-xl font-medium shadow-lg hover:bg-indigo-700 transition-all flex items-center justify-center gap-2"
                         >
                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
