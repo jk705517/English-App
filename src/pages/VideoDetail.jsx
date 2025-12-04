@@ -559,15 +559,19 @@ const VideoDetail = () => {
 
                 {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
-                    {/* 视频播放器 - 移动端播放时 sticky */}
+                    {/* 移动端播放时的占位元素 */}
+                    {isMobile && isPlaying && (
+                        <div style={{ paddingTop: '56.25%' }} className="w-full" />
+                    )}
+                    {/* 视频播放器 - 移动端播放时 fixed */}
                     <div
                         ref={playerContainerRef}
                         className={`
                             bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && isPlaying ? 'sticky top-0 z-[80]' : 'relative'}
+                            ${isMobile && isPlaying ? 'fixed top-0 left-0 right-0 z-[80]' : 'relative'}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
-                        style={{ paddingTop: '56.25%' }}
+                        style={isMobile && isPlaying ? { paddingTop: '56.25vw' } : { paddingTop: '56.25%' }}
                     >
                         {isBuffering && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
