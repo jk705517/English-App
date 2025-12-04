@@ -1018,7 +1018,7 @@ const VideoDetail = () => {
 
                 {/* 🆕 "回到当前"悬浮按钮 - 移到左下角，避免遮挡 */}
                 {!isAutoScrollEnabled && (
-                    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 md:bottom-8">
+                    <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 md:absolute md:bottom-8 md:left-1/2 md:-translate-x-1/2 md:z-20">
                         <button
                             onClick={handleResumeFollow}
                             className="flex items-center gap-2 px-4 py-2 bg-indigo-600/90 backdrop-blur-sm text-white rounded-full shadow-lg hover:bg-indigo-700 transition-all transform hover:scale-105 animate-fade-in-up"
@@ -1039,7 +1039,7 @@ const VideoDetail = () => {
                 playbackRate={playbackRate}
                 isLearned={isLearned}
                 isFavorite={isFavorite}
-                onPlayPause={() => {
+                onTogglePlay={() => {
                     const newIsPlaying = !isPlaying;
                     setIsPlaying(newIsPlaying);
 
