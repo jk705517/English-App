@@ -70,6 +70,7 @@ const VideoDetail = () => {
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
     // 移动端：是否显示顶部"继续播放"小条（暂停+播放器被滚动隐藏时）
     const [showMobileMiniBar, setShowMobileMiniBar] = useState(false);
+    const [showMobileReturnBtn, setShowMobileReturnBtn] = useState(false);
     // 移动端：是否处于"继续播放"模式（只显示播放器）
     const [isMobileResumeMode, setIsMobileResumeMode] = useState(false);
     // 检测是否为移动端
@@ -168,6 +169,14 @@ const VideoDetail = () => {
                 setShowMobileMiniBar(true);
             } else {
                 setShowMobileMiniBar(false);
+            }
+
+            // 返回播放按钮：播放器部分滚出视口时显示（top < -100）
+            const isPlayerPartiallyHidden = rect.top < -100;
+            if (!isPlaying && isPlayerPartiallyHidden && !isMobileResumeMode) {
+                setShowMobileReturnBtn(true);
+            } else {
+                setShowMobileReturnBtn(false);
             }
         };
 
@@ -498,7 +507,7 @@ const VideoDetail = () => {
 
             {/* ========== 移动端：底部"返回播放"按钮 ========== */}
             {/* 仅在非继续播放模式、非播放状态下显示 */}
-            {isMobile && !isMobileResumeMode && !isPlaying && (
+            {isMobile && !isMobileResumeMode && showMobileReturnBtn && (
                 <div className="fixed bottom-0 left-0 right-0 p-3 bg-white/95 backdrop-blur-sm border-t border-gray-200 z-[90] md:hidden">
                     <button
                         onClick={handleMobileReturnToPlay}
@@ -518,7 +527,7 @@ const VideoDetail = () => {
                 {!isMobileResumeMode && (
                     <div className="p-3 md:p-6 flex-shrink-0">
                         {/* 上一期/下一期导航 - 增加足够的顶部间距避开导航栏 */}
-                        <div className="flex gap-3 mb-3 md:mb-4 pt-14 md:pt-0">
+                        <div className="flex gap-3 mb-3 md:mb-4 pt-2 md:pt-0">
                             {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                                 <Link
                                     to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
