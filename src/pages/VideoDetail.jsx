@@ -604,9 +604,9 @@ const VideoDetail = () => {
     }
 
     return (
-        <div className="h-screen bg-gray-50 flex flex-col md:flex-row">
+        <div className="min-h-screen md:h-screen bg-gray-50 flex flex-col md:flex-row">
             {/* 左侧：视频、标题、词汇 */}
-            <div className="w-full md:w-3/5 flex flex-col overflow-y-auto">
+            <div className="w-full md:w-3/5 flex flex-col md:overflow-y-auto">
                 <div className="p-3 md:p-6 flex-shrink-0">
                     {/* 上一期/下一期导航 */}
                     <div className="flex gap-3 mb-3 md:mb-4">
