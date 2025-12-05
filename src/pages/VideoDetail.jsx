@@ -190,10 +190,10 @@ const VideoDetail = () => {
     // 首次加载后，一旦有交互就关闭 isInitialLoad
     useEffect(() => {
         if (!isInitialLoad) return;
-        if (isPlaying || hasScrolledAfterPause || !isAtTop || showMobileMiniBar) {
+        if (isPlaying || hasScrolledAfterPause || showMobileMiniBar) {
             setIsInitialLoad(false);
         }
-    }, [isPlaying, hasScrolledAfterPause, isAtTop, showMobileMiniBar, isInitialLoad]);
+    }, [isPlaying, hasScrolledAfterPause, showMobileMiniBar, isInitialLoad]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
