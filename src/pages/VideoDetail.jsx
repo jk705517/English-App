@@ -9,41 +9,8 @@ import HighlightedText from '../components/HighlightedText';
 import SubtitleItem from '../components/SubtitleItem';
 import FloatingControls from '../components/FloatingControls';
 import DictationInput from '../components/DictationInput';
-
-// 交互式填空组件
-const ClozeInput = ({ originalWord, onFocus, onBlur }) => {
-    const [value, setValue] = useState('');
-    const [status, setStatus] = useState('idle');
-
-    const handleKeyDown = (e) => {
-        if (e.key === 'Enter') {
-            const cleanWord = originalWord.replace(/[.,!?;:]/g, '');
-            if (value.trim().toLowerCase() === cleanWord.toLowerCase()) {
-                setStatus('correct');
-            } else {
-                setStatus('error');
-                setTimeout(() => setStatus('idle'), 500);
-            }
-        }
-    };
-
-    if (status === 'correct') {
-        return <span className="text-green-600 font-medium mx-1">{originalWord}</span>;
-    }
-
-    return (
-        <input
-            type="text"
-            value={value}
-            onChange={(e) => setValue(e.target.value)}
-            onKeyDown={handleKeyDown}
-            onFocus={onFocus}
-            onBlur={onBlur}
-            style={{ width: `${Math.max(originalWord.length * 0.65, 2.5)}em` }}
-            className={`inline-block text-center font-medium rounded mx-1 px-1 align-baseline bg-gray-100 text-indigo-600 border-none outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-colors ${status === 'error' ? 'animate-shake text-red-500 bg-red-50' : ''}`}
-        />
-    );
-};
+import ClozeInput from '../components/ClozeInput';
+import { generateClozeData } from '../utils/clozeGenerator';
 
 // TTS 朗读函数
 const speak = (text, lang = 'en-US') => {
@@ -95,7 +62,12 @@ const VideoDetail = () => {
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     // 移动端：是否在页面顶部（用于标题区显示控制）
     const [isAtTop, setIsAtTop] = useState(true);
-    const [clozeCache, setClozeCache] = useState({});
+
+    // 挖空模式相关状态
+    const [clozeData, setClozeData] = useState({});
+    const [clozeResults, setClozeResults] = useState({}); // { `${lineIndex}-${clozeIndex}`: 'correct' | 'revealed' }
+    const pausedByCloze = useRef(false);
+
     // 移动端：是否为首次加载（保证初始进入页面时显示标题区）
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isSeeking, setIsSeeking] = useState(false);
@@ -243,26 +215,12 @@ const VideoDetail = () => {
         }
     }, [mode, videoData]);
 
-    // Calculate and cache cloze pattern
+    // Calculate cloze data
     useEffect(() => {
         if (!videoData?.transcript || !videoData?.vocab) return;
-
-        const vocabWords = videoData.vocab.map(v => v.word.toLowerCase());
-        const cache = {};
-
-        videoData.transcript.forEach((item, lineIndex) => {
-            const words = item.text.split(' ');
-            cache[lineIndex] = words.map((word) => {
-                const cleanWord = word.replace(/[.,!?;:]/g, '');
-                const wordLower = cleanWord.toLowerCase();
-                if (vocabWords.includes(wordLower)) return true;
-                if (cleanWord.length <= 3) return false;
-                if (cleanWord.length > 4) return Math.random() < 0.2;
-                return false;
-            });
-        });
-
-        setClozeCache(cache);
+        const data = generateClozeData(videoData.transcript, videoData.vocab);
+        setClozeData(data);
+        setClozeResults({}); // Reset results on new video
     }, [videoData]);
 
     // Dictation mode timeupdate listener
@@ -364,27 +322,61 @@ const VideoDetail = () => {
 
     // Render cloze text
     const renderClozeText = useCallback((text, lineIndex) => {
-        const words = text.split(' ');
-        const clozePattern = clozeCache[lineIndex] || [];
+        const segments = clozeData[lineIndex];
+        if (!segments) return <span>{text}</span>;
 
         return (
             <span>
-                {words.map((word, i) => {
-                    if (clozePattern[i]) {
+                {segments.map((segment, i) => {
+                    if (segment.type === 'cloze') {
+                        const key = `${lineIndex}-${i}`;
                         return (
                             <ClozeInput
                                 key={i}
-                                originalWord={word}
-                                onFocus={() => setIsAutoScrollEnabled(false)}
-                                onBlur={() => { }}
+                                answer={segment.content}
+                                vocabInfo={segment.vocabInfo}
+                                onFocus={() => {
+                                    setIsAutoScrollEnabled(false);
+                                    if (isPlaying) {
+                                        if (playerRef.current) playerRef.current.pause();
+                                        setIsPlaying(false);
+                                        pausedByCloze.current = true;
+                                    }
+                                }}
+                                onDone={(status) => {
+                                    setClozeResults(prev => ({ ...prev, [key]: status }));
+                                    if (pausedByCloze.current) {
+                                        if (playerRef.current) playerRef.current.play();
+                                        setIsPlaying(true);
+                                        pausedByCloze.current = false;
+                                    }
+                                }}
                             />
                         );
                     }
-                    return <span key={i}>{word} </span>;
+                    return <span key={i}>{segment.content}</span>;
                 })}
+                {/* 单句重听按钮 */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        const sub = videoData.transcript[lineIndex];
+                        if (playerRef.current && sub) {
+                            playerRef.current.currentTime = sub.start;
+                            playerRef.current.play();
+                            setIsPlaying(true);
+                        }
+                    }}
+                    className="ml-2 inline-flex items-center justify-center p-1 text-gray-400 hover:text-indigo-600 transition-colors rounded-full hover:bg-indigo-50"
+                    title="重听此句"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                    </svg>
+                </button>
             </span>
         );
-    }, [clozeCache]);
+    }, [clozeData, isPlaying, videoData]);
 
     // Dictation handlers
     const handleNextDictation = () => {
@@ -745,6 +737,25 @@ const VideoDetail = () => {
                 )}
 
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
+                    {mode === 'cloze' && (
+                        <div className="sticky top-0 z-10 bg-indigo-50 border-b px-4 py-2 flex items-center justify-between text-sm text-indigo-900">
+                            <div className="flex items-center gap-4">
+                                <span>
+                                    <strong>进度：</strong>
+                                    {Object.keys(clozeResults).length} / {Object.values(clozeData).flat().filter(s => s.type === 'cloze').length} 空
+                                </span>
+                                <span>
+                                    <strong>正确率：</strong>
+                                    {(() => {
+                                        const results = Object.values(clozeResults);
+                                        if (results.length === 0) return '0%';
+                                        const correct = results.filter(r => r === 'correct').length;
+                                        return Math.round((correct / results.length) * 100) + '%';
+                                    })()}
+                                </span>
+                            </div>
+                        </div>
+                    )}
                     {mode === 'dictation' && (
                         <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
                             <div className="flex justify-around">
@@ -810,7 +821,7 @@ const VideoDetail = () => {
                                             index={index}
                                             isActive={isActive}
                                             mode={mode}
-                                            clozePattern={clozeCache[index]}
+                                            clozePattern={null}
                                             vocab={videoData.vocab}
                                             onSeek={handleSeek}
                                             playerRef={playerRef}
