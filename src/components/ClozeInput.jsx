@@ -31,7 +31,12 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
             .trim();
     };
 
-    const handleInteraction = () => {
+    const handleInteraction = (e) => {
+        // 阻止事件冒泡，防止触发父级 SubtitleItem 的 onClick (会导致 seek 和播放)
+        if (e && e.stopPropagation) {
+            e.stopPropagation();
+        }
+
         if (onStartAnswer) {
             onStartAnswer();
         }
