@@ -77,6 +77,8 @@ const VideoDetail = () => {
     // 移动端：是否在页面顶部（用于标题区显示控制）
     const [isAtTop, setIsAtTop] = useState(true);
     const [clozeCache, setClozeCache] = useState({});
+    // 移动端：是否为首次加载（保证初始进入页面时显示标题区）
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isSeeking, setIsSeeking] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
@@ -184,6 +186,14 @@ const VideoDetail = () => {
 
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isMobile, isPlaying, hasScrolledAfterPause]);
+
+    // 首次加载后，一旦有交互就关闭 isInitialLoad
+    useEffect(() => {
+        if (!isInitialLoad) return;
+        if (isPlaying || hasScrolledAfterPause || !isAtTop || showMobileMiniBar) {
+            setIsInitialLoad(false);
+        }
+    }, [isPlaying, hasScrolledAfterPause, isAtTop, showMobileMiniBar, isInitialLoad]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
@@ -486,7 +496,7 @@ const VideoDetail = () => {
             <div className="w-full md:w-3/5 md:flex md:flex-col md:overflow-y-auto">
 
                 {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
-                {(!isMobile || (!hasScrolledAfterPause && !isPlaying) || (isAtTop && !isPlaying && !showMobileMiniBar)) && (
+                {(!isMobile || isInitialLoad || (isAtTop && !isPlaying && !showMobileMiniBar)) && (
                     <div className="p-3 md:p-6 flex-shrink-0">
                         {/* 上一期/下一期导航 - 增加足够的顶部间距避开导航栏 */}
                         <div className="flex gap-3 mb-3 md:mb-4 pt-2 md:pt-0">
