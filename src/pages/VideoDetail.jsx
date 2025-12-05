@@ -55,6 +55,25 @@ const speak = (text, lang = 'en-US') => {
     window.speechSynthesis.speak(utterance);
 };
 
+// 字幕导航组件
+const SubtitleTabs = ({ mode, setMode, className = "" }) => (
+    <div className={`flex items-center justify-between ${className}`}>
+        <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
+
+        <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full">
+            {['dual', 'en', 'cn', 'cloze', 'dictation'].map((m) => (
+                <button
+                    key={m}
+                    onClick={() => setMode(m)}
+                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                >
+                    {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'cloze' ? '挖空' : '听写'}
+                </button>
+            ))}
+        </div>
+    </div>
+);
+
 const VideoDetail = () => {
     const { id } = useParams();
     const { user } = useAuth();
@@ -591,46 +610,54 @@ const VideoDetail = () => {
                 <div className="px-3 md:px-6">
                     {/* 移动端播放时的占位元素 */}
                     {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
-                        <div style={{ paddingTop: '56.25%' }} className="w-full" />
+                        <div style={{ paddingTop: 'calc(56.25% + 50px)' }} className="w-full" />
                     )}
                     {/* 视频播放器 - 移动端播放时 fixed */}
                     <div
                         ref={playerContainerRef}
                         className={`
-                            bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80] rounded-xl' : 'relative'}
+                            bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300
+                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-0 right-0 z-[80] rounded-none' : 'relative'}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
-                        style={isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { paddingTop: 'calc(56.25vw - 24px)' } : { paddingTop: '56.25%' }}
                     >
-                        {isBuffering && (
-                            <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
-                                <div className="text-white font-bold flex flex-col items-center">
-                                    <svg className="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                    </svg>
-                                    <span>缓冲中...</span>
+                        <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
+                            {isBuffering && (
+                                <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
+                                    <div className="text-white font-bold flex flex-col items-center">
+                                        <svg className="animate-spin h-8 w-8 mb-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>缓冲中...</span>
+                                    </div>
                                 </div>
+                            )}
+                            <video
+                                ref={playerRef}
+                                src={videoData.video_url}
+                                className="absolute top-0 left-0 w-full h-full"
+                                controls
+                                playsInline
+                                webkit-playsinline="true"
+                                x5-video-player-type="h5"
+                                x5-playsinline="true"
+                                preload="auto"
+                                onPlay={() => {
+                                    setIsPlaying(true);
+                                    setHasScrolledAfterPause(false);
+                                }}
+                                onPause={() => setIsPlaying(false)}
+                                onTimeUpdate={(e) => handleProgress({ playedSeconds: e.target.currentTime })}
+                            />
+                        </div>
+
+                        {/* 移动端：字幕导航条（贴在播放器下面） */}
+                        {isMobile && (
+                            <div className="bg-white border-b px-3 py-2">
+                                <SubtitleTabs mode={mode} setMode={setMode} />
                             </div>
                         )}
-                        <video
-                            ref={playerRef}
-                            src={videoData.video_url}
-                            className="absolute top-0 left-0 w-full h-full"
-                            controls
-                            playsInline
-                            webkit-playsinline="true"
-                            x5-video-player-type="h5"
-                            x5-playsinline="true"
-                            preload="auto"
-                            onPlay={() => {
-                                setIsPlaying(true);
-                                setHasScrolledAfterPause(false);
-                            }}
-                            onPause={() => setIsPlaying(false)}
-                            onTimeUpdate={(e) => handleProgress({ playedSeconds: e.target.currentTime })}
-                        />
                     </div>
                 </div>
 
@@ -704,21 +731,12 @@ const VideoDetail = () => {
 
             {/* 字幕区域 - 独立滚动 */}
             <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative">
-                <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white flex items-center justify-between">
-                    <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
-
-                    <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full">
-                        {['dual', 'en', 'cn', 'cloze', 'dictation'].map((m) => (
-                            <button
-                                key={m}
-                                onClick={() => setMode(m)}
-                                className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                            >
-                                {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'cloze' ? '挖空' : '听写'}
-                            </button>
-                        ))}
+                {/* PC端：字幕导航条（保留在原位） */}
+                {!isMobile && (
+                    <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
+                        <SubtitleTabs mode={mode} setMode={setMode} />
                     </div>
-                </div>
+                )}
 
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
                     {mode === 'dictation' && (
