@@ -335,8 +335,8 @@ const VideoDetail = () => {
                                 key={i}
                                 answer={segment.content}
                                 vocabInfo={segment.vocabInfo}
-                                onFocus={() => {
-                                    setIsAutoScrollEnabled(false);
+                                onStartAnswer={() => {
+                                    // 用户开始作答：如果正在播放，则暂停并标记
                                     if (isPlaying) {
                                         if (playerRef.current) playerRef.current.pause();
                                         setIsPlaying(false);
@@ -345,6 +345,7 @@ const VideoDetail = () => {
                                 }}
                                 onDone={(status) => {
                                     setClozeResults(prev => ({ ...prev, [key]: status }));
+                                    // 作答结束：如果是因挖空而暂停的，则恢复播放
                                     if (pausedByCloze.current) {
                                         if (playerRef.current) playerRef.current.play();
                                         setIsPlaying(true);
@@ -660,7 +661,6 @@ const VideoDetail = () => {
                 )}
 
                 {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
-
                 <div className="hidden md:block p-6 pt-6">
                     <div className="p-6 bg-white rounded-xl shadow-sm">
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
@@ -727,9 +727,9 @@ const VideoDetail = () => {
 
             </div>
 
-            {/* 字幕区域 - 独立滚动 */}
+            {/* Right Side Container Start */}
             <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative">
-                {/* PC端：字幕导航条（保留在原位） */}
+                {/* PC Subtitle Tabs */}
                 {!isMobile && (
                     <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
                         <SubtitleTabs mode={mode} setMode={setMode} />

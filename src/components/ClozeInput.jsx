@@ -9,7 +9,7 @@ import VocabPopover from './VocabPopover';
  * @param {function} onFocus - 聚焦回调 (用于暂停视频)
  * @param {boolean} disabled - 是否禁用
  */
-const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, disabled }) => {
+const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disabled }) => {
     const [value, setValue] = useState('');
     const [status, setStatus] = useState('idle'); // idle, error, correct, revealed
     const [attempts, setAttempts] = useState(0);
@@ -29,6 +29,15 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, disabled }) => {
         return str.toLowerCase()
             .replace(/[.,!?;:'"()]/g, '')
             .trim();
+    };
+
+    const handleInteraction = () => {
+        if (onStartAnswer) {
+            onStartAnswer();
+        }
+        if (onFocus) {
+            onFocus();
+        }
     };
 
     const checkAnswer = () => {
@@ -142,7 +151,8 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, disabled }) => {
                 value={value}
                 onChange={handleChange}
                 onKeyDown={handleKeyDown}
-                onFocus={onFocus}
+                onFocus={handleInteraction}
+                onClick={handleInteraction}
                 onBlur={handleBlur}
                 disabled={disabled}
                 style={{ width: `${width}em` }}
