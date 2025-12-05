@@ -70,6 +70,8 @@ const VideoDetail = () => {
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
     // 移动端：是否显示顶部"继续播放"小条（暂停+播放器被滚动隐藏时）
     const [showMobileMiniBar, setShowMobileMiniBar] = useState(false);
+    // 移动端：暂停后是否已滚动（用于延迟切换小窗口模式）
+    const [hasScrolledAfterPause, setHasScrolledAfterPause] = useState(false);
     // 检测是否为移动端
     const [isMobile, setIsMobile] = useState(false);
     const [clozeCache, setClozeCache] = useState({});
@@ -157,17 +159,23 @@ const VideoDetail = () => {
         const handleScroll = () => {
             if (!playerContainerRef.current) return;
 
+            // 暂停后用户滚动了，标记为已滚动
+            if (!isPlaying && !hasScrolledAfterPause) {
+                setHasScrolledAfterPause(true);
+            }
+
             const rect = playerContainerRef.current.getBoundingClientRect();
             // 暂停状态 + 播放器底部滚出视口顶部时，显示继续播放小条
             const isPlayerHidden = rect.bottom < 60;
-            setShowMobileMiniBar(!isPlaying && isPlayerHidden);
+            // 只有"暂停 + 已滚动 + 播放器隐藏"才显示小窗口
+            setShowMobileMiniBar(!isPlaying && hasScrolledAfterPause && isPlayerHidden);
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
         handleScroll();
 
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isMobile, isPlaying, videoData]);
+    }, [isMobile, isPlaying, hasScrolledAfterPause, videoData]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
@@ -560,7 +568,7 @@ const VideoDetail = () => {
                 {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
                     {/* 移动端播放时的占位元素 */}
-                    {isMobile && isPlaying && (
+                    {isMobile && (isPlaying || !hasScrolledAfterPause) && (
                         <div style={{ paddingTop: '56.25%' }} className="w-full" />
                     )}
                     {/* 视频播放器 - 移动端播放时 fixed */}
@@ -568,10 +576,10 @@ const VideoDetail = () => {
                         ref={playerContainerRef}
                         className={`
                             bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && isPlaying ? 'fixed top-0 left-0 right-0 z-[80]' : 'relative'}
+                            ${isMobile && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80] rounded-xl' : 'relative'}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
-                        style={isMobile && isPlaying ? { paddingTop: '56.25vw' } : { paddingTop: '56.25%' }}
+                        style={isMobile && (isPlaying || !hasScrolledAfterPause) ? { paddingTop: 'calc(56.25vw - 24px)' } : { paddingTop: '56.25%' }}
                     >
                         {isBuffering && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
@@ -594,7 +602,10 @@ const VideoDetail = () => {
                             x5-video-player-type="h5"
                             x5-playsinline="true"
                             preload="auto"
-                            onPlay={() => setIsPlaying(true)}
+                            onPlay={() => {
+                                setIsPlaying(true);
+                                setHasScrolledAfterPause(false);
+                            }}
                             onPause={() => setIsPlaying(false)}
                             onTimeUpdate={(e) => handleProgress({ playedSeconds: e.target.currentTime })}
                         />
@@ -773,7 +784,7 @@ const VideoDetail = () => {
                                     <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
                                         <div className="flex items-end mb-1">
                                             <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
-                                            <span className="text-xs text-gray-500">{item.type}</span>
+                                            <span className="text-sm text-gray-500">{item.type}</span>
                                         </div>
 
                                         <div className="flex flex-col gap-1 mb-1.5">
