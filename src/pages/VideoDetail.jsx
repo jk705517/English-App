@@ -677,9 +677,9 @@ const VideoDetail = () => {
                                     {item.examples && item.examples.length > 0 && (
                                         <div className="mb-3 space-y-2">
                                             {item.examples.map((ex, i) => (
-                                                <div key={i} className="text-sm">
-                                                    <p className="text-gray-800">{ex.en}</p>
-                                                    <p className="text-gray-500 text-xs">{ex.cn}</p>
+                                                <div key={i} className="text-[15px]">
+                                                    <p className="text-gray-800 leading-snug">{ex.en}</p>
+                                                    <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
                                                 </div>
                                             ))}
                                         </div>
@@ -688,7 +688,7 @@ const VideoDetail = () => {
                                     {item.collocations && item.collocations.length > 0 && (
                                         <div className="flex flex-wrap gap-2">
                                             {item.collocations.map((col, i) => (
-                                                <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-xs rounded border border-indigo-100">
+                                                <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-[13px] rounded border border-indigo-100">
                                                     {col}
                                                 </span>
                                             ))}
