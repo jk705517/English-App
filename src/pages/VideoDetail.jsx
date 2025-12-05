@@ -154,28 +154,31 @@ const VideoDetail = () => {
 
     // 移动端：监听滚动，判断是否显示"继续播放"小条
     useEffect(() => {
-        if (!isMobile || !playerContainerRef.current) return;
+        if (!isMobile) return;
 
         const handleScroll = () => {
             if (!playerContainerRef.current) return;
 
-            // 暂停后用户滚动了，标记为已滚动
+            // 暂停状态下，用户滚动时才标记为"已滚动"
+            // 使用本地变量立即反映新状态，避免 React 闭包问题
+            let scrolledAfterPause = hasScrolledAfterPause;
             if (!isPlaying && !hasScrolledAfterPause) {
                 setHasScrolledAfterPause(true);
+                scrolledAfterPause = true;
             }
 
             const rect = playerContainerRef.current.getBoundingClientRect();
-            // 暂停状态 + 播放器底部滚出视口顶部时，显示继续播放小条
             const isPlayerHidden = rect.bottom < 60;
+
             // 只有"暂停 + 已滚动 + 播放器隐藏"才显示小窗口
-            setShowMobileMiniBar(!isPlaying && hasScrolledAfterPause && isPlayerHidden);
+            setShowMobileMiniBar(!isPlaying && scrolledAfterPause && isPlayerHidden);
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        handleScroll();
+        // 不要初始调用 handleScroll()，避免页面加载时错误触发滚动标记
 
         return () => window.removeEventListener('scroll', handleScroll);
-    }, [isMobile, isPlaying, hasScrolledAfterPause, videoData]);
+    }, [isMobile, isPlaying, hasScrolledAfterPause]);
 
     // Save mode to localStorage and handle dictation mode switch
     useEffect(() => {
@@ -402,6 +405,7 @@ const VideoDetail = () => {
     // 移动端：点击"继续播放"，滚动到播放器并继续播放
     const handleMobileResume = () => {
         setShowMobileMiniBar(false);
+        setHasScrolledAfterPause(false); // 重置滚动标记
         // 滚动到播放器位置
         if (playerContainerRef.current) {
             playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
