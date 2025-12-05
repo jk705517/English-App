@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Popover } from '@headlessui/react';
 import VocabPopover from './VocabPopover';
 
 /**
@@ -15,6 +14,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, disabled }) => {
     const [status, setStatus] = useState('idle'); // idle, error, correct, revealed
     const [attempts, setAttempts] = useState(0);
     const [showVocab, setShowVocab] = useState(false);
+    const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
     const inputRef = useRef(null);
     const [width, setWidth] = useState(0);
 
@@ -98,24 +98,37 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, disabled }) => {
 
                 {/* 词汇卡片入口图标 */}
                 {vocabInfo && (
-                    <Popover className="relative inline-block ml-1">
-                        <Popover.Button
-                            className="outline-none text-indigo-400 hover:text-indigo-600 transition-colors"
+                    <>
+                        <button
+                            className="outline-none text-indigo-400 hover:text-indigo-600 transition-colors ml-1"
                             onClick={(e) => {
-                                e.stopPropagation(); // 防止冒泡
+                                e.stopPropagation();
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                // VocabPopover 使用 fixed 定位，需要视口坐标
+                                // 注意：HighlightedText 中加了 scrollY，但 VocabPopover 是 fixed，理论上不应加 scrollY
+                                // 这里我们直接传 rect.bottom (视口坐标)
+                                setPopoverPos({
+                                    x: rect.left,
+                                    y: rect.bottom
+                                });
+                                setShowVocab(true);
                             }}
                         >
                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                             </svg>
-                        </Popover.Button>
+                        </button>
 
-                        <Popover.Panel className="absolute z-50 bottom-full left-1/2 transform -translate-x-1/2 mb-2 w-72 md:w-96">
-                            <div className="bg-white rounded-lg shadow-xl border border-gray-100 overflow-hidden">
-                                <VocabPopover item={vocabInfo} />
-                            </div>
-                        </Popover.Panel>
-                    </Popover>
+                        {showVocab && (
+                            <VocabPopover
+                                word={vocabInfo.word}
+                                vocabInfo={vocabInfo}
+                                position={popoverPos}
+                                onClose={() => setShowVocab(false)}
+                                onPauseVideo={onFocus} // 复用 onFocus (暂停视频)
+                            />
+                        )}
+                    </>
                 )}
             </span>
         );
