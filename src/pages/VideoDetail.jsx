@@ -652,20 +652,20 @@ const VideoDetail = () => {
                             />
                         </div>
                     </div>
-
-                    {/* 移动端：字幕导航条（独立于播放器，吸顶时紧贴播放器下方） */}
-                    {isMobile && (
-                        <div
-                            className={`
-                                bg-white border-b px-3 py-2 transition-all duration-300
-                                ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
-                            `}
-                            style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
-                        >
-                            <SubtitleTabs mode={mode} setMode={setMode} />
-                        </div>
-                    )}
                 </div>
+
+                {/* 移动端：字幕导航条（独立于播放器，吸顶时紧贴播放器下方） */}
+                {isMobile && (
+                    <div
+                        className={`
+                            bg-white border-b px-3 py-2 transition-all duration-300
+                            ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
+                        `}
+                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
+                    >
+                        <SubtitleTabs mode={mode} setMode={setMode} />
+                    </div>
+                )}
 
                 {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
 
