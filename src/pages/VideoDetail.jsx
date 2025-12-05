@@ -590,7 +590,7 @@ const VideoDetail = () => {
                 {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
                     {/* 移动端播放时的占位元素 */}
-                    {isMobile && (isPlaying || !hasScrolledAfterPause) && (
+                    {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
                         <div style={{ paddingTop: '56.25%' }} className="w-full" />
                     )}
                     {/* 视频播放器 - 移动端播放时 fixed */}
@@ -598,10 +598,10 @@ const VideoDetail = () => {
                         ref={playerContainerRef}
                         className={`
                             bg-black rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80] rounded-xl' : 'relative'}
+                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80] rounded-xl' : 'relative'}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
-                        style={isMobile && (isPlaying || !hasScrolledAfterPause) ? { paddingTop: 'calc(56.25vw - 24px)' } : { paddingTop: '56.25%' }}
+                        style={isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { paddingTop: 'calc(56.25vw - 24px)' } : { paddingTop: '56.25%' }}
                     >
                         {isBuffering && (
                             <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/50">
