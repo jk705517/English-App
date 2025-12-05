@@ -73,7 +73,7 @@ const VideoDetail = () => {
     // 移动端：暂停后是否已滚动（用于延迟切换小窗口模式）
     const [hasScrolledAfterPause, setHasScrolledAfterPause] = useState(false);
     // 检测是否为移动端
-    const [isMobile, setIsMobile] = useState(false);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     // 移动端：是否在页面顶部（用于标题区显示控制）
     const [isAtTop, setIsAtTop] = useState(true);
     const [clozeCache, setClozeCache] = useState({});
