@@ -486,7 +486,7 @@ const VideoDetail = () => {
             <div className="w-full md:w-3/5 md:flex md:flex-col md:overflow-y-auto">
 
                 {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
-                {(!isMobile || (isAtTop && !isPlaying && !showMobileMiniBar)) && (
+                {(!isMobile || (!hasScrolledAfterPause && !isPlaying) || (isAtTop && !isPlaying && !showMobileMiniBar)) && (
                     <div className="p-3 md:p-6 flex-shrink-0">
                         {/* 上一期/下一期导航 - 增加足够的顶部间距避开导航栏 */}
                         <div className="flex gap-3 mb-3 md:mb-4 pt-2 md:pt-0">
