@@ -304,14 +304,11 @@ const VideoDetail = () => {
             // 閬垮厤鍥犱负杩涘害鏉¤烦杞鑷?activeIndex 琚噸缃负鍩轰簬鏃堕棿鐨勭储寮?
             if (mode === 'intensive' && isLooping) {
                 // 鍦ㄧ簿璇绘ā寮忎笅锛屽彧鍋氬惊鐜紝涓嶅仛 index 鏇存柊
-                if (nextSub && state.playedSeconds >= nextSub.start - 0.05) {
+                // 浣跨敤 currentSub.end 浣滀负寰幆杈圭晫锛岀‘淇濆彧鎾斁褰撳墠鍙?
+                if (state.playedSeconds >= currentSub.end - 0.05) {
                     if (playerRef.current) {
                         playerRef.current.currentTime = currentSub.start + 0.05;
-                    }
-                } else if (!nextSub && state.playedSeconds >= currentSub.end - 0.05) {
-                    // 鏈€鍚庝竴鍙?
-                    if (playerRef.current) {
-                        playerRef.current.currentTime = currentSub.start + 0.05;
+                        playerRef.current.play();
                     }
                 }
                 return;
@@ -442,8 +439,12 @@ const VideoDetail = () => {
     };
 
     const handleIntensivePlayCurrent = () => {
-        if (activeIndex >= 0 && videoData?.transcript[activeIndex]) {
-            const sentence = videoData.transcript[activeIndex];
+        const index = activeIndex >= 0 ? activeIndex : 0;
+        if (videoData?.transcript[index]) {
+            const sentence = videoData.transcript[index];
+            // 濡傛灉 activeIndex 鏄? -1锛岄渶瑕佹洿鏂?
+            if (activeIndex === -1) setActiveIndex(index);
+
             if (playerRef.current) {
                 playerRef.current.currentTime = sentence.start + 0.05;
                 playerRef.current.play();
