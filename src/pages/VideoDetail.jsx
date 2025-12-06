@@ -10,6 +10,8 @@ import SubtitleItem from '../components/SubtitleItem';
 import FloatingControls from '../components/FloatingControls';
 import DictationInput from '../components/DictationInput';
 import ClozeInput from '../components/ClozeInput';
+import IntensiveSentencePanel from '../components/IntensiveSentencePanel';
+import IntensiveSentenceList from '../components/IntensiveSentenceList';
 import { generateClozeData } from '../utils/clozeGenerator';
 
 // TTS 鏈楄鍑芥暟
@@ -27,14 +29,14 @@ const SubtitleTabs = ({ mode, setMode, className = "" }) => (
     <div className={`flex items-center justify-between ${className}`}>
         <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
 
-        <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full">
-            {['dual', 'en', 'cn', 'cloze', 'dictation'].map((m) => (
+        <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full overflow-x-auto">
+            {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
                 <button
                     key={m}
                     onClick={() => setMode(m)}
-                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
-                    {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'cloze' ? '挖空' : '听写'}
+                    {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                 </button>
             ))}
         </div>
@@ -396,6 +398,28 @@ const VideoDetail = () => {
             if (playerRef.current) playerRef.current.play();
             setHasPlayedCurrent(true);
         }, 100);
+    };
+
+    // Intensive mode handlers
+    const handleIntensiveSelect = (index) => {
+        if (!videoData?.transcript) return;
+        const sentence = videoData.transcript[index];
+        if (sentence) {
+            handleSeek(sentence.start);
+            // Ensure we play and loop this sentence
+            setIsLooping(true);
+            // activeIndex will be updated by handleProgress
+        }
+    };
+
+    const handleIntensivePlayCurrent = () => {
+        if (activeIndex >= 0 && videoData?.transcript[activeIndex]) {
+            const sentence = videoData.transcript[activeIndex];
+            handleSeek(sentence.start);
+            setIsLooping(true);
+            setIsPlaying(true);
+            if (playerRef.current) playerRef.current.play();
+        }
     };
 
     // Toggle handlers
@@ -793,6 +817,19 @@ const VideoDetail = () => {
                                     <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
                                 </details>
                             </div>
+                        ) : mode === 'intensive' ? (
+                            <>
+                                <IntensiveSentencePanel
+                                    sentence={videoData.transcript[activeIndex >= 0 ? activeIndex : 0]}
+                                    onPlaySentence={handleIntensivePlayCurrent}
+                                    isPlaying={isPlaying && isLooping}
+                                />
+                                <IntensiveSentenceList
+                                    transcript={videoData.transcript}
+                                    currentIndex={activeIndex}
+                                    onSelectSentence={handleIntensiveSelect}
+                                />
+                            </>
                         ) : (
                             videoData.transcript.map((item, index) => {
                                 const isActive = index === activeIndex;
