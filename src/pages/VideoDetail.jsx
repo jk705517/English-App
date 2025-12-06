@@ -306,12 +306,12 @@ const VideoDetail = () => {
                 // 鍦ㄧ簿璇绘ā寮忎笅锛屽彧鍋氬惊鐜紝涓嶅仛 index 鏇存柊
                 if (nextSub && state.playedSeconds >= nextSub.start - 0.05) {
                     if (playerRef.current) {
-                        playerRef.current.seekTo(currentSub.start + 0.05, 'seconds');
+                        playerRef.current.currentTime = currentSub.start + 0.05;
                     }
                 } else if (!nextSub && state.playedSeconds >= currentSub.end - 0.05) {
                     // 鏈€鍚庝竴鍙?
                     if (playerRef.current) {
-                        playerRef.current.seekTo(currentSub.start + 0.05, 'seconds');
+                        playerRef.current.currentTime = currentSub.start + 0.05;
                     }
                 }
                 return;
@@ -434,7 +434,8 @@ const VideoDetail = () => {
             setIsLooping(true);
             // 3. 璺宠浆骞舵挱鏀?
             if (playerRef.current) {
-                playerRef.current.seekTo(sentence.start + 0.05, 'seconds');
+                playerRef.current.currentTime = sentence.start + 0.05;
+                playerRef.current.play();
             }
             setIsPlaying(true);
         }
@@ -444,7 +445,8 @@ const VideoDetail = () => {
         if (activeIndex >= 0 && videoData?.transcript[activeIndex]) {
             const sentence = videoData.transcript[activeIndex];
             if (playerRef.current) {
-                playerRef.current.seekTo(sentence.start + 0.05, 'seconds');
+                playerRef.current.currentTime = sentence.start + 0.05;
+                playerRef.current.play();
             }
             setIsLooping(true);
             setIsPlaying(true);
@@ -453,6 +455,9 @@ const VideoDetail = () => {
 
     const handleIntensivePause = () => {
         setIsPlaying(false);
+        if (playerRef.current) {
+            playerRef.current.pause();
+        }
         // 淇濇寔 isLooping = true锛岃繖鏍风敤鎴峰啀娆＄偣鍑绘挱鏀炬椂渚濈劧鏄惊鐜綋鍓嶅彞
     };
 
