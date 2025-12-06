@@ -278,12 +278,21 @@ const VideoDetail = () => {
             return state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start);
         });
 
-        if (newIndex !== -1 && newIndex !== activeIndex) {
-            // 淇锛氱簿璇绘ā寮忎笅锛屽鏋滄鍦ㄥ惊鐜煇涓€鍙ワ紝涓嶈鍥犱负鏃堕棿鍙樺寲鑰屾敼鍙?activeIndex
-            // 闄ら潪鏄敤鎴锋墜鍔ㄧ偣鍑诲垏鎹?
-            if (mode === 'intensive' && isLooping) {
-                return;
+        // Intensive Mode Loop Logic - High Priority
+        if (mode === 'intensive' && isLooping && activeIndex >= 0) {
+            const currentSub = videoData.transcript[activeIndex];
+            if (currentSub && state.playedSeconds >= currentSub.end - 0.1) {
+                if (playerRef.current) {
+                    playerRef.current.currentTime = currentSub.start;
+                    playerRef.current.play();
+                }
             }
+            // In intensive loop mode, we do NOT update activeIndex automatically based on time
+            return;
+        }
+
+        if (newIndex !== -1 && newIndex !== activeIndex) {
+
 
             setActiveIndex(newIndex);
 
@@ -303,14 +312,7 @@ const VideoDetail = () => {
             // 淇锛氬湪绮捐妯″紡涓嬶紝濡傛灉鏄惊鐜姸鎬侊紝涓嶈璁?handleProgress 鑷姩鏇存柊 activeIndex
             // 閬垮厤鍥犱负杩涘害鏉¤烦杞鑷?activeIndex 琚噸缃负鍩轰簬鏃堕棿鐨勭储寮?
             if (mode === 'intensive' && isLooping) {
-                // 鍦ㄧ簿璇绘ā寮忎笅锛屽彧鍋氬惊鐜紝涓嶅仛 index 鏇存柊
-                // 浣跨敤 currentSub.end 浣滀负寰幆杈圭晫锛岀‘淇濆彧鎾斁褰撳墠鍙?
-                if (state.playedSeconds >= currentSub.end - 0.05) {
-                    if (playerRef.current) {
-                        playerRef.current.currentTime = currentSub.start + 0.05;
-                        playerRef.current.play();
-                    }
-                }
+                // Already handled at the top
                 return;
             }
 
