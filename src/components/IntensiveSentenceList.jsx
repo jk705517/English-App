@@ -30,10 +30,10 @@ const IntensiveSentenceList = ({
             {transcript.map((item, index) => {
                 const isActive = index === currentIndex;
                 const hasAnalysis = item.analysis && (
-                    item.analysis.syntax ||
+                    (item.analysis.syntax && item.analysis.syntax.trim() !== '') ||
                     (item.analysis.expressions && item.analysis.expressions.length > 0) ||
-                    item.analysis.phonetics ||
-                    item.analysis.context
+                    (item.analysis.phonetics && item.analysis.phonetics.trim() !== '') ||
+                    (item.analysis.context && item.analysis.context.trim() !== '')
                 );
 
                 return (
@@ -42,7 +42,7 @@ const IntensiveSentenceList = ({
                         ref={isActive ? activeRef : null}
                         onClick={() => onSelectSentence(index)}
                         className={`
-                            group flex items-start p-3 rounded-lg cursor-pointer transition-all duration-200 border-l-4
+                            group flex items-start p-2 rounded-lg cursor-pointer transition-all duration-200 border-l-4
                             ${isActive
                                 ? 'bg-indigo-50 border-indigo-500 shadow-sm'
                                 : 'bg-white border-transparent hover:bg-gray-50'

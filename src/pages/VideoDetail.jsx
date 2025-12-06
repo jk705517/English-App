@@ -279,6 +279,12 @@ const VideoDetail = () => {
         });
 
         if (newIndex !== -1 && newIndex !== activeIndex) {
+            // 淇锛氱簿璇绘ā寮忎笅锛屽鏋滄鍦ㄥ惊鐜煇涓€鍙ワ紝涓嶈鍥犱负鏃堕棿鍙樺寲鑰屾敼鍙?activeIndex
+            // 闄ら潪鏄敤鎴锋墜鍔ㄧ偣鍑诲垏鎹?
+            if (mode === 'intensive' && isLooping) {
+                return;
+            }
+
             setActiveIndex(newIndex);
 
             if (isAutoScrollEnabled && transcriptRefs.current[newIndex]) {
@@ -293,6 +299,23 @@ const VideoDetail = () => {
         if (isLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
+
+            // 淇锛氬湪绮捐妯″紡涓嬶紝濡傛灉鏄惊鐜姸鎬侊紝涓嶈璁?handleProgress 鑷姩鏇存柊 activeIndex
+            // 閬垮厤鍥犱负杩涘害鏉¤烦杞鑷?activeIndex 琚噸缃负鍩轰簬鏃堕棿鐨勭储寮?
+            if (mode === 'intensive' && isLooping) {
+                // 鍦ㄧ簿璇绘ā寮忎笅锛屽彧鍋氬惊鐜紝涓嶅仛 index 鏇存柊
+                if (nextSub && state.playedSeconds >= nextSub.start - 0.05) {
+                    if (playerRef.current) {
+                        playerRef.current.seekTo(currentSub.start + 0.05, 'seconds');
+                    }
+                } else if (!nextSub && state.playedSeconds >= currentSub.end - 0.05) {
+                    // 鏈€鍚庝竴鍙?
+                    if (playerRef.current) {
+                        playerRef.current.seekTo(currentSub.start + 0.05, 'seconds');
+                    }
+                }
+                return;
+            }
 
             if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
                 if (playerRef.current) {
@@ -405,21 +428,43 @@ const VideoDetail = () => {
         if (!videoData?.transcript) return;
         const sentence = videoData.transcript[index];
         if (sentence) {
-            handleSeek(sentence.start);
-            // Ensure we play and loop this sentence
+            // 1. 鏇存柊 activeIndex
+            setActiveIndex(index);
+            // 2. 璁剧疆寰幆
             setIsLooping(true);
-            // activeIndex will be updated by handleProgress
+            // 3. 璺宠浆骞舵挱鏀?
+            if (playerRef.current) {
+                playerRef.current.seekTo(sentence.start + 0.05, 'seconds');
+            }
+            setIsPlaying(true);
         }
     };
 
     const handleIntensivePlayCurrent = () => {
         if (activeIndex >= 0 && videoData?.transcript[activeIndex]) {
             const sentence = videoData.transcript[activeIndex];
-            handleSeek(sentence.start);
+            if (playerRef.current) {
+                playerRef.current.seekTo(sentence.start + 0.05, 'seconds');
+            }
             setIsLooping(true);
             setIsPlaying(true);
-            if (playerRef.current) playerRef.current.play();
         }
+    };
+
+    const handleIntensivePause = () => {
+        setIsPlaying(false);
+        // 淇濇寔 isLooping = true锛岃繖鏍风敤鎴峰啀娆＄偣鍑绘挱鏀炬椂渚濈劧鏄惊鐜綋鍓嶅彞
+    };
+
+    const handleIntensivePrev = () => {
+        const newIndex = Math.max(0, activeIndex - 1);
+        handleIntensiveSelect(newIndex);
+    };
+
+    const handleIntensiveNext = () => {
+        if (!videoData?.transcript) return;
+        const newIndex = Math.min(videoData.transcript.length - 1, activeIndex + 1);
+        handleIntensiveSelect(newIndex);
     };
 
     // Toggle handlers
@@ -822,7 +867,10 @@ const VideoDetail = () => {
                                 <IntensiveSentencePanel
                                     sentence={videoData.transcript[activeIndex >= 0 ? activeIndex : 0]}
                                     onPlaySentence={handleIntensivePlayCurrent}
-                                    isPlaying={isPlaying && isLooping}
+                                    onPauseSentence={handleIntensivePause}
+                                    onPrevSentence={handleIntensivePrev}
+                                    onNextSentence={handleIntensiveNext}
+                                    isPlaying={isPlaying}
                                 />
                                 <IntensiveSentenceList
                                     transcript={videoData.transcript}

@@ -1,43 +1,115 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 
 const IntensiveSentencePanel = ({
     sentence,
     onPlaySentence,
+    onPauseSentence,
+    onPrevSentence,
+    onNextSentence,
     isPlaying
 }) => {
     if (!sentence) return null;
 
     const { text, cn, analysis } = sentence;
 
+    // Highlight phrases in the text
+    const highlightedText = useMemo(() => {
+        if (!analysis?.expressions || analysis.expressions.length === 0) {
+            return text;
+        }
+
+        let parts = [{ text, isPhrase: false }];
+
+        analysis.expressions.forEach(exp => {
+            const phrase = exp.phrase;
+            if (!phrase) return;
+
+            const newParts = [];
+            parts.forEach(part => {
+                if (part.isPhrase) {
+                    newParts.push(part);
+                    return;
+                }
+
+                // Simple case-insensitive split
+                const regex = new RegExp(`(${phrase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                const split = part.text.split(regex);
+
+                split.forEach(s => {
+                    if (s === '') return;
+                    if (s.toLowerCase() === phrase.toLowerCase()) {
+                        newParts.push({ text: s, isPhrase: true });
+                    } else {
+                        newParts.push({ text: s, isPhrase: false });
+                    }
+                });
+            });
+            parts = newParts;
+        });
+
+        return parts.map((part, i) =>
+            part.isPhrase ? (
+                <span key={i} className="text-indigo-600 font-bold bg-indigo-50 px-1 rounded">
+                    {part.text}
+                </span>
+            ) : (
+                <span key={i}>{part.text}</span>
+            )
+        );
+    }, [text, analysis]);
+
     return (
         <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 md:p-6 mb-4">
             {/* Main Sentence Area */}
             <div className="mb-6">
                 <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2 leading-relaxed">
-                    {text}
+                    {highlightedText}
                 </h3>
                 <p className="text-base md:text-lg text-gray-600 mb-4">
                     {cn}
                 </p>
-                <button
-                    onClick={onPlaySentence}
-                    className={`
-                        inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
-                        ${isPlaying
-                            ? 'bg-indigo-100 text-indigo-700'
-                            : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
-                        }
-                    `}
-                >
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        {isPlaying ? (
-                            <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
-                        ) : (
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        )}
-                    </svg>
-                    {isPlaying ? '暂停播放' : '播放本句'}
-                </button>
+
+                <div className="flex flex-wrap gap-3">
+                    <button
+                        onClick={isPlaying ? onPauseSentence : onPlaySentence}
+                        className={`
+                            inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
+                            ${isPlaying
+                                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
+                            }
+                        `}
+                    >
+                        <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            {isPlaying ? (
+                                <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zM7 8a1 1 0 012 0v4a1 1 0 11-2 0V8zm5-1a1 1 0 00-1 1v4a1 1 0 102 0V8a1 1 0 00-1-1z" clipRule="evenodd" />
+                            ) : (
+                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                            )}
+                        </svg>
+                        {isPlaying ? '暂停播放' : '播放本句'}
+                    </button>
+
+                    <button
+                        onClick={onPrevSentence}
+                        className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                    >
+                        <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                        上一句
+                    </button>
+
+                    <button
+                        onClick={onNextSentence}
+                        className="inline-flex items-center px-3 py-2 rounded-full text-sm font-medium bg-gray-100 text-gray-700 hover:bg-gray-200 transition-all"
+                    >
+                        下一句
+                        <svg className="w-4 h-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                    </button>
+                </div>
             </div>
 
             {/* Analysis Content */}
