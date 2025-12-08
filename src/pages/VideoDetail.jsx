@@ -524,7 +524,7 @@ const VideoDetail = () => {
             return;
         }
         const shouldBeFavorite = !favoriteSentenceIds.includes(sentenceId);
-        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite);
+        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(id));
         setFavoriteSentenceIds((prev) =>
             shouldBeFavorite
                 ? [...prev, sentenceId]
@@ -540,7 +540,7 @@ const VideoDetail = () => {
             return;
         }
         const shouldBeFavorite = !favoriteVocabIds.includes(vocabId);
-        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite);
+        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(id));
         setFavoriteVocabIds((prev) =>
             shouldBeFavorite
                 ? [...prev, vocabId]

@@ -101,7 +101,7 @@ async function loadFavoriteItems(user, itemType) {
  * @param {number|string} itemId 
  * @param {boolean} shouldBeFavorite - The TARGET state: true = add to favorites, false = remove from favorites
  */
-async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite) {
+async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite, videoId = null) {
     try {
         // 1. Optimistic update in localStorage (v2)
         let localItems = getLocalFavoritesV2();
@@ -133,9 +133,11 @@ async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite) {
                     item_id: itemId
                 };
 
-                // Legacy compatibility: if it's a video, we MUST provide video_id
+                // Set video_id for all item types
                 if (itemType === ITEM_TYPES.VIDEO) {
                     payload.video_id = itemId;
+                } else if (videoId) {
+                    payload.video_id = videoId;
                 }
 
                 const { error } = await supabase
@@ -193,9 +195,10 @@ export async function loadFavoriteSentenceIds(user) {
  * @param {object|null} user
  * @param {number} sentenceId - The sentence's unique ID from transcript
  * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
+ * @param {number|null} videoId - The video ID this sentence belongs to
  */
-export async function toggleFavoriteSentence(user, sentenceId, shouldBeFavorite) {
-    return toggleFavoriteItem(user, ITEM_TYPES.SENTENCE, sentenceId, shouldBeFavorite);
+export async function toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, videoId = null) {
+    return toggleFavoriteItem(user, ITEM_TYPES.SENTENCE, sentenceId, shouldBeFavorite, videoId);
 }
 
 // === Vocab Favorites ===
@@ -214,9 +217,113 @@ export async function loadFavoriteVocabIds(user) {
  * @param {object|null} user
  * @param {number} vocabId - The vocab item's unique ID
  * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
+ * @param {number|null} videoId - The video ID this vocab belongs to
  */
-export async function toggleFavoriteVocab(user, vocabId, shouldBeFavorite) {
-    return toggleFavoriteItem(user, ITEM_TYPES.VOCAB, vocabId, shouldBeFavorite);
+export async function toggleFavoriteVocab(user, vocabId, shouldBeFavorite, videoId = null) {
+    return toggleFavoriteItem(user, ITEM_TYPES.VOCAB, vocabId, shouldBeFavorite, videoId);
+}
+
+// === Load Favorite Items with Details ===
+
+/**
+ * Load favorite sentence items with video details
+ * @param {object|null} user
+ * @returns {Promise<Array>} Array of favorite sentences with video info
+ */
+export async function loadFavoriteSentenceItems(user) {
+    if (!user) return [];
+
+    try {
+        // 1. Get favorite sentence records (including video_id)
+        const { data: favorites, error } = await supabase
+            .from('user_favorites')
+            .select('item_id, video_id')
+            .eq('user_id', user.id)
+            .eq('item_type', ITEM_TYPES.SENTENCE);
+
+        if (error || !favorites?.length) return [];
+
+        // 2. Get all related videos
+        const videoIds = [...new Set(favorites.map(f => f.video_id).filter(Boolean))];
+        if (videoIds.length === 0) return [];
+
+        const { data: videos } = await supabase
+            .from('videos')
+            .select('id, title, episode, transcript')
+            .in('id', videoIds);
+
+        // 3. Match sentence details
+        const result = [];
+        for (const fav of favorites) {
+            const video = videos?.find(v => v.id === fav.video_id);
+            if (!video?.transcript) continue;
+            const sentence = video.transcript.find(t => t.id === fav.item_id);
+            if (sentence) {
+                result.push({
+                    sentenceId: fav.item_id,
+                    videoId: fav.video_id,
+                    en: sentence.en,
+                    cn: sentence.cn,
+                    start: sentence.start,
+                    episode: video.episode,
+                    title: video.title
+                });
+            }
+        }
+        return result;
+    } catch (error) {
+        console.error('Error loading favorite sentences:', error);
+        return [];
+    }
+}
+
+/**
+ * Load favorite vocab items with video details
+ * @param {object|null} user
+ * @returns {Promise<Array>} Array of favorite vocab items with video info
+ */
+export async function loadFavoriteVocabItems(user) {
+    if (!user) return [];
+
+    try {
+        const { data: favorites, error } = await supabase
+            .from('user_favorites')
+            .select('item_id, video_id')
+            .eq('user_id', user.id)
+            .eq('item_type', ITEM_TYPES.VOCAB);
+
+        if (error || !favorites?.length) return [];
+
+        const videoIds = [...new Set(favorites.map(f => f.video_id).filter(Boolean))];
+        if (videoIds.length === 0) return [];
+
+        const { data: videos } = await supabase
+            .from('videos')
+            .select('id, title, episode, vocab')
+            .in('id', videoIds);
+
+        const result = [];
+        for (const fav of favorites) {
+            const video = videos?.find(v => v.id === fav.video_id);
+            if (!video?.vocab) continue;
+            const vocabItem = video.vocab.find(v => v.id === fav.item_id);
+            if (vocabItem) {
+                result.push({
+                    vocabId: fav.item_id,
+                    videoId: fav.video_id,
+                    word: vocabItem.word,
+                    phonetic: vocabItem.ipa_us || vocabItem.phonetic,
+                    meaning: vocabItem.meaning,
+                    episode: video.episode,
+                    title: video.title
+                });
+            }
+        }
+        return result;
+    } catch (error) {
+        console.error('Error loading favorite vocab:', error);
+        return [];
+    }
 }
 
 // Legacy wrapper for backward compatibility
@@ -231,9 +338,11 @@ export const favoritesService = {
     toggleFavoriteVideoId,
     // Sentence favorites
     loadFavoriteSentenceIds,
+    loadFavoriteSentenceItems,
     toggleFavoriteSentence,
     // Vocab favorites
     loadFavoriteVocabIds,
+    loadFavoriteVocabItems,
     toggleFavoriteVocab,
     // Generic methods
     loadFavoriteItems,
