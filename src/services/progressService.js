@@ -1,91 +1,165 @@
 import { supabase } from './supabaseClient';
+import { ITEM_TYPES } from '../utils/constants';
+
+const STORAGE_KEY_V1 = 'learnedVideoIds';
+const STORAGE_KEY_V2 = 'biubiu_progress_v2';
+
+/**
+ * Helper: Migrate v1 localStorage to v2 if needed
+ */
+function getLocalProgressV2() {
+    try {
+        const v2Data = localStorage.getItem(STORAGE_KEY_V2);
+        if (v2Data) {
+            return JSON.parse(v2Data);
+        }
+
+        const v1Data = localStorage.getItem(STORAGE_KEY_V1);
+        if (v1Data) {
+            const v1Ids = JSON.parse(v1Data);
+            if (Array.isArray(v1Ids)) {
+                const v2List = v1Ids.map(id => ({
+                    itemType: ITEM_TYPES.VIDEO,
+                    itemId: Number(id)
+                }));
+                localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(v2List));
+                return v2List;
+            }
+        }
+        return [];
+    } catch (error) {
+        console.error('Error parsing progress from localStorage:', error);
+        return [];
+    }
+}
+
+/**
+ * Generic: Load learned items by type
+ */
+async function loadLearnedItems(user, itemType) {
+    let localItems = getLocalProgressV2();
+    const localIds = localItems
+        .filter(item => item.itemType === itemType)
+        .map(item => item.itemId);
+
+    if (!user) return localIds;
+
+    try {
+        const { data, error } = await supabase
+            .from('user_progress')
+            .select('item_id')
+            .eq('user_id', user.id)
+            .eq('item_type', itemType);
+
+        if (error) {
+            console.error(`Error fetching user progress for ${itemType}:`, error);
+            return localIds;
+        }
+
+        const remoteIds = data.map(item => item.item_id);
+
+        // Sync to local v2
+        const otherItems = localItems.filter(item => item.itemType !== itemType);
+        const newItems = remoteIds.map(id => ({
+            itemType: itemType,
+            itemId: id
+        }));
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify([...otherItems, ...newItems]));
+
+        return remoteIds;
+    } catch (err) {
+        console.error('Unexpected error loading progress:', err);
+        return localIds;
+    }
+}
+
+/**
+ * Generic: Toggle learned status
+ */
+async function toggleLearnedItem(user, itemType, itemId, isCurrentlyLearned) {
+    let localItems = getLocalProgressV2();
+
+    if (isCurrentlyLearned) {
+        // Remove
+        localItems = localItems.filter(item =>
+            !(item.itemType === itemType && item.itemId === itemId)
+        );
+    } else {
+        // Add
+        const exists = localItems.some(item =>
+            item.itemType === itemType && item.itemId === itemId
+        );
+        if (!exists) {
+            localItems.push({ itemType, itemId });
+        }
+    }
+
+    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
+
+    if (user) {
+        try {
+            if (isCurrentlyLearned) {
+                // Remove from Supabase
+                const { error } = await supabase
+                    .from('user_progress')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('item_type', itemType)
+                    .eq('item_id', itemId);
+
+                if (error) console.error('Error deleting progress:', error);
+            } else {
+                // Add to Supabase
+                const payload = {
+                    user_id: user.id,
+                    item_type: itemType,
+                    item_id: itemId,
+                    learned_at: new Date().toISOString()
+                };
+
+                // Legacy compatibility: if it's a video, we MUST provide video_id
+                if (itemType === ITEM_TYPES.VIDEO) {
+                    payload.video_id = itemId;
+                }
+
+                const { error } = await supabase
+                    .from('user_progress')
+                    .insert(payload);
+
+                if (error) {
+                    console.error('Error inserting progress:', error);
+                    console.error('Payload was:', payload);
+                }
+            }
+        } catch (err) {
+            console.error('Unexpected error syncing progress:', err);
+        }
+    }
+}
 
 export const progressService = {
     /**
-     * Load learned video IDs for the current user.
-     * If user is logged in, fetch from Supabase and sync to localStorage.
-     * If not logged in, read from localStorage.
-     * @param {object} user - The current user object (or null)
-     * @returns {Promise<number[]>} - Array of learned video IDs
+     * Load learned video IDs (Legacy Wrapper)
      */
     async loadLearnedVideoIds(user) {
-        if (user) {
-            try {
-                const { data, error } = await supabase
-                    .from('user_progress')
-                    .select('video_id')
-                    .eq('user_id', user.id);
-
-                if (error) {
-                    console.error('Error fetching user progress:', error);
-                    // Fallback to localStorage on error
-                    return JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-                }
-
-                const learnedIds = data.map(item => item.video_id);
-                // Sync to localStorage
-                localStorage.setItem('learnedVideoIds', JSON.stringify(learnedIds));
-                return learnedIds;
-            } catch (err) {
-                console.error('Unexpected error loading progress:', err);
-                return JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-            }
-        } else {
-            return JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
-        }
+        return loadLearnedItems(user, ITEM_TYPES.VIDEO);
     },
 
     /**
-     * Toggle the learned status of a video.
-     * @param {object} user - The current user object (or null)
-     * @param {number} videoId - The ID of the video
-     * @param {boolean} isCurrentlyLearned - Current learned status
-     * @returns {Promise<number[]>} - Updated array of learned video IDs
+     * Toggle learned status for a video (Legacy Wrapper)
      */
     async toggleLearnedVideo(user, videoId, isCurrentlyLearned) {
-        let learnedIds = JSON.parse(localStorage.getItem('learnedVideoIds') || '[]');
+        // Note: The original function returned the updated list of IDs. 
+        // We should maintain that behavior if possible, or at least return the new list.
+        // The original implementation returned `learnedIds`.
 
-        if (isCurrentlyLearned) {
-            // Remove from local list
-            learnedIds = learnedIds.filter(id => id !== videoId);
-        } else {
-            // Add to local list
-            if (!learnedIds.includes(videoId)) {
-                learnedIds.push(videoId);
-            }
-        }
+        await toggleLearnedItem(user, ITEM_TYPES.VIDEO, videoId, isCurrentlyLearned);
 
-        // Update localStorage
-        localStorage.setItem('learnedVideoIds', JSON.stringify(learnedIds));
+        // Return the updated list to match original signature's return value behavior
+        return loadLearnedItems(null, ITEM_TYPES.VIDEO); // Read from local cache
+    },
 
-        if (user) {
-            try {
-                if (isCurrentlyLearned) {
-                    // Remove from Supabase
-                    const { error } = await supabase
-                        .from('user_progress')
-                        .delete()
-                        .eq('user_id', user.id)
-                        .eq('video_id', videoId);
-
-                    if (error) console.error('Error deleting progress:', error);
-                } else {
-                    // Add to Supabase
-                    const { error } = await supabase
-                        .from('user_progress')
-                        .insert({
-                            user_id: user.id,
-                            video_id: videoId,
-                            learned_at: new Date().toISOString()
-                        });
-
-                    if (error) console.error('Error inserting progress:', error);
-                }
-            } catch (err) {
-                console.error('Unexpected error syncing progress:', err);
-            }
-        }
-
-        return learnedIds;
-    }
+    // Expose generic methods
+    loadLearnedItems,
+    toggleLearnedItem
 };

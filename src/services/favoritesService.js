@@ -1,102 +1,191 @@
 import { supabase } from './supabaseClient';
+import { ITEM_TYPES } from '../utils/constants';
+
+const STORAGE_KEY_V1 = 'favoriteVideoIds';
+const STORAGE_KEY_V2 = 'biubiu_favorites_v2';
 
 /**
- * Load favorite video IDs for the current user
- * @param {object|null} user - The authenticated user object from useAuth, or null if not logged in
- * @returns {Promise<number[]>} Array of favorite video IDs
+ * Helper: Migrate v1 localStorage to v2 if needed
+ * @returns {Array} The v2 favorites array
  */
-export async function loadFavoriteVideoIds(user) {
+function getLocalFavoritesV2() {
     try {
-        if (user) {
-            // Logged-in user: fetch from Supabase
-            const { data, error } = await supabase
-                .from('user_favorites')
-                .select('video_id')
-                .eq('user_id', user.id);
+        // 1. Try to read v2
+        const v2Data = localStorage.getItem(STORAGE_KEY_V2);
+        if (v2Data) {
+            return JSON.parse(v2Data);
+        }
 
-            if (error) {
-                console.error('Error loading favorites from Supabase:', error);
-                // Fallback to localStorage on error
-                const localIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
-                return localIds;
+        // 2. If v2 missing, check v1
+        const v1Data = localStorage.getItem(STORAGE_KEY_V1);
+        if (v1Data) {
+            const v1Ids = JSON.parse(v1Data);
+            if (Array.isArray(v1Ids)) {
+                // Migrate: convert [1, 2] to [{ itemType: 'video', itemId: 1 }, ...]
+                const v2List = v1Ids.map(id => ({
+                    itemType: ITEM_TYPES.VIDEO,
+                    itemId: Number(id)
+                }));
+                // Save to v2
+                localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(v2List));
+                return v2List;
             }
+        }
 
-            // Extract video_id array from data
-            const favoriteIds = data.map(item => item.video_id);
+        return [];
+    } catch (error) {
+        console.error('Error parsing favorites from localStorage:', error);
+        return [];
+    }
+}
 
-            // Cache to localStorage
-            localStorage.setItem('favoriteVideoIds', JSON.stringify(favoriteIds));
+/**
+ * Generic: Load favorite items by type
+ * @param {object|null} user 
+ * @param {string} itemType 
+ * @returns {Promise<Array>} Array of item IDs (e.g. [1, 2, 3])
+ */
+async function loadFavoriteItems(user, itemType) {
+    // Always sync/load from local v2 first
+    let localItems = getLocalFavoritesV2();
 
-            return favoriteIds;
-        } else {
-            // Anonymous user: read from localStorage
-            const localIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+    // Filter for the specific itemType to return simple IDs
+    const localIds = localItems
+        .filter(item => item.itemType === itemType)
+        .map(item => item.itemId);
+
+    if (!user) {
+        return localIds;
+    }
+
+    // Logged-in: fetch from Supabase
+    try {
+        const { data, error } = await supabase
+            .from('user_favorites')
+            .select('item_id')
+            .eq('user_id', user.id)
+            .eq('item_type', itemType);
+
+        if (error) {
+            console.error(`Error loading favorites for ${itemType}:`, error);
             return localIds;
         }
+
+        const remoteIds = data.map(row => row.item_id);
+
+        // Merge remote items into local v2 cache
+        // We need to be careful not to overwrite other itemTypes in localStorage
+        // Strategy: 
+        // 1. Keep other itemTypes from localItems
+        // 2. Replace current itemType items with remoteIds
+        const otherItems = localItems.filter(item => item.itemType !== itemType);
+        const newItems = remoteIds.map(id => ({
+            itemType: itemType,
+            itemId: id
+        }));
+
+        const merged = [...otherItems, ...newItems];
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(merged));
+
+        return remoteIds;
     } catch (error) {
-        console.error('Error in loadFavoriteVideoIds:', error);
-        // Fallback to localStorage
-        const localIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+        console.error('Error in loadFavoriteItems:', error);
         return localIds;
     }
 }
 
 /**
- * Toggle favorite status for a video
- * @param {object|null} user - The authenticated user object from useAuth, or null if not logged in
- * @param {number} videoId - The ID of the video to toggle
- * @param {boolean} isCurrentlyFavorite - Whether the video is currently favorited
+ * Generic: Toggle favorite status
+ * @param {object|null} user 
+ * @param {string} itemType 
+ * @param {number|string} itemId 
+ * @param {boolean} isCurrentlyFavorite 
  */
-export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
+async function toggleFavoriteItem(user, itemType, itemId, isCurrentlyFavorite) {
     try {
-        // Update localStorage immediately (optimistic update)
-        const localIds = JSON.parse(localStorage.getItem('favoriteVideoIds') || '[]');
+        // 1. Optimistic update in localStorage (v2)
+        let localItems = getLocalFavoritesV2();
 
         if (isCurrentlyFavorite) {
-            // Remove from favorites
-            const updatedIds = localIds.filter(id => id !== videoId);
-            localStorage.setItem('favoriteVideoIds', JSON.stringify(updatedIds));
+            // Remove
+            localItems = localItems.filter(item =>
+                !(item.itemType === itemType && item.itemId === itemId)
+            );
         } else {
-            // Add to favorites
-            if (!localIds.includes(videoId)) {
-                localIds.push(videoId);
-                localStorage.setItem('favoriteVideoIds', JSON.stringify(localIds));
+            // Add (check duplicates just in case)
+            const exists = localItems.some(item =>
+                item.itemType === itemType && item.itemId === itemId
+            );
+            if (!exists) {
+                localItems.push({ itemType, itemId });
             }
         }
 
-        // If user is logged in, sync to Supabase
+        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
+
+        // 2. Sync to Supabase if logged in
         if (user) {
             if (isCurrentlyFavorite) {
-                // Delete from user_favorites
+                // Delete
                 const { error } = await supabase
                     .from('user_favorites')
                     .delete()
                     .eq('user_id', user.id)
-                    .eq('video_id', videoId);
+                    .eq('item_type', itemType)
+                    .eq('item_id', itemId);
 
-                if (error) {
-                    console.error('Error removing favorite from Supabase:', error);
-                }
+                if (error) console.error('Error removing favorite from Supabase:', error);
             } else {
-                // Insert into user_favorites
+                // Insert
+                const payload = {
+                    user_id: user.id,
+                    item_type: itemType,
+                    item_id: itemId
+                };
+
+                // Legacy compatibility: if it's a video, we MUST provide video_id
+                // because the column might still be NOT NULL in the database.
+                if (itemType === ITEM_TYPES.VIDEO) {
+                    payload.video_id = itemId;
+                }
+
                 const { error } = await supabase
                     .from('user_favorites')
-                    .insert({
-                        user_id: user.id,
-                        video_id: videoId
-                    });
+                    .insert(payload);
 
                 if (error) {
                     console.error('Error adding favorite to Supabase:', error);
+                    console.error('Payload was:', payload);
                 }
             }
         }
     } catch (error) {
-        console.error('Error in toggleFavoriteVideo:', error);
+        console.error('Error in toggleFavoriteItem:', error);
     }
 }
 
+/**
+ * Load favorite video IDs (Legacy Wrapper)
+ */
+export async function loadFavoriteVideoIds(user) {
+    return loadFavoriteItems(user, ITEM_TYPES.VIDEO);
+}
+
+/**
+ * Toggle favorite video (Legacy Wrapper)
+ */
+export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
+    return toggleFavoriteItem(user, ITEM_TYPES.VIDEO, videoId, isCurrentlyFavorite);
+}
+
+// Future extensions:
+// export async function toggleFavoriteSentence(user, sentenceId, isFav) { ... }
+// export async function toggleFavoriteVocab(user, vocabId, isFav) { ... }
+
 export const favoritesService = {
     loadFavoriteVideoIds,
-    toggleFavoriteVideo
+    toggleFavoriteVideo,
+    // Expose generic methods if needed, or keep them internal until needed
+    loadFavoriteItems,
+    toggleFavoriteItem
 };
