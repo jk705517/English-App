@@ -21,8 +21,14 @@ const SubtitleItem = memo(({
     // 点击收藏按钮（阻止事件冒泡，避免触发 seek）
     const handleFavoriteClick = (e) => {
         e.stopPropagation();
-        if (onToggleFavorite && item.id) {
-            onToggleFavorite(item.id);
+        if (onToggleFavorite) {
+            // 使用 item.id，如果不存在则使用 index（通过回调传递）
+            const sentenceId = item.id;
+            if (sentenceId === undefined || sentenceId === null) {
+                console.warn('⚠️ SubtitleItem: item.id is missing! Please run migration script to add IDs to transcript data.');
+                return;
+            }
+            onToggleFavorite(sentenceId);
         }
     };
 
@@ -49,8 +55,8 @@ const SubtitleItem = memo(({
                 <button
                     onClick={handleFavoriteClick}
                     className={`absolute right-2 top-3 p-1 rounded-full transition-colors ${isFavorite
-                            ? 'text-yellow-500 hover:bg-yellow-100'
-                            : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                        ? 'text-yellow-500 hover:bg-yellow-100'
+                        : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                         }`}
                     title={isFavorite ? "取消收藏" : "收藏句子"}
                 >

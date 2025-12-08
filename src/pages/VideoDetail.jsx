@@ -518,6 +518,11 @@ const VideoDetail = () => {
 
     // 句子收藏切换
     const handleToggleSentenceFavorite = async (sentenceId) => {
+        // 防止 sentenceId 为 undefined 导致问题
+        if (sentenceId === undefined || sentenceId === null) {
+            console.warn('⚠️ handleToggleSentenceFavorite: sentenceId is missing! Please run migration script to add IDs to transcript data.');
+            return;
+        }
         const shouldBeFavorite = !favoriteSentenceIds.includes(sentenceId);
         await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite);
         setFavoriteSentenceIds((prev) =>
@@ -529,6 +534,11 @@ const VideoDetail = () => {
 
     // 词汇收藏切换
     const handleToggleVocabFavorite = async (vocabId) => {
+        // 防止 vocabId 为 undefined 导致所有卡片一起变色
+        if (vocabId === undefined || vocabId === null) {
+            console.warn('⚠️ handleToggleVocabFavorite: vocabId is missing! Please run migration script to add IDs to vocab data.');
+            return;
+        }
         const shouldBeFavorite = !favoriteVocabIds.includes(vocabId);
         await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite);
         setFavoriteVocabIds((prev) =>
@@ -976,8 +986,8 @@ const VideoDetail = () => {
                                         <button
                                             onClick={() => handleToggleVocabFavorite(item.id)}
                                             className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.includes(item.id)
-                                                    ? 'text-yellow-500 hover:bg-yellow-100'
-                                                    : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                                                ? 'text-yellow-500 hover:bg-yellow-100'
+                                                : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                                                 }`}
                                             title={favoriteVocabIds.includes(item.id) ? "取消收藏" : "收藏词汇"}
                                         >
