@@ -8,7 +8,9 @@ const IntensiveSentenceList = ({
     onSelectSentence,
     // Favorite props
     favoriteSentenceIds = [],
-    onToggleFavorite
+    onToggleFavorite,
+    // Notebook props
+    onAddToNotebook
 }) => {
     const activeRef = useRef(null);
     const [showChinese, setShowChinese] = useState(true);
@@ -93,6 +95,7 @@ const IntensiveSentenceList = ({
                                 onSelect={onSelectSentence}
                                 isFavorite={isFavorite}
                                 onToggleFavorite={onToggleFavorite}
+                                onAddToNotebook={onAddToNotebook}
                             />
                         </div>
                     );

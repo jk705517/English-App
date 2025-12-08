@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
+import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { Heart, BookOpen, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
@@ -26,6 +27,10 @@ function Favorites() {
     // Vocab favorites state
     const [favoriteVocabs, setFavoriteVocabs] = useState([]);
     const [vocabsLoaded, setVocabsLoaded] = useState(false);
+
+    // Notebook dialog state
+    const [notebookDialogOpen, setNotebookDialogOpen] = useState(false);
+    const [notebookDialogItem, setNotebookDialogItem] = useState(null);
 
     // Loading/error state
     const [loading, setLoading] = useState(true);
@@ -246,13 +251,33 @@ function Favorites() {
                                                     第 {sentence.episode} 期 · {sentence.title}
                                                 </p>
                                             </div>
-                                            {/* 去学习按钮 */}
-                                            <button
-                                                onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
-                                                className="shrink-0 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                            >
-                                                去学习
-                                            </button>
+                                            <div className="flex flex-col gap-2 shrink-0">
+                                                {/* 加入本子按钮 */}
+                                                <button
+                                                    onClick={() => {
+                                                        setNotebookDialogItem({
+                                                            itemType: 'sentence',
+                                                            itemId: sentence.sentenceId,
+                                                            videoId: sentence.videoId
+                                                        });
+                                                        setNotebookDialogOpen(true);
+                                                    }}
+                                                    className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg hover:bg-indigo-50 hover:text-indigo-500 font-medium transition-colors text-sm flex items-center gap-1"
+                                                    title="加入本子"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                                    </svg>
+                                                    加入本子
+                                                </button>
+                                                {/* 去学习按钮 */}
+                                                <button
+                                                    onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                >
+                                                    去学习
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 ))}
@@ -288,13 +313,32 @@ function Favorites() {
                                                     </span>
                                                 )}
                                             </div>
-                                            {/* 去学习按钮 */}
-                                            <button
-                                                onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
-                                                className="shrink-0 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                            >
-                                                去学习
-                                            </button>
+                                            <div className="flex gap-1 shrink-0">
+                                                {/* 加入本子按钮 */}
+                                                <button
+                                                    onClick={() => {
+                                                        setNotebookDialogItem({
+                                                            itemType: 'vocab',
+                                                            itemId: vocab.vocabId,
+                                                            videoId: vocab.videoId
+                                                        });
+                                                        setNotebookDialogOpen(true);
+                                                    }}
+                                                    className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-500 transition-colors"
+                                                    title="加入本子"
+                                                >
+                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                                    </svg>
+                                                </button>
+                                                {/* 去学习按钮 */}
+                                                <button
+                                                    onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                    className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                >
+                                                    去学习
+                                                </button>
+                                            </div>
                                         </div>
                                         {/* 中文释义 */}
                                         <p className="text-gray-600 mb-3">
@@ -317,6 +361,22 @@ function Favorites() {
                     )}
                 </>
             )}
+
+            {/* Add to Notebook Dialog */}
+            <AddToNotebookDialog
+                isOpen={notebookDialogOpen}
+                onClose={() => {
+                    setNotebookDialogOpen(false);
+                    setNotebookDialogItem(null);
+                }}
+                user={user}
+                itemType={notebookDialogItem?.itemType}
+                itemId={notebookDialogItem?.itemId}
+                videoId={notebookDialogItem?.videoId}
+                onSuccess={(notebookName) => {
+                    console.log(`Added to notebook: ${notebookName}`);
+                }}
+            />
         </div>
     );
 }
