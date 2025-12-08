@@ -177,9 +177,47 @@ export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
     return toggleFavoriteItem(user, ITEM_TYPES.VIDEO, videoId, isCurrentlyFavorite);
 }
 
-// Future extensions:
-// export async function toggleFavoriteSentence(user, sentenceId, isFav) { ... }
-// export async function toggleFavoriteVocab(user, vocabId, isFav) { ... }
+// === Sentence Favorites ===
+
+/**
+ * Load favorite sentence IDs
+ * @param {object|null} user
+ * @returns {Promise<number[]>} Array of favorited sentence IDs
+ */
+export async function loadFavoriteSentenceIds(user) {
+    return loadFavoriteItems(user, ITEM_TYPES.SENTENCE);
+}
+
+/**
+ * Toggle sentence favorite status
+ * @param {object|null} user
+ * @param {number} sentenceId - The sentence's unique ID from transcript
+ * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
+ */
+export async function toggleFavoriteSentence(user, sentenceId, shouldBeFavorite) {
+    return toggleFavoriteItem(user, ITEM_TYPES.SENTENCE, sentenceId, shouldBeFavorite);
+}
+
+// === Vocab Favorites ===
+
+/**
+ * Load favorite vocab IDs
+ * @param {object|null} user
+ * @returns {Promise<number[]>} Array of favorited vocab IDs
+ */
+export async function loadFavoriteVocabIds(user) {
+    return loadFavoriteItems(user, ITEM_TYPES.VOCAB);
+}
+
+/**
+ * Toggle vocab favorite status
+ * @param {object|null} user
+ * @param {number} vocabId - The vocab item's unique ID
+ * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
+ */
+export async function toggleFavoriteVocab(user, vocabId, shouldBeFavorite) {
+    return toggleFavoriteItem(user, ITEM_TYPES.VOCAB, vocabId, shouldBeFavorite);
+}
 
 // Legacy wrapper for backward compatibility
 export async function toggleFavoriteVideoId(user, videoId, isFavorite) {
@@ -187,10 +225,17 @@ export async function toggleFavoriteVideoId(user, videoId, isFavorite) {
 }
 
 export const favoritesService = {
+    // Video favorites
     loadFavoriteVideoIds,
     toggleFavoriteVideo,
-    toggleFavoriteVideoId, // Export the legacy wrapper
-    // Expose generic methods if needed, or keep them internal until needed
+    toggleFavoriteVideoId,
+    // Sentence favorites
+    loadFavoriteSentenceIds,
+    toggleFavoriteSentence,
+    // Vocab favorites
+    loadFavoriteVocabIds,
+    toggleFavoriteVocab,
+    // Generic methods
     loadFavoriteItems,
     toggleFavoriteItem
 };

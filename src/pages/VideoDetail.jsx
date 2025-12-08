@@ -83,6 +83,10 @@ const VideoDetail = () => {
     const [dictationIndex, setDictationIndex] = useState(0);
     const [hasPlayedCurrent, setHasPlayedCurrent] = useState(false);
 
+    // 句子和词汇收藏状态
+    const [favoriteSentenceIds, setFavoriteSentenceIds] = useState([]);
+    const [favoriteVocabIds, setFavoriteVocabIds] = useState([]);
+
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
@@ -116,6 +120,24 @@ const VideoDetail = () => {
         };
         loadFavoriteStatus();
     }, [id, user]);
+
+    // Load sentence favorites
+    useEffect(() => {
+        const loadSentenceFavorites = async () => {
+            const ids = await favoritesService.loadFavoriteSentenceIds(user);
+            setFavoriteSentenceIds(ids);
+        };
+        loadSentenceFavorites();
+    }, [user]);
+
+    // Load vocab favorites
+    useEffect(() => {
+        const loadVocabFavorites = async () => {
+            const ids = await favoritesService.loadFavoriteVocabIds(user);
+            setFavoriteVocabIds(ids);
+        };
+        loadVocabFavorites();
+    }, [user]);
 
     // Fetch video data
     useEffect(() => {
@@ -494,6 +516,28 @@ const VideoDetail = () => {
         await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
     };
 
+    // 句子收藏切换
+    const handleToggleSentenceFavorite = async (sentenceId) => {
+        const shouldBeFavorite = !favoriteSentenceIds.includes(sentenceId);
+        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite);
+        setFavoriteSentenceIds((prev) =>
+            shouldBeFavorite
+                ? [...prev, sentenceId]
+                : prev.filter(id => id !== sentenceId)
+        );
+    };
+
+    // 词汇收藏切换
+    const handleToggleVocabFavorite = async (vocabId) => {
+        const shouldBeFavorite = !favoriteVocabIds.includes(vocabId);
+        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite);
+        setFavoriteVocabIds((prev) =>
+            shouldBeFavorite
+                ? [...prev, vocabId]
+                : prev.filter(id => id !== vocabId)
+        );
+    };
+
     // 绉诲姩绔細鐐瑰嚮"缁х画鎾斁"锛屾粴鍔ㄥ埌鎾斁鍣ㄥ苟缁х画鎾斁
     const handleMobileResume = () => {
         setShowMobileMiniBar(false);
@@ -731,7 +775,20 @@ const VideoDetail = () => {
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
                             {videoData.vocab?.map((item, index) => (
-                                <div key={index} data-vocab-word={item.word} className="p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                <div key={item.id || index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                    {/* 收藏按钮（右上角）*/}
+                                    <button
+                                        onClick={() => handleToggleVocabFavorite(item.id)}
+                                        className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.includes(item.id)
+                                            ? 'text-yellow-500 hover:bg-yellow-100'
+                                            : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                                            }`}
+                                        title={favoriteVocabIds.includes(item.id) ? "取消收藏" : "收藏词汇"}
+                                    >
+                                        <svg className="w-4 h-4" fill={favoriteVocabIds.includes(item.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                        </svg>
+                                    </button>
                                     <div className="flex items-end mb-2">
                                         <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
                                         <span className="text-sm text-gray-500">{item.type}</span>
@@ -901,6 +958,8 @@ const VideoDetail = () => {
                                             playerRef={playerRef}
                                             renderClozeText={renderClozeText}
                                             onSetIsPlaying={setIsPlaying}
+                                            isFavorite={favoriteSentenceIds.includes(item.id)}
+                                            onToggleFavorite={handleToggleSentenceFavorite}
                                         />
                                     </div>
                                 );
@@ -912,7 +971,20 @@ const VideoDetail = () => {
                             <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => (
-                                    <div key={index} data-vocab-word={item.word} className="p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                    <div key={item.id || index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                        {/* 收藏按钮（右上角）*/}
+                                        <button
+                                            onClick={() => handleToggleVocabFavorite(item.id)}
+                                            className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.includes(item.id)
+                                                    ? 'text-yellow-500 hover:bg-yellow-100'
+                                                    : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            title={favoriteVocabIds.includes(item.id) ? "取消收藏" : "收藏词汇"}
+                                        >
+                                            <svg className="w-4 h-4" fill={favoriteVocabIds.includes(item.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        </button>
                                         <div className="flex items-end mb-1">
                                             <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
                                             <span className="text-sm text-gray-500">{item.type}</span>
