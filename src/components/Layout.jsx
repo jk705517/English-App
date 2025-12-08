@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { Home, Heart, Settings, GraduationCap } from 'lucide-react';
+import { Home, Heart, Settings, GraduationCap, BookOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 
 function Layout() {
@@ -8,6 +8,7 @@ function Layout() {
     const navItems = [
         { path: '/', icon: Home, label: '首页' },
         { path: '/favorites', icon: Heart, label: '收藏' },
+        { path: '/notebooks', icon: BookOpen, label: '本子' },
         { path: '/settings', icon: Settings, label: '设置' },
     ];
 
