@@ -80,6 +80,66 @@ function Notebooks() {
         }
     };
 
+    // 移除单条句子
+    const handleRemoveSentence = async (sentenceId) => {
+        if (!confirm('确认从本子中移除这条句子吗？')) return;
+
+        const success = await notebookService.removeItemFromNotebook(user, {
+            notebookId: selectedNotebook.id,
+            itemType: 'sentence',
+            itemId: sentenceId
+        });
+
+        if (success) {
+            // 更新本子详情中的句子列表
+            setNotebookDetail(prev => ({
+                ...prev,
+                sentences: prev.sentences.filter(s => s.sentenceId !== sentenceId)
+            }));
+            // 更新左侧本子列表的计数
+            setNotebooks(prev => prev.map(nb =>
+                nb.id === selectedNotebook.id
+                    ? { ...nb, sentenceCount: nb.sentenceCount - 1 }
+                    : nb
+            ));
+            // 同步更新 selectedNotebook
+            setSelectedNotebook(prev => ({
+                ...prev,
+                sentenceCount: prev.sentenceCount - 1
+            }));
+        }
+    };
+
+    // 移除单条词汇
+    const handleRemoveVocab = async (vocabId) => {
+        if (!confirm('确认从本子中移除这个词汇吗？')) return;
+
+        const success = await notebookService.removeItemFromNotebook(user, {
+            notebookId: selectedNotebook.id,
+            itemType: 'vocab',
+            itemId: vocabId
+        });
+
+        if (success) {
+            // 更新本子详情中的词汇列表
+            setNotebookDetail(prev => ({
+                ...prev,
+                vocabs: prev.vocabs.filter(v => v.vocabId !== vocabId)
+            }));
+            // 更新左侧本子列表的计数
+            setNotebooks(prev => prev.map(nb =>
+                nb.id === selectedNotebook.id
+                    ? { ...nb, vocabCount: nb.vocabCount - 1 }
+                    : nb
+            ));
+            // 同步更新 selectedNotebook
+            setSelectedNotebook(prev => ({
+                ...prev,
+                vocabCount: prev.vocabCount - 1
+            }));
+        }
+    };
+
     // 未登录提示
     if (!user) {
         return (
@@ -149,8 +209,8 @@ function Notebooks() {
                                     key={notebook.id}
                                     onClick={() => handleSelectNotebook(notebook)}
                                     className={`group flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${selectedNotebook?.id === notebook.id
-                                            ? 'bg-indigo-600 text-white shadow-md'
-                                            : 'bg-white hover:bg-gray-50 shadow-sm'
+                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        : 'bg-white hover:bg-gray-50 shadow-sm'
                                         }`}
                                 >
                                     <div className="flex-1 min-w-0">
@@ -172,8 +232,8 @@ function Notebooks() {
                                         <button
                                             onClick={(e) => handleDeleteNotebook(notebook.id, e)}
                                             className={`p-1.5 rounded-lg transition-colors ${selectedNotebook?.id === notebook.id
-                                                    ? 'hover:bg-indigo-500'
-                                                    : 'hover:bg-gray-200 opacity-0 group-hover:opacity-100'
+                                                ? 'hover:bg-indigo-500'
+                                                : 'hover:bg-gray-200 opacity-0 group-hover:opacity-100'
                                                 }`}
                                         >
                                             <Trash2 className="w-4 h-4" />
@@ -218,8 +278,8 @@ function Notebooks() {
                                 <button
                                     onClick={() => setActiveTab('sentence')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'sentence'
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
                                     <MessageSquare className="w-4 h-4" />
@@ -228,8 +288,8 @@ function Notebooks() {
                                 <button
                                     onClick={() => setActiveTab('vocab')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'vocab'
-                                            ? 'bg-indigo-600 text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        ? 'bg-indigo-600 text-white'
+                                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
                                     <BookOpen className="w-4 h-4" />
@@ -258,12 +318,21 @@ function Notebooks() {
                                                             第 {sentence.episode} 期 · {sentence.title}
                                                         </p>
                                                     </div>
-                                                    <button
-                                                        onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
-                                                        className="shrink-0 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                                    >
-                                                        去学习
-                                                    </button>
+                                                    <div className="flex gap-2 shrink-0">
+                                                        <button
+                                                            onClick={() => handleRemoveSentence(sentence.sentenceId)}
+                                                            className="px-3 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                                                            title="从本子中移除"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                        >
+                                                            去学习
+                                                        </button>
+                                                    </div>
                                                 </div>
                                             </div>
                                         ))}
@@ -296,12 +365,21 @@ function Notebooks() {
                                                             </span>
                                                         )}
                                                     </div>
-                                                    <button
-                                                        onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
-                                                        className="shrink-0 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                                    >
-                                                        去学习
-                                                    </button>
+                                                    <div className="flex gap-1 shrink-0">
+                                                        <button
+                                                            onClick={() => handleRemoveVocab(vocab.vocabId)}
+                                                            className="px-2 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                            title="从本子中移除"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                        <button
+                                                            onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                            className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                        >
+                                                            去学习
+                                                        </button>
+                                                    </div>
                                                 </div>
                                                 <p className="text-gray-600 mb-3">
                                                     {vocab.meaning}
