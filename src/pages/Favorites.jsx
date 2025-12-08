@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import { Heart, BookOpen, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -9,6 +9,7 @@ import { supabase } from '../services/supabaseClient';
 
 function Favorites() {
     const { user } = useAuth();
+    const navigate = useNavigate();
 
     // Tab state
     const [activeTab, setActiveTab] = useState('video'); // 'video' | 'sentence' | 'vocab'
@@ -167,8 +168,8 @@ function Favorites() {
                         key={tab.key}
                         onClick={() => setActiveTab(tab.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab.key
-                                ? 'bg-indigo-600 text-white'
-                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            ? 'bg-indigo-600 text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
                         <tab.icon className="w-4 h-4" />
@@ -246,12 +247,12 @@ function Favorites() {
                                                 </p>
                                             </div>
                                             {/* 去学习按钮 */}
-                                            <Link
-                                                to={`/video/${sentence.videoId}`}
+                                            <button
+                                                onClick={() => navigate(`/video/${sentence.videoId}?sentenceId=${sentence.sentenceId}`)}
                                                 className="shrink-0 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
                                             >
                                                 去学习
-                                            </Link>
+                                            </button>
                                         </div>
                                     </div>
                                 ))}
@@ -288,12 +289,12 @@ function Favorites() {
                                                 )}
                                             </div>
                                             {/* 去学习按钮 */}
-                                            <Link
-                                                to={`/video/${vocab.videoId}`}
+                                            <button
+                                                onClick={() => navigate(`/video/${vocab.videoId}?vocabId=${vocab.vocabId}`)}
                                                 className="shrink-0 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
                                             >
                                                 去学习
-                                            </Link>
+                                            </button>
                                         </div>
                                         {/* 中文释义 */}
                                         <p className="text-gray-600 mb-3">

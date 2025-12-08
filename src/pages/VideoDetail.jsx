@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation } from 'react-router-dom';
 import ReactPlayer from 'react-player';
 import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
@@ -45,7 +45,13 @@ const SubtitleTabs = ({ mode, setMode, className = "" }) => (
 
 const VideoDetail = () => {
     const { id } = useParams();
+    const location = useLocation();
     const { user } = useAuth();
+
+    // Parse query params for sentence/vocab navigation from Favorites page
+    const searchParams = new URLSearchParams(location.search);
+    const sentenceIdFromQuery = searchParams.get('sentenceId');
+    const vocabIdFromQuery = searchParams.get('vocabId');
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
     const transcriptRefs = useRef([]);
@@ -156,6 +162,55 @@ const VideoDetail = () => {
         };
         fetchVideoData();
     }, [id]);
+
+    // Handle navigation from Favorites page - scroll to specific sentence or vocab
+    useEffect(() => {
+        if (!videoData) return;
+
+        // Handle sentence navigation
+        if (sentenceIdFromQuery) {
+            const sentenceId = Number(sentenceIdFromQuery);
+            const idx = videoData.transcript?.findIndex(s => s.id === sentenceId);
+            if (idx >= 0) {
+                // Set active index to highlight the sentence
+                setActiveIndex(idx);
+                // Scroll to the sentence after a short delay to ensure DOM is ready
+                setTimeout(() => {
+                    if (transcriptRefs.current[idx]) {
+                        transcriptRefs.current[idx].scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'center'
+                        });
+                    }
+                    // Seek video to sentence start time
+                    const sentence = videoData.transcript[idx];
+                    if (sentence && playerRef.current) {
+                        playerRef.current.currentTime = sentence.start;
+                    }
+                }, 300);
+            }
+        }
+
+        // Handle vocab navigation
+        if (vocabIdFromQuery) {
+            const vocabId = Number(vocabIdFromQuery);
+            // Scroll to vocab card after a short delay
+            setTimeout(() => {
+                const vocabElement = document.querySelector(`[data-vocab-id="${vocabId}"]`);
+                if (vocabElement) {
+                    vocabElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'center'
+                    });
+                    // Add highlight effect
+                    vocabElement.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                    setTimeout(() => {
+                        vocabElement.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                    }, 3000);
+                }
+            }, 500);
+        }
+    }, [videoData, sentenceIdFromQuery, vocabIdFromQuery]);
 
     // Fetch all videos for navigation
     useEffect(() => {
@@ -785,7 +840,7 @@ const VideoDetail = () => {
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
                             {videoData.vocab?.map((item, index) => (
-                                <div key={item.id || index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
                                     {/* 收藏按钮（右上角）*/}
                                     <button
                                         onClick={() => handleToggleVocabFavorite(item.id)}
@@ -981,7 +1036,7 @@ const VideoDetail = () => {
                             <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => (
-                                    <div key={item.id || index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                    <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
                                         {/* 收藏按钮（右上角）*/}
                                         <button
                                             onClick={() => handleToggleVocabFavorite(item.id)}

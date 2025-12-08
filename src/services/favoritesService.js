@@ -262,7 +262,7 @@ export async function loadFavoriteSentenceItems(user) {
                 result.push({
                     sentenceId: fav.item_id,
                     videoId: fav.video_id,
-                    en: sentence.en,
+                    en: sentence.text || sentence.en,  // Handle both field names
                     cn: sentence.cn,
                     start: sentence.start,
                     episode: video.episode,
