@@ -74,41 +74,35 @@ async function loadLearnedItems(user, itemType) {
 }
 
 /**
- * Generic: Toggle learned status
+ * Generic: Set learned status for an item
+ * @param {object|null} user 
+ * @param {string} itemType 
+ * @param {number|string} itemId 
+ * @param {boolean} shouldBeLearned - The TARGET state: true = mark as learned, false = mark as not learned
  */
-async function toggleLearnedItem(user, itemType, itemId, isCurrentlyLearned) {
+async function toggleLearnedItem(user, itemType, itemId, shouldBeLearned) {
     let localItems = getLocalProgressV2();
 
-    if (isCurrentlyLearned) {
-        // Remove
-        localItems = localItems.filter(item =>
-            !(item.itemType === itemType && item.itemId === itemId)
-        );
-    } else {
-        // Add
+    if (shouldBeLearned) {
+        // Target: ADD to learned
         const exists = localItems.some(item =>
             item.itemType === itemType && item.itemId === itemId
         );
         if (!exists) {
             localItems.push({ itemType, itemId });
         }
+    } else {
+        // Target: REMOVE from learned
+        localItems = localItems.filter(item =>
+            !(item.itemType === itemType && item.itemId === itemId)
+        );
     }
 
     localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
 
     if (user) {
         try {
-            if (isCurrentlyLearned) {
-                // Remove from Supabase
-                const { error } = await supabase
-                    .from('user_progress')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('item_type', itemType)
-                    .eq('item_id', itemId);
-
-                if (error) console.error('Error deleting progress:', error);
-            } else {
+            if (shouldBeLearned) {
                 // Add to Supabase
                 const payload = {
                     user_id: user.id,
@@ -130,6 +124,16 @@ async function toggleLearnedItem(user, itemType, itemId, isCurrentlyLearned) {
                     console.error('Error inserting progress:', error);
                     console.error('Payload was:', payload);
                 }
+            } else {
+                // Remove from Supabase
+                const { error } = await supabase
+                    .from('user_progress')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('item_type', itemType)
+                    .eq('item_id', itemId);
+
+                if (error) console.error('Error deleting progress:', error);
             }
         } catch (err) {
             console.error('Unexpected error syncing progress:', err);

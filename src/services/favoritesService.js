@@ -95,48 +95,38 @@ async function loadFavoriteItems(user, itemType) {
 }
 
 /**
- * Generic: Toggle favorite status
+ * Generic: Set favorite status for an item
  * @param {object|null} user 
  * @param {string} itemType 
  * @param {number|string} itemId 
- * @param {boolean} isCurrentlyFavorite 
+ * @param {boolean} shouldBeFavorite - The TARGET state: true = add to favorites, false = remove from favorites
  */
-async function toggleFavoriteItem(user, itemType, itemId, isCurrentlyFavorite) {
+async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite) {
     try {
         // 1. Optimistic update in localStorage (v2)
         let localItems = getLocalFavoritesV2();
 
-        if (isCurrentlyFavorite) {
-            // Remove
-            localItems = localItems.filter(item =>
-                !(item.itemType === itemType && item.itemId === itemId)
-            );
-        } else {
-            // Add (check duplicates just in case)
+        if (shouldBeFavorite) {
+            // Target: ADD to favorites
             const exists = localItems.some(item =>
                 item.itemType === itemType && item.itemId === itemId
             );
             if (!exists) {
                 localItems.push({ itemType, itemId });
             }
+        } else {
+            // Target: REMOVE from favorites
+            localItems = localItems.filter(item =>
+                !(item.itemType === itemType && item.itemId === itemId)
+            );
         }
 
         localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
 
         // 2. Sync to Supabase if logged in
         if (user) {
-            if (isCurrentlyFavorite) {
-                // Delete
-                const { error } = await supabase
-                    .from('user_favorites')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('item_type', itemType)
-                    .eq('item_id', itemId);
-
-                if (error) console.error('Error removing favorite from Supabase:', error);
-            } else {
-                // Insert
+            if (shouldBeFavorite) {
+                // Insert (add to favorites)
                 const payload = {
                     user_id: user.id,
                     item_type: itemType,
@@ -144,7 +134,6 @@ async function toggleFavoriteItem(user, itemType, itemId, isCurrentlyFavorite) {
                 };
 
                 // Legacy compatibility: if it's a video, we MUST provide video_id
-                // because the column might still be NOT NULL in the database.
                 if (itemType === ITEM_TYPES.VIDEO) {
                     payload.video_id = itemId;
                 }
@@ -157,6 +146,16 @@ async function toggleFavoriteItem(user, itemType, itemId, isCurrentlyFavorite) {
                     console.error('Error adding favorite to Supabase:', error);
                     console.error('Payload was:', payload);
                 }
+            } else {
+                // Delete (remove from favorites)
+                const { error } = await supabase
+                    .from('user_favorites')
+                    .delete()
+                    .eq('user_id', user.id)
+                    .eq('item_type', itemType)
+                    .eq('item_id', itemId);
+
+                if (error) console.error('Error removing favorite from Supabase:', error);
             }
         }
     } catch (error) {
