@@ -5,7 +5,10 @@ const IntensiveSentenceList = ({
     transcript,
     currentIndex,
     visitedSet,
-    onSelectSentence
+    onSelectSentence,
+    // Favorite props
+    favoriteSentenceIds = [],
+    onToggleFavorite
 }) => {
     const activeRef = useRef(null);
     const [showChinese, setShowChinese] = useState(true);
@@ -77,6 +80,7 @@ const IntensiveSentenceList = ({
                 {transcript.map((item, index) => {
                     const isActive = index === currentIndex;
                     const isVisited = visitedSet ? visitedSet.has(index) : false;
+                    const isFavorite = item.id !== undefined && favoriteSentenceIds.includes(item.id);
 
                     return (
                         <div key={index} ref={isActive ? activeRef : null}>
@@ -87,6 +91,8 @@ const IntensiveSentenceList = ({
                                 isVisited={isVisited}
                                 showChinese={showChinese}
                                 onSelect={onSelectSentence}
+                                isFavorite={isFavorite}
+                                onToggleFavorite={onToggleFavorite}
                             />
                         </div>
                     );

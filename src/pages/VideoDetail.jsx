@@ -52,6 +52,7 @@ const VideoDetail = () => {
     const searchParams = new URLSearchParams(location.search);
     const sentenceIdFromQuery = searchParams.get('sentenceId');
     const vocabIdFromQuery = searchParams.get('vocabId');
+    const modeFromQuery = searchParams.get('mode');
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
     const transcriptRefs = useRef([]);
@@ -82,7 +83,8 @@ const VideoDetail = () => {
     const [isSeeking, setIsSeeking] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
     const [playbackRate, setPlaybackRate] = useState(1);
-    const [mode, setMode] = useState(() => localStorage.getItem('studyMode') || 'dual');
+    // Initialize mode: URL query param > localStorage > default 'dual'
+    const [mode, setMode] = useState(() => modeFromQuery || localStorage.getItem('studyMode') || 'dual');
     const [isLearned, setIsLearned] = useState(false);
     const [isFavorite, setIsFavorite] = useState(false);
     const [dictationStats, setDictationStats] = useState({ correct: 0, wrong: 0, skipped: 0 });
@@ -127,23 +129,23 @@ const VideoDetail = () => {
         loadFavoriteStatus();
     }, [id, user]);
 
-    // Load sentence favorites
+    // Load sentence favorites (filtered by current video)
     useEffect(() => {
         const loadSentenceFavorites = async () => {
-            const ids = await favoritesService.loadFavoriteSentenceIds(user);
+            const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(id));
             setFavoriteSentenceIds(ids);
         };
         loadSentenceFavorites();
-    }, [user]);
+    }, [user, id]);
 
-    // Load vocab favorites
+    // Load vocab favorites (filtered by current video)
     useEffect(() => {
         const loadVocabFavorites = async () => {
-            const ids = await favoritesService.loadFavoriteVocabIds(user);
+            const ids = await favoritesService.loadFavoriteVocabIds(user, Number(id));
             setFavoriteVocabIds(ids);
         };
         loadVocabFavorites();
-    }, [user]);
+    }, [user, id]);
 
     // Fetch video data
     useEffect(() => {
@@ -1005,6 +1007,8 @@ const VideoDetail = () => {
                                     currentIndex={activeIndex}
                                     visitedSet={visitedSet}
                                     onSelectSentence={handleIntensiveSelect}
+                                    favoriteSentenceIds={favoriteSentenceIds}
+                                    onToggleFavorite={handleToggleSentenceFavorite}
                                 />
                             </>
                         ) : (

@@ -95,6 +95,45 @@ async function loadFavoriteItems(user, itemType) {
 }
 
 /**
+ * Load favorite items by type AND video (for sentence/vocab to avoid cross-video bleeding)
+ * @param {object|null} user 
+ * @param {string} itemType 
+ * @param {number} videoId - The video ID to filter by
+ * @returns {Promise<Array>} Array of item IDs belonging to this video
+ */
+async function loadFavoriteItemsByVideo(user, itemType, videoId) {
+    // Load from localStorage v2, filtering by both itemType and videoId
+    let localItems = getLocalFavoritesV2();
+    const localIds = localItems
+        .filter(item => item.itemType === itemType && item.videoId === videoId)
+        .map(item => item.itemId);
+
+    if (!user) {
+        return localIds;
+    }
+
+    // Logged-in: fetch from Supabase with video_id filter
+    try {
+        const { data, error } = await supabase
+            .from('user_favorites')
+            .select('item_id')
+            .eq('user_id', user.id)
+            .eq('item_type', itemType)
+            .eq('video_id', videoId);
+
+        if (error) {
+            console.error(`Error loading favorites for ${itemType} in video ${videoId}:`, error);
+            return localIds;
+        }
+
+        return data.map(row => row.item_id);
+    } catch (error) {
+        console.error('Error in loadFavoriteItemsByVideo:', error);
+        return localIds;
+    }
+}
+
+/**
  * Generic: Set favorite status for an item
  * @param {object|null} user 
  * @param {string} itemType 
@@ -108,16 +147,23 @@ async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite, vide
 
         if (shouldBeFavorite) {
             // Target: ADD to favorites
+            // For sentence/vocab, also include videoId in localStorage
+            const newItem = { itemType, itemId };
+            if (videoId && itemType !== ITEM_TYPES.VIDEO) {
+                newItem.videoId = videoId;
+            }
             const exists = localItems.some(item =>
-                item.itemType === itemType && item.itemId === itemId
+                item.itemType === itemType && item.itemId === itemId &&
+                (itemType === ITEM_TYPES.VIDEO || item.videoId === videoId)
             );
             if (!exists) {
-                localItems.push({ itemType, itemId });
+                localItems.push(newItem);
             }
         } else {
             // Target: REMOVE from favorites
             localItems = localItems.filter(item =>
-                !(item.itemType === itemType && item.itemId === itemId)
+                !(item.itemType === itemType && item.itemId === itemId &&
+                    (itemType === ITEM_TYPES.VIDEO || item.videoId === videoId))
             );
         }
 
@@ -182,12 +228,17 @@ export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
 // === Sentence Favorites ===
 
 /**
- * Load favorite sentence IDs
+ * Load favorite sentence IDs for a specific video
  * @param {object|null} user
- * @returns {Promise<number[]>} Array of favorited sentence IDs
+ * @param {number} videoId - The video ID to filter by (required to avoid cross-video bleeding)
+ * @returns {Promise<number[]>} Array of favorited sentence IDs for this video
  */
-export async function loadFavoriteSentenceIds(user) {
-    return loadFavoriteItems(user, ITEM_TYPES.SENTENCE);
+export async function loadFavoriteSentenceIds(user, videoId) {
+    if (!videoId) {
+        console.warn('loadFavoriteSentenceIds: videoId is required to avoid cross-video state bleeding');
+        return [];
+    }
+    return loadFavoriteItemsByVideo(user, ITEM_TYPES.SENTENCE, videoId);
 }
 
 /**
@@ -204,12 +255,17 @@ export async function toggleFavoriteSentence(user, sentenceId, shouldBeFavorite,
 // === Vocab Favorites ===
 
 /**
- * Load favorite vocab IDs
+ * Load favorite vocab IDs for a specific video
  * @param {object|null} user
- * @returns {Promise<number[]>} Array of favorited vocab IDs
+ * @param {number} videoId - The video ID to filter by (required to avoid cross-video bleeding)
+ * @returns {Promise<number[]>} Array of favorited vocab IDs for this video
  */
-export async function loadFavoriteVocabIds(user) {
-    return loadFavoriteItems(user, ITEM_TYPES.VOCAB);
+export async function loadFavoriteVocabIds(user, videoId) {
+    if (!videoId) {
+        console.warn('loadFavoriteVocabIds: videoId is required to avoid cross-video state bleeding');
+        return [];
+    }
+    return loadFavoriteItemsByVideo(user, ITEM_TYPES.VOCAB, videoId);
 }
 
 /**
