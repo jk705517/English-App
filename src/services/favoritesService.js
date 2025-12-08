@@ -182,9 +182,15 @@ export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
 // export async function toggleFavoriteSentence(user, sentenceId, isFav) { ... }
 // export async function toggleFavoriteVocab(user, vocabId, isFav) { ... }
 
+// Legacy wrapper for backward compatibility
+export async function toggleFavoriteVideoId(user, videoId, isFavorite) {
+    return toggleFavoriteItem(user, ITEM_TYPES.VIDEO, videoId, isFavorite);
+}
+
 export const favoritesService = {
     loadFavoriteVideoIds,
     toggleFavoriteVideo,
+    toggleFavoriteVideoId, // Export the legacy wrapper
     // Expose generic methods if needed, or keep them internal until needed
     loadFavoriteItems,
     toggleFavoriteItem

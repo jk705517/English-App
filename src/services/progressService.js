@@ -159,6 +159,11 @@ export const progressService = {
         return loadLearnedItems(null, ITEM_TYPES.VIDEO); // Read from local cache
     },
 
+    // Legacy wrapper for backward compatibility
+    async toggleLearnedVideoId(user, videoId, isLearned) {
+        return toggleLearnedItem(user, ITEM_TYPES.VIDEO, videoId, isLearned);
+    },
+
     // Expose generic methods
     loadLearnedItems,
     toggleLearnedItem
