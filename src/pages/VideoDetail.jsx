@@ -55,6 +55,7 @@ const VideoDetail = () => {
     const [allVideos, setAllVideos] = useState([]);
     const [isPlaying, setIsPlaying] = useState(false);
     const [isLooping, setIsLooping] = useState(false);
+    const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
     // 绉诲姩绔細鏄惁鏄剧ず椤堕儴"缁х画鎾斁"灏忔潯锛堟殏鍋?鎾斁鍣ㄨ婊氬姩闅愯棌鏃讹級
     const [showMobileMiniBar, setShowMobileMiniBar] = useState(false);
@@ -287,7 +288,10 @@ const VideoDetail = () => {
                     playerRef.current.play();
                 }
             }
-            // In intensive loop mode, we do NOT update activeIndex automatically based on time
+            // Always mark current sentence as visited when playing in intensive mode
+            if (!visitedSet.has(activeIndex)) {
+                setVisitedSet(prev => new Set(prev).add(activeIndex));
+            }
             return;
         }
 
@@ -427,11 +431,13 @@ const VideoDetail = () => {
         if (!videoData?.transcript) return;
         const sentence = videoData.transcript[index];
         if (sentence) {
-            // 1. 鏇存柊 activeIndex
+            // 1. Update activeIndex
             setActiveIndex(index);
-            // 2. 璁剧疆寰幆
+            // 2. Set looping
             setIsLooping(true);
-            // 3. 璺宠浆骞舵挱鏀?
+            // 3. Add to visited
+            setVisitedSet(prev => new Set(prev).add(index));
+            // 4. Seek and Play
             if (playerRef.current) {
                 playerRef.current.currentTime = sentence.start + 0.05;
                 playerRef.current.play();
@@ -872,17 +878,10 @@ const VideoDetail = () => {
                             </div>
                         ) : mode === 'intensive' ? (
                             <>
-                                <IntensiveSentencePanel
-                                    sentence={videoData.transcript[activeIndex >= 0 ? activeIndex : 0]}
-                                    onPlaySentence={handleIntensivePlayCurrent}
-                                    onPauseSentence={handleIntensivePause}
-                                    onPrevSentence={handleIntensivePrev}
-                                    onNextSentence={handleIntensiveNext}
-                                    isPlaying={isPlaying}
-                                />
                                 <IntensiveSentenceList
                                     transcript={videoData.transcript}
                                     currentIndex={activeIndex}
+                                    visitedSet={visitedSet}
                                     onSelectSentence={handleIntensiveSelect}
                                 />
                             </>

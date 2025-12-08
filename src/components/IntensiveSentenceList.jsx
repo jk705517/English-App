@@ -1,11 +1,14 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import IntensiveCard from './IntensiveCard';
 
 const IntensiveSentenceList = ({
     transcript,
     currentIndex,
+    visitedSet,
     onSelectSentence
 }) => {
     const activeRef = useRef(null);
+    const [showChinese, setShowChinese] = useState(true);
 
     // Auto-scroll to active item
     useEffect(() => {
@@ -25,66 +28,70 @@ const IntensiveSentenceList = ({
         );
     }
 
-    return (
-        <div className="space-y-1">
-            {transcript.map((item, index) => {
-                const isActive = index === currentIndex;
-                const hasAnalysis = item.analysis && (
-                    (item.analysis.syntax && item.analysis.syntax.trim() !== '') ||
-                    (item.analysis.expressions && item.analysis.expressions.length > 0) ||
-                    (item.analysis.phonetics && item.analysis.phonetics.trim() !== '') ||
-                    (item.analysis.context && item.analysis.context.trim() !== '')
-                );
+    const visitedCount = visitedSet ? visitedSet.size : 0;
+    const totalCount = transcript.length;
+    const progressPercentage = Math.min(100, (visitedCount / totalCount) * 100);
 
-                return (
-                    <div
-                        key={index}
-                        ref={isActive ? activeRef : null}
-                        onClick={() => onSelectSentence(index)}
+    return (
+        <div className="space-y-6">
+            {/* Header: Progress & Toggle */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-0 z-10">
+                <div className="flex items-center justify-between mb-3">
+                    <div className="flex flex-col">
+                        <span className="text-sm font-bold text-gray-900">
+                            精读模式 · 第 {currentIndex + 1} 句 / 共 {totalCount} 句
+                        </span>
+                        <span className="text-xs text-gray-500 mt-0.5">
+                            已精读 {visitedCount} 句
+                        </span>
+                    </div>
+
+                    <button
+                        onClick={() => setShowChinese(!showChinese)}
                         className={`
-                            group flex items-start p-2 rounded-lg cursor-pointer transition-all duration-200 border-l-4
-                            ${isActive
-                                ? 'bg-indigo-50 border-indigo-500 shadow-sm'
-                                : 'bg-white border-transparent hover:bg-gray-50'
-                            }
+                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                            ${showChinese ? 'bg-indigo-600' : 'bg-gray-200'}
                         `}
                     >
-                        {/* Index */}
-                        <span className={`
-                            text-xs font-mono mr-3 mt-1 w-6 text-right shrink-0
-                            ${isActive ? 'text-indigo-500 font-bold' : 'text-gray-400'}
-                        `}>
-                            {index + 1}
-                        </span>
+                        <span
+                            className={`
+                                inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                ${showChinese ? 'translate-x-6' : 'translate-x-1'}
+                            `}
+                        />
+                        <span className="sr-only">显示中文</span>
+                    </button>
+                </div>
 
-                        {/* Content */}
-                        <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between gap-2">
-                                <p className={`
-                                    text-sm md:text-base font-medium truncate pr-2
-                                    ${isActive ? 'text-indigo-900' : 'text-gray-700 group-hover:text-gray-900'}
-                                `}>
-                                    {item.text}
-                                </p>
-                                {hasAnalysis && (
-                                    <span
-                                        className={`
-                                            shrink-0 px-1.5 py-0.5 text-[10px] rounded border font-medium
-                                            ${isActive
-                                                ? 'bg-indigo-100 text-indigo-600 border-indigo-200'
-                                                : 'bg-gray-100 text-gray-500 border-gray-200'
-                                            }
-                                        `}
-                                        title="包含精读解析"
-                                    >
-                                        精
-                                    </span>
-                                )}
-                            </div>
+                {/* Progress Bar */}
+                <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
+                    <div
+                        className="bg-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
+                        style={{ width: `${progressPercentage}%` }}
+                    />
+                </div>
+            </div>
+
+            {/* List of Cards */}
+            <div className="space-y-4 pb-20">
+                {transcript.map((item, index) => {
+                    const isActive = index === currentIndex;
+                    const isVisited = visitedSet ? visitedSet.has(index) : false;
+
+                    return (
+                        <div key={index} ref={isActive ? activeRef : null}>
+                            <IntensiveCard
+                                index={index}
+                                sentence={item}
+                                isActive={isActive}
+                                isVisited={isVisited}
+                                showChinese={showChinese}
+                                onSelect={onSelectSentence}
+                            />
                         </div>
-                    </div>
-                );
-            })}
+                    );
+                })}
+            </div>
         </div>
     );
 };
