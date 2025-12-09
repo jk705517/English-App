@@ -37,6 +37,12 @@ function NotebookReviewPage() {
     // v1.1: 2秒冷却状态 - 强制用户先想一想
     const [canReveal, setCanReveal] = useState(false);
 
+    // v1.3: 句子展示状态
+    const [sentencesVisible, setSentencesVisible] = useState(false);
+    const [sentencesLoading, setSentencesLoading] = useState(false);
+    const [sentences, setSentences] = useState([]);
+    const [sentencesForVocabId, setSentencesForVocabId] = useState(null);
+
     // v1.2: sessionStorage key for progress persistence
     const storageKey = user?.id
         ? `notebookReviewState:${user.id}:${notebookId}`
@@ -124,10 +130,16 @@ function NotebookReviewPage() {
     }, [storageKey, notebookId, currentIndex, stats, vocabs]);
 
     // v1.2: 当前单词变化时，重置翻面和冷却状态 + 启动 2 秒定时器
+    // v1.3: 同时重置句子展示状态
     useEffect(() => {
         // 重置翻面和冷却状态
         setIsFlipped(false);
         setCanReveal(false);
+
+        // v1.3: 重置句子展示状态
+        setSentencesVisible(false);
+        setSentences([]);
+        setSentencesForVocabId(null);
 
         // 2 秒后才允许翻面（v1.2: 从 1 秒改为 2 秒）
         const timer = setTimeout(() => {
@@ -213,6 +225,29 @@ function NotebookReviewPage() {
         // 路径格式与 Notebooks.jsx 中"去学习"按钮保持一致
         navigate(`/video/${vocabItem.videoId}?mode=intensive&vocabId=${vocabItem.id}`);
     }, [navigate]);
+
+    // v1.3: 切换句子展示
+    const handleToggleSentences = useCallback(async (currentVocab) => {
+        // 如果当前是收起状态 → 需要展开并加载数据
+        if (!sentencesVisible) {
+            setSentencesVisible(true);
+
+            // 如果切换到新的 vocab，或者之前没加载过，重新加载
+            if (sentencesForVocabId !== currentVocab.id) {
+                setSentencesLoading(true);
+                try {
+                    const list = await notebookService.loadSentencesForVocab(user, currentVocab);
+                    setSentences(list || []);
+                    setSentencesForVocabId(currentVocab.id);
+                } finally {
+                    setSentencesLoading(false);
+                }
+            }
+        } else {
+            // 已经展开 → 再点一次就收起
+            setSentencesVisible(false);
+        }
+    }, [sentencesVisible, sentencesForVocabId, user]);
 
     // 未登录
     if (!user) {
@@ -383,6 +418,10 @@ function NotebookReviewPage() {
                     onFlip={handleFlip}
                     canReveal={canReveal}
                     onGoToVideo={() => handleGoToVideo(currentVocab)}
+                    sentences={sentences}
+                    sentencesVisible={sentencesVisible}
+                    sentencesLoading={sentencesLoading}
+                    onToggleSentences={() => handleToggleSentences(currentVocab)}
                 />
             </div>
 

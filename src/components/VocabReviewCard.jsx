@@ -19,8 +19,22 @@ const speak = (text, lang = 'en-US') => {
  * @param {function} onFlip - 翻面回调
  * @param {boolean} canReveal - v1.1: 是否允许翻面（冷却期后为 true）
  * @param {function} onGoToVideo - v1.1: 去原视频回调
+ * @param {Array} sentences - v1.3: 句子列表
+ * @param {boolean} sentencesVisible - v1.3: 句子是否展开
+ * @param {boolean} sentencesLoading - v1.3: 句子加载中
+ * @param {function} onToggleSentences - v1.3: 切换句子展示
  */
-const VocabReviewCard = ({ vocab, isFlipped, onFlip, canReveal = true, onGoToVideo }) => {
+const VocabReviewCard = ({
+    vocab,
+    isFlipped,
+    onFlip,
+    canReveal = true,
+    onGoToVideo,
+    sentences = [],
+    sentencesVisible = false,
+    sentencesLoading = false,
+    onToggleSentences
+}) => {
     if (!vocab) return null;
 
     const { word, type, ipa_us, ipa_uk, meaning, examples, collocations } = vocab;
@@ -146,7 +160,7 @@ const VocabReviewCard = ({ vocab, isFlipped, onFlip, canReveal = true, onGoToVid
 
                     {/* 搭配 */}
                     {collocations && collocations.length > 0 && (
-                        <div className="mt-auto pt-4">
+                        <div className="pt-4">
                             <h3 className="text-sm font-medium text-gray-400 mb-2">常见搭配</h3>
                             <div className="flex flex-wrap gap-2">
                                 {collocations.slice(0, 4).map((col, i) => (
@@ -161,18 +175,51 @@ const VocabReviewCard = ({ vocab, isFlipped, onFlip, canReveal = true, onGoToVid
                         </div>
                     )}
 
+                    {/* v1.3: 句子展示区域 */}
+                    {sentencesVisible && (
+                        <div className="mt-4 pt-4 border-t space-y-2">
+                            <h3 className="text-sm font-medium text-gray-400 mb-2">所在句子</h3>
+                            {sentencesLoading ? (
+                                <p className="text-sm text-gray-400">正在从视频中加载句子...</p>
+                            ) : !sentences || sentences.length === 0 ? (
+                                <p className="text-sm text-gray-400">暂时找不到这个词在原视频中的句子。</p>
+                            ) : (
+                                sentences.slice(0, 3).map((s) => (
+                                    <div
+                                        key={s.id}
+                                        className="p-3 rounded-lg bg-gray-50 border border-gray-100"
+                                    >
+                                        <p className="text-gray-900 leading-relaxed text-sm">{s.en}</p>
+                                        {s.cn && (
+                                            <p className="mt-1 text-xs text-gray-500 leading-relaxed">
+                                                {s.cn}
+                                            </p>
+                                        )}
+                                        {typeof s.index === 'number' && (
+                                            <p className="mt-1 text-[11px] text-gray-400">
+                                                第 {s.index + 1} 句
+                                            </p>
+                                        )}
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
                     {/* 底部按钮区域 */}
                     <div className="flex gap-2 mt-4 pt-4 border-t">
-                        {/* 查看所在句子 - v1.1: 保持占位，暂不实现 */}
+                        {/* v1.3: 查看所在句子 - 可切换 */}
                         <button
                             type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('view sentences TODO');
+                                if (onToggleSentences) {
+                                    onToggleSentences();
+                                }
                             }}
-                            className="flex-1 py-2 text-sm text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed"
+                            className="flex-1 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         >
-                            查看所在句子（即将上线）
+                            {sentencesVisible ? '收起所在句子' : '查看所在句子'}
                         </button>
                         {/* 去原视频 - v1.1: 已打通跳转 */}
                         <button

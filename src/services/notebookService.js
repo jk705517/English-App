@@ -421,6 +421,67 @@ async function loadNotebookVocabsForReview(user, notebookId) {
     }
 }
 
+/**
+ * v1.3: 加载某个词汇在原视频中的字幕句子
+ * @param {object} user - 当前登录用户
+ * @param {object} vocabItem - 词汇对象，必须包含 videoId 和 word
+ * @returns {Promise<Array>} 句子列表 [{ id, videoId, index, en, cn, startTime }]
+ */
+async function loadSentencesForVocab(user, vocabItem) {
+    if (!user || !vocabItem || !vocabItem.videoId) {
+        return [];
+    }
+
+    try {
+        // 1. 获取视频的字幕数据
+        const { data: video, error: videoError } = await supabase
+            .from('videos')
+            .select('id, transcript')
+            .eq('id', vocabItem.videoId)
+            .single();
+
+        if (videoError || !video || !video.transcript) {
+            console.error('Error loading video transcript:', videoError);
+            return [];
+        }
+
+        // 2. 在字幕中查找包含该单词的句子
+        const word = vocabItem.word?.toLowerCase();
+        if (!word) return [];
+
+        const transcript = video.transcript;
+        const matchingSentences = [];
+
+        for (let i = 0; i < transcript.length; i++) {
+            const sentence = transcript[i];
+            const text = sentence.text || sentence.en || '';
+
+            // 简单的单词匹配：检查单词是否出现在句子中（忽略大小写）
+            // 使用单词边界匹配，避免部分匹配（如 "the" 匹配 "there"）
+            const wordRegex = new RegExp(`\\b${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+
+            if (wordRegex.test(text)) {
+                matchingSentences.push({
+                    id: sentence.id || `${vocabItem.videoId}-${i}`,
+                    videoId: vocabItem.videoId,
+                    index: i,
+                    en: text,
+                    cn: sentence.cn || sentence.translation || '',
+                    startTime: sentence.start || 0
+                });
+            }
+        }
+
+        // 3. 按时间/序号排序，最多返回 3 条
+        matchingSentences.sort((a, b) => a.index - b.index);
+        return matchingSentences.slice(0, 3);
+
+    } catch (error) {
+        console.error('Error in loadSentencesForVocab:', error);
+        return [];
+    }
+}
+
 export const notebookService = {
     loadNotebooks,
     createNotebook,
@@ -429,5 +490,6 @@ export const notebookService = {
     addItemToNotebook,
     removeItemFromNotebook,
     loadNotebookDetail,
-    loadNotebookVocabsForReview
+    loadNotebookVocabsForReview,
+    loadSentencesForVocab
 };
