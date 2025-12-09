@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -34,8 +34,16 @@ function NotebookReviewPage() {
     const [isFlipped, setIsFlipped] = useState(false);
     const [stats, setStats] = useState({ known: 0, unknown: 0 });
 
-    // v1.1: 1秒冷却状态 - 强制用户先想一想
+    // v1.1: 2秒冷却状态 - 强制用户先想一想
     const [canReveal, setCanReveal] = useState(false);
+
+    // v1.2: sessionStorage key for progress persistence
+    const storageKey = user?.id
+        ? `notebookReviewState:${user.id}:${notebookId}`
+        : null;
+
+    // v1.2: 标记是否已尝试恢复状态，避免重复恢复
+    const hasRestoredRef = useRef(false);
 
     // 加载本子词汇数据
     useEffect(() => {
@@ -46,9 +54,6 @@ function NotebookReviewPage() {
             const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
             if (data) {
                 setNotebookName(data.notebook.name);
-                // v1: 按添加顺序排列（已在 service 中按 created_at 排序）
-                // 可选：随机打乱顺序
-                // const shuffled = [...data.vocabs].sort(() => Math.random() - 0.5);
                 setVocabs(data.vocabs);
             }
             setLoading(false);
@@ -57,16 +62,77 @@ function NotebookReviewPage() {
         loadData();
     }, [user, notebookId]);
 
-    // v1.1: 当前单词变化时，重置状态 + 启动 1 秒定时器
+    // v1.2: 从 sessionStorage 恢复进度（仅在 vocabs 加载完成后执行一次）
+    useEffect(() => {
+        if (!storageKey || !vocabs || vocabs.length === 0) return;
+        if (hasRestoredRef.current) return; // 只恢复一次
+
+        const raw = sessionStorage.getItem(storageKey);
+        if (!raw) {
+            hasRestoredRef.current = true;
+            return;
+        }
+
+        try {
+            const saved = JSON.parse(raw);
+
+            // 校验：同一本本子、数量一致、保存时间不太久（2 小时内）
+            const isSameNotebook = saved.notebookId === notebookId;
+            const sameTotal = typeof saved.total === 'number' && saved.total === vocabs.length;
+            const notTooOld =
+                typeof saved.savedAt === 'number' &&
+                Date.now() - saved.savedAt < 2 * 60 * 60 * 1000; // 2 小时
+
+            if (isSameNotebook && sameTotal && notTooOld) {
+                if (
+                    typeof saved.currentIndex === 'number' &&
+                    saved.currentIndex >= 0 &&
+                    saved.currentIndex < vocabs.length
+                ) {
+                    setCurrentIndex(saved.currentIndex);
+                }
+                if (saved.stats && typeof saved.stats === 'object') {
+                    setStats(saved.stats);
+                }
+                console.log('Restored review state:', saved);
+            } else {
+                // 不满足条件就清掉旧状态
+                sessionStorage.removeItem(storageKey);
+            }
+        } catch (e) {
+            console.error('Failed to restore notebook review state', e);
+            sessionStorage.removeItem(storageKey);
+        }
+
+        hasRestoredRef.current = true;
+    }, [storageKey, notebookId, vocabs]);
+
+    // v1.2: 每次进度变化时把状态写入 sessionStorage
+    useEffect(() => {
+        if (!storageKey || !vocabs || vocabs.length === 0) return;
+        if (!hasRestoredRef.current) return; // 恢复完成后才开始保存
+
+        const stateToSave = {
+            notebookId,
+            currentIndex,
+            stats,
+            total: vocabs.length,
+            savedAt: Date.now(),
+        };
+
+        sessionStorage.setItem(storageKey, JSON.stringify(stateToSave));
+    }, [storageKey, notebookId, currentIndex, stats, vocabs]);
+
+    // v1.2: 当前单词变化时，重置翻面和冷却状态 + 启动 2 秒定时器
     useEffect(() => {
         // 重置翻面和冷却状态
         setIsFlipped(false);
         setCanReveal(false);
 
-        // 1 秒后才允许翻面
+        // 2 秒后才允许翻面（v1.2: 从 1 秒改为 2 秒）
         const timer = setTimeout(() => {
             setCanReveal(true);
-        }, 1000);
+        }, 2000);
 
         return () => clearTimeout(timer);
     }, [currentIndex]);
@@ -122,15 +188,22 @@ function NotebookReviewPage() {
         setCurrentIndex(prev => prev + 1);
     }, [currentIndex, vocabs]);
 
-    // 再来一轮
+    // v1.2: 再来一轮 - 清理存储并重置
     const handleRestart = () => {
+        if (storageKey) {
+            sessionStorage.removeItem(storageKey);
+        }
         setCurrentIndex(0);
-        // useEffect 会自动处理 isFlipped 和 canReveal 的重置
         setStats({ known: 0, unknown: 0 });
+        setIsFlipped(false);
+        setCanReveal(false);
     };
 
-    // 返回本子详情页
+    // v1.2: 返回本子详情页 - 清理存储
     const handleBack = () => {
+        if (storageKey) {
+            sessionStorage.removeItem(storageKey);
+        }
         navigate('/notebooks');
     };
 
