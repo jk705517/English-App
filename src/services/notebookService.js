@@ -120,9 +120,11 @@ async function loadNotebooks(user) {
                     );
                     if (notebookVocabItems.length > 0) {
                         const vocabStates = allStates.filter(s => s.item_type === 'vocab');
-                        const { due } = splitItemsByReviewState(notebookVocabItems, vocabStates, now);
+                        const { due, fresh } = splitItemsByReviewState(notebookVocabItems, vocabStates, now);
                         if (statsMap[notebookId]) {
                             statsMap[notebookId].dueVocabCount = due.length;
+                            // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
+                            statsMap[notebookId].hasVocabReviewState = fresh.length < notebookVocabItems.length;
                         }
                     }
 
@@ -132,9 +134,11 @@ async function loadNotebooks(user) {
                     );
                     if (notebookSentenceItems.length > 0) {
                         const sentenceStates = allStates.filter(s => s.item_type === 'sentence');
-                        const { due } = splitItemsByReviewState(notebookSentenceItems, sentenceStates, now);
+                        const { due, fresh } = splitItemsByReviewState(notebookSentenceItems, sentenceStates, now);
                         if (statsMap[notebookId]) {
                             statsMap[notebookId].dueSentenceCount = due.length;
+                            // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
+                            statsMap[notebookId].hasSentenceReviewState = fresh.length < notebookSentenceItems.length;
                         }
                     }
                 }
@@ -159,7 +163,9 @@ async function loadNotebooks(user) {
             sentenceCount: statsMap[nb.id]?.sentenceCount || 0,
             vocabCount: statsMap[nb.id]?.vocabCount || 0,
             dueVocabCount: statsMap[nb.id]?.dueVocabCount || 0,
-            dueSentenceCount: statsMap[nb.id]?.dueSentenceCount || 0
+            dueSentenceCount: statsMap[nb.id]?.dueSentenceCount || 0,
+            hasVocabReviewState: statsMap[nb.id]?.hasVocabReviewState || false,
+            hasSentenceReviewState: statsMap[nb.id]?.hasSentenceReviewState || false
         }));
     } catch (error) {
         console.error('Error in loadNotebooks:', error);

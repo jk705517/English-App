@@ -362,13 +362,18 @@ function Notebooks() {
                             {activeTab === 'sentence' && (
                                 <>
                                     {/* 句子复习统计提示 */}
-                                    {sentenceStats.totalSentenceCount > 0 && (
+                                    {notebookDetail.sentences.length > 0 && (
                                         <div className="text-sm text-gray-500 mb-2">
                                             {sentenceStatsLoading ? (
                                                 <span>加载中...</span>
+                                            ) : !selectedNotebook.hasSentenceReviewState ? (
+                                                // Case 2: 第一轮学习
+                                                <div>这个本子里的 {notebookDetail.sentences.length} 个句子你还没刷过，先学一轮，我会帮你安排后面的复习节奏。</div>
                                             ) : sentenceStats.dueCount > 0 ? (
+                                                // Case 3: 有到期任务
                                                 <>今日待复习：<span className="font-medium text-indigo-600">{sentenceStats.dueCount}</span> / 共 {sentenceStats.totalSentenceCount} 个句子</>
                                             ) : (
+                                                // Case 4: 无到期任务（随便练一练）
                                                 <div className="flex flex-col gap-1">
                                                     <div>🎉 今天这个本子没有到期要复习的句子（共 {sentenceStats.totalSentenceCount} 个句子）</div>
                                                     <div className="text-xs text-gray-400">之后会按记忆节奏自动安排再来复习。</div>
@@ -387,7 +392,12 @@ function Notebooks() {
                                                 }`}
                                         >
                                             <Play className="w-4 h-4" />
-                                            {sentenceStats.totalSentenceCount > 0 && sentenceStats.dueCount === 0 ? '随便练一练' : '开始句子复习'}
+                                            {!selectedNotebook.hasSentenceReviewState
+                                                ? '开始第一轮学习'
+                                                : sentenceStats.dueCount > 0
+                                                    ? '开始句子复习'
+                                                    : '随便练一练'
+                                            }
                                         </button>
                                     </div>
                                     {notebookDetail.sentences.length > 0 ? (
@@ -441,13 +451,18 @@ function Notebooks() {
                             {activeTab === 'vocab' && (
                                 <>
                                     {/* 词汇复习统计提示 */}
-                                    {vocabStats.totalVocabCount > 0 && (
+                                    {notebookDetail.vocabs.length > 0 && (
                                         <div className="text-sm text-gray-500 mb-2">
                                             {vocabStatsLoading ? (
                                                 <span>加载中...</span>
+                                            ) : !selectedNotebook.hasVocabReviewState ? (
+                                                // Case 2: 第一轮学习
+                                                <div>这个本子里的 {notebookDetail.vocabs.length} 个词你还没刷过，先学一轮，我会帮你安排后面的复习节奏。</div>
                                             ) : vocabStats.dueCount > 0 ? (
+                                                // Case 3: 有到期任务
                                                 <>今日待复习：<span className="font-medium text-indigo-600">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
                                             ) : (
+                                                // Case 4: 无到期任务（随便练一练）
                                                 <div className="flex flex-col gap-1">
                                                     <div>🎉 今天这个本子没有到期要复习的词（共 {vocabStats.totalVocabCount} 个词）</div>
                                                     <div className="text-xs text-gray-400">之后会按记忆节奏自动安排再来复习。</div>
@@ -466,7 +481,12 @@ function Notebooks() {
                                                 }`}
                                         >
                                             <Play className="w-4 h-4" />
-                                            {vocabStats.totalVocabCount > 0 && vocabStats.dueCount === 0 ? '随便练一练' : '开始词汇复习'}
+                                            {!selectedNotebook.hasVocabReviewState
+                                                ? '开始第一轮学习'
+                                                : vocabStats.dueCount > 0
+                                                    ? '开始词汇复习'
+                                                    : '随便练一练'
+                                            }
                                         </button>
                                     </div>
                                     {notebookDetail.vocabs.length > 0 ? (
