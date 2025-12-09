@@ -300,14 +300,18 @@ function Notebooks() {
                             {/* 句子列表 */}
                             {activeTab === 'sentence' && (
                                 <>
-                                    {/* 句子复习按钮（占位，暂不可用） */}
+                                    {/* 开始句子复习按钮 */}
                                     <div className="mb-4">
                                         <button
-                                            disabled
-                                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg font-medium cursor-not-allowed"
+                                            onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=sentence`)}
+                                            disabled={notebookDetail.sentences.length === 0}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${notebookDetail.sentences.length > 0
+                                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                }`}
                                         >
                                             <Play className="w-4 h-4" />
-                                            句子复习（即将上线）
+                                            开始句子复习
                                         </button>
                                     </div>
                                     {notebookDetail.sentences.length > 0 ? (

@@ -482,6 +482,97 @@ async function loadSentencesForVocab(user, vocabItem) {
     }
 }
 
+/**
+ * 句子复习模式：加载本子中的句子（包含完整句子信息）
+ * @param {object} user - 当前登录用户
+ * @param {number} notebookId - 本子 ID
+ * @returns {Promise<object|null>} { notebook, sentences }
+ */
+async function loadNotebookSentencesForReview(user, notebookId) {
+    if (!user || !notebookId) return null;
+
+    try {
+        // 1. 获取本子基本信息
+        const { data: notebook, error: notebookError } = await supabase
+            .from('user_notebooks')
+            .select('id, name, color, created_at')
+            .eq('id', notebookId)
+            .eq('user_id', user.id)
+            .single();
+
+        if (notebookError || !notebook) {
+            console.error('Error loading notebook:', notebookError);
+            return null;
+        }
+
+        // 2. 获取本子里的句子条目（按添加时间升序，用于复习顺序）
+        const { data: items, error: itemsError } = await supabase
+            .from('user_notebook_items')
+            .select('item_type, item_id, video_id, created_at')
+            .eq('notebook_id', notebookId)
+            .eq('user_id', user.id)
+            .eq('item_type', 'sentence')
+            .order('created_at', { ascending: true });
+
+        if (itemsError) {
+            console.error('Error loading notebook sentence items:', itemsError);
+            return { notebook, sentences: [] };
+        }
+
+        if (!items || items.length === 0) {
+            return { notebook, sentences: [] };
+        }
+
+        // 3. 获取所有相关的视频信息（包含字幕数据）
+        const videoIds = [...new Set(items.map(item => item.video_id).filter(Boolean))];
+        if (videoIds.length === 0) {
+            return { notebook, sentences: [] };
+        }
+
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select('id, title, episode, transcript')
+            .in('id', videoIds);
+
+        if (videosError) {
+            console.error('Error loading videos:', videosError);
+            return { notebook, sentences: [] };
+        }
+
+        // 4. 匹配句子详情（从 transcript 中查找）
+        const sentences = [];
+        for (const item of items) {
+            const video = videos?.find(v => v.id === item.video_id);
+            if (!video?.transcript) continue;
+
+            // item_id 是句子的 id（可能是数字或字符串）
+            const sentenceItem = video.transcript.find(s =>
+                s.id === item.item_id ||
+                String(s.id) === String(item.item_id)
+            );
+
+            if (sentenceItem) {
+                const index = video.transcript.indexOf(sentenceItem);
+                sentences.push({
+                    id: item.item_id,
+                    videoId: item.video_id,
+                    index: index >= 0 ? index : 0,
+                    startTime: sentenceItem.start || 0,
+                    en: sentenceItem.text || sentenceItem.en || '',
+                    cn: sentenceItem.cn || sentenceItem.translation || '',
+                    episode: video.episode,
+                    title: video.title
+                });
+            }
+        }
+
+        return { notebook, sentences };
+    } catch (error) {
+        console.error('Error in loadNotebookSentencesForReview:', error);
+        return null;
+    }
+}
+
 export const notebookService = {
     loadNotebooks,
     createNotebook,
@@ -491,5 +582,6 @@ export const notebookService = {
     removeItemFromNotebook,
     loadNotebookDetail,
     loadNotebookVocabsForReview,
-    loadSentencesForVocab
+    loadSentencesForVocab,
+    loadNotebookSentencesForReview
 };

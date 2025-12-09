@@ -4,17 +4,18 @@ import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
 import VocabReviewCard from '../components/VocabReviewCard';
+import SentenceReviewCard from '../components/SentenceReviewCard';
 
 /**
  * 预留函数：记录复习结果
  * TODO: 未来在这里调用 Supabase，写入 user_review_states 表
  */
-function recordReviewResult(vocabItem, isKnown) {
-    console.log('review result', { vocabId: vocabItem.id, isKnown, word: vocabItem.word });
+function recordReviewResult(item, isKnown, type) {
+    console.log('review result', { itemId: item.id, isKnown, type, word: item.word || item.en?.substring(0, 30) });
 }
 
 /**
- * 本子词汇复习页面
+ * 本子复习页面（支持词汇和句子两种模式）
  */
 function NotebookReviewPage() {
     const { notebookId } = useParams();
@@ -22,12 +23,14 @@ function NotebookReviewPage() {
     const navigate = useNavigate();
     const { user } = useAuth();
 
+    // 从 URL 读取模式类型
     const type = searchParams.get('type') || 'vocab';
 
     // 数据状态
     const [loading, setLoading] = useState(true);
     const [notebookName, setNotebookName] = useState('');
     const [vocabs, setVocabs] = useState([]);
+    const [sentences, setSentences] = useState([]);
 
     // 复习会话状态
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -37,40 +40,60 @@ function NotebookReviewPage() {
     // v1.1: 2秒冷却状态 - 强制用户先想一想
     const [canReveal, setCanReveal] = useState(false);
 
-    // v1.3: 句子展示状态
+    // v1.3: 句子展示状态（仅用于词汇模式）
     const [sentencesVisible, setSentencesVisible] = useState(false);
     const [sentencesLoading, setSentencesLoading] = useState(false);
-    const [sentences, setSentences] = useState([]);
+    const [sentencesForVocab, setSentencesForVocab] = useState([]);
     const [sentencesForVocabId, setSentencesForVocabId] = useState(null);
 
-    // v1.2: sessionStorage key for progress persistence
+    // v1.2: sessionStorage key for progress persistence（区分 type）
     const storageKey = user?.id
-        ? `notebookReviewState:${user.id}:${notebookId}`
+        ? `notebookReviewState:${user.id}:${notebookId}:${type}`
         : null;
 
     // v1.2: 标记是否已尝试恢复状态，避免重复恢复
     const hasRestoredRef = useRef(false);
 
-    // 加载本子词汇数据
+    // 当前模式的数据列表
+    const items = type === 'sentence' ? sentences : vocabs;
+    const total = items.length;
+    const currentItem = total > 0 && currentIndex < total ? items[currentIndex] : null;
+
+    // 加载本子数据（根据 type 调用不同 service）
     useEffect(() => {
         if (!user || !notebookId) return;
 
         const loadData = async () => {
             setLoading(true);
-            const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
-            if (data) {
-                setNotebookName(data.notebook.name);
-                setVocabs(data.vocabs);
+            hasRestoredRef.current = false; // 重置恢复标记
+
+            try {
+                if (type === 'sentence') {
+                    const data = await notebookService.loadNotebookSentencesForReview(user, notebookId);
+                    if (data) {
+                        setNotebookName(data.notebook.name);
+                        setSentences(data.sentences || []);
+                        setVocabs([]); // 清空另一个模式的数据
+                    }
+                } else {
+                    const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
+                    if (data) {
+                        setNotebookName(data.notebook.name);
+                        setVocabs(data.vocabs || []);
+                        setSentences([]); // 清空另一个模式的数据
+                    }
+                }
+            } finally {
+                setLoading(false);
             }
-            setLoading(false);
         };
 
         loadData();
-    }, [user, notebookId]);
+    }, [user, notebookId, type]);
 
-    // v1.2: 从 sessionStorage 恢复进度（仅在 vocabs 加载完成后执行一次）
+    // v1.2: 从 sessionStorage 恢复进度（仅在数据加载完成后执行一次）
     useEffect(() => {
-        if (!storageKey || !vocabs || vocabs.length === 0) return;
+        if (!storageKey || items.length === 0) return;
         if (hasRestoredRef.current) return; // 只恢复一次
 
         const raw = sessionStorage.getItem(storageKey);
@@ -84,7 +107,7 @@ function NotebookReviewPage() {
 
             // 校验：同一本本子、数量一致、保存时间不太久（2 小时内）
             const isSameNotebook = saved.notebookId === notebookId;
-            const sameTotal = typeof saved.total === 'number' && saved.total === vocabs.length;
+            const sameTotal = typeof saved.total === 'number' && saved.total === items.length;
             const notTooOld =
                 typeof saved.savedAt === 'number' &&
                 Date.now() - saved.savedAt < 2 * 60 * 60 * 1000; // 2 小时
@@ -93,7 +116,7 @@ function NotebookReviewPage() {
                 if (
                     typeof saved.currentIndex === 'number' &&
                     saved.currentIndex >= 0 &&
-                    saved.currentIndex < vocabs.length
+                    saved.currentIndex < items.length
                 ) {
                     setCurrentIndex(saved.currentIndex);
                 }
@@ -111,37 +134,36 @@ function NotebookReviewPage() {
         }
 
         hasRestoredRef.current = true;
-    }, [storageKey, notebookId, vocabs]);
+    }, [storageKey, notebookId, items]);
 
     // v1.2: 每次进度变化时把状态写入 sessionStorage
     useEffect(() => {
-        if (!storageKey || !vocabs || vocabs.length === 0) return;
+        if (!storageKey || items.length === 0) return;
         if (!hasRestoredRef.current) return; // 恢复完成后才开始保存
 
         const stateToSave = {
             notebookId,
             currentIndex,
             stats,
-            total: vocabs.length,
+            total: items.length,
             savedAt: Date.now(),
         };
 
         sessionStorage.setItem(storageKey, JSON.stringify(stateToSave));
-    }, [storageKey, notebookId, currentIndex, stats, vocabs]);
+    }, [storageKey, notebookId, currentIndex, stats, items]);
 
-    // v1.2: 当前单词变化时，重置翻面和冷却状态 + 启动 2 秒定时器
-    // v1.3: 同时重置句子展示状态
+    // 当前卡片变化时，重置翻面和冷却状态 + 启动 2 秒定时器
     useEffect(() => {
         // 重置翻面和冷却状态
         setIsFlipped(false);
         setCanReveal(false);
 
-        // v1.3: 重置句子展示状态
+        // 重置句子展示状态（仅词汇模式需要）
         setSentencesVisible(false);
-        setSentences([]);
+        setSentencesForVocab([]);
         setSentencesForVocabId(null);
 
-        // 2 秒后才允许翻面（v1.2: 从 1 秒改为 2 秒）
+        // 2 秒后才允许翻面
         const timer = setTimeout(() => {
             setCanReveal(true);
         }, 2000);
@@ -157,8 +179,7 @@ function NotebookReviewPage() {
 
             if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
-                // v1.1: 需要检查 canReveal
-                if (!isFlipped && canReveal && currentIndex < vocabs.length) {
+                if (!isFlipped && canReveal && currentIndex < total) {
                     setIsFlipped(true);
                 }
             }
@@ -166,9 +187,9 @@ function NotebookReviewPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isFlipped, canReveal, currentIndex, vocabs.length]);
+    }, [isFlipped, canReveal, currentIndex, total]);
 
-    // 翻面 - v1.1: 需要尊重 canReveal
+    // 翻面 - 需要尊重 canReveal
     const handleFlip = useCallback(() => {
         if (!canReveal) return; // 还在"想一想"阶段，不允许翻
         if (!isFlipped) {
@@ -176,31 +197,31 @@ function NotebookReviewPage() {
         }
     }, [isFlipped, canReveal]);
 
-    // 我会了
+    // 我会了 / 我懂了
     const handleKnown = useCallback(() => {
-        if (currentIndex >= vocabs.length) return;
+        if (currentIndex >= total) return;
 
-        const currentVocab = vocabs[currentIndex];
+        const item = items[currentIndex];
         setStats(prev => ({ ...prev, known: prev.known + 1 }));
-        recordReviewResult(currentVocab, true);
+        recordReviewResult(item, true, type);
 
-        // 切换到下一条（useEffect 会自动重置 isFlipped 和 canReveal）
+        // 切换到下一条
         setCurrentIndex(prev => prev + 1);
-    }, [currentIndex, vocabs]);
+    }, [currentIndex, items, total, type]);
 
     // 还不熟
     const handleUnknown = useCallback(() => {
-        if (currentIndex >= vocabs.length) return;
+        if (currentIndex >= total) return;
 
-        const currentVocab = vocabs[currentIndex];
+        const item = items[currentIndex];
         setStats(prev => ({ ...prev, unknown: prev.unknown + 1 }));
-        recordReviewResult(currentVocab, false);
+        recordReviewResult(item, false, type);
 
-        // 切换到下一条（useEffect 会自动重置 isFlipped 和 canReveal）
+        // 切换到下一条
         setCurrentIndex(prev => prev + 1);
-    }, [currentIndex, vocabs]);
+    }, [currentIndex, items, total, type]);
 
-    // v1.2: 再来一轮 - 清理存储并重置
+    // 再来一轮 - 清理存储并重置
     const handleRestart = () => {
         if (storageKey) {
             sessionStorage.removeItem(storageKey);
@@ -211,7 +232,7 @@ function NotebookReviewPage() {
         setCanReveal(false);
     };
 
-    // v1.2: 返回本子详情页 - 清理存储
+    // 返回本子详情页 - 清理存储
     const handleBack = () => {
         if (storageKey) {
             sessionStorage.removeItem(storageKey);
@@ -219,32 +240,33 @@ function NotebookReviewPage() {
         navigate('/notebooks');
     };
 
-    // v1.1: 去原视频 - 复用 Notebooks 页"去学习"的跳转逻辑
-    const handleGoToVideo = useCallback((vocabItem) => {
-        // 跳转到视频详情页，并定位到该词汇
-        // 路径格式与 Notebooks.jsx 中"去学习"按钮保持一致
-        navigate(`/video/${vocabItem.videoId}?mode=intensive&vocabId=${vocabItem.id}`);
-    }, [navigate]);
+    // 去原视频
+    const handleGoToVideo = useCallback((item) => {
+        if (type === 'sentence') {
+            // 句子模式：跳转到视频并定位到该句子
+            navigate(`/video/${item.videoId}?mode=intensive&sentenceId=${item.id}`);
+        } else {
+            // 词汇模式：跳转到视频并定位到该词汇
+            navigate(`/video/${item.videoId}?mode=intensive&vocabId=${item.id}`);
+        }
+    }, [navigate, type]);
 
-    // v1.3: 切换句子展示
+    // 词汇模式：切换句子展示
     const handleToggleSentences = useCallback(async (currentVocab) => {
-        // 如果当前是收起状态 → 需要展开并加载数据
         if (!sentencesVisible) {
             setSentencesVisible(true);
 
-            // 如果切换到新的 vocab，或者之前没加载过，重新加载
             if (sentencesForVocabId !== currentVocab.id) {
                 setSentencesLoading(true);
                 try {
                     const list = await notebookService.loadSentencesForVocab(user, currentVocab);
-                    setSentences(list || []);
+                    setSentencesForVocab(list || []);
                     setSentencesForVocabId(currentVocab.id);
                 } finally {
                     setSentencesLoading(false);
                 }
             }
         } else {
-            // 已经展开 → 再点一次就收起
             setSentencesVisible(false);
         }
     }, [sentencesVisible, sentencesForVocabId, user]);
@@ -266,23 +288,6 @@ function NotebookReviewPage() {
         );
     }
 
-    // 非词汇类型（句子复习即将上线）
-    if (type !== 'vocab') {
-        return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
-                <div className="text-center">
-                    <p className="text-xl text-gray-600 mb-4">句子复习功能即将上线，敬请期待！</p>
-                    <button
-                        onClick={handleBack}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
-                    >
-                        返回本子
-                    </button>
-                </div>
-            </div>
-        );
-    }
-
     // 加载中
     if (loading) {
         return (
@@ -292,13 +297,17 @@ function NotebookReviewPage() {
         );
     }
 
-    // 没有词汇
-    if (vocabs.length === 0) {
+    // 没有数据
+    if (total === 0) {
         return (
             <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <div className="text-center">
-                    <p className="text-xl text-gray-600 mb-4">这个本子里还没有词汇</p>
-                    <p className="text-gray-400 mb-6">先去视频页面添加一些词汇到本子吧</p>
+                    <p className="text-xl text-gray-600 mb-4">
+                        这个本子里还没有{type === 'sentence' ? '句子' : '词汇'}
+                    </p>
+                    <p className="text-gray-400 mb-6">
+                        先去视频页面添加一些{type === 'sentence' ? '句子' : '词汇'}到本子吧
+                    </p>
                     <button
                         onClick={handleBack}
                         className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
@@ -311,8 +320,11 @@ function NotebookReviewPage() {
     }
 
     // 复习完成 - 总结页
-    if (currentIndex >= vocabs.length) {
+    if (currentIndex >= total) {
         const totalReviewed = stats.known + stats.unknown;
+        const modeLabel = type === 'sentence' ? '句子' : '词汇';
+        const knownLabel = type === 'sentence' ? '我懂了' : '我会了';
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col">
                 {/* 顶部栏 */}
@@ -335,17 +347,17 @@ function NotebookReviewPage() {
                         </div>
 
                         <h2 className="text-2xl font-bold text-gray-800 mb-2">本次复习完成 🎉</h2>
-                        <p className="text-gray-500 mb-8">你已经复习了 {totalReviewed} 个单词</p>
+                        <p className="text-gray-500 mb-8">你已经复习了 {totalReviewed} 个{modeLabel}</p>
 
                         {/* 统计数据 */}
                         <div className="flex justify-center gap-8 mb-8">
                             <div className="text-center">
                                 <div className="text-3xl font-bold text-green-600">{stats.known}</div>
-                                <div className="text-sm text-gray-500">我会了</div>
+                                <div className="text-sm text-gray-500">{knownLabel}</div>
                             </div>
                             <div className="text-center">
                                 <div className="text-3xl font-bold text-orange-500">{stats.unknown}</div>
-                                <div className="text-sm text-gray-500">暂时不熟</div>
+                                <div className="text-sm text-gray-500">还不熟</div>
                             </div>
                         </div>
 
@@ -372,8 +384,37 @@ function NotebookReviewPage() {
     }
 
     // 正常复习界面
-    const currentVocab = vocabs[currentIndex];
-    const progress = ((currentIndex + 1) / vocabs.length) * 100;
+    const progress = ((currentIndex + 1) / total) * 100;
+    const modeLabel = type === 'sentence' ? '句子复习' : '词汇复习';
+    const knownButtonLabel = type === 'sentence' ? '我懂了' : '我会了';
+
+    // 根据模式渲染不同的卡片
+    let card = null;
+    if (type === 'sentence') {
+        card = (
+            <SentenceReviewCard
+                sentence={currentItem}
+                isFlipped={isFlipped}
+                canReveal={canReveal}
+                onFlip={handleFlip}
+                onGoToVideo={() => handleGoToVideo(currentItem)}
+            />
+        );
+    } else {
+        card = (
+            <VocabReviewCard
+                vocab={currentItem}
+                isFlipped={isFlipped}
+                canReveal={canReveal}
+                onFlip={handleFlip}
+                onGoToVideo={() => handleGoToVideo(currentItem)}
+                sentences={sentencesForVocab}
+                sentencesVisible={sentencesVisible}
+                sentencesLoading={sentencesLoading}
+                onToggleSentences={() => handleToggleSentences(currentItem)}
+            />
+        );
+    }
 
     return (
         <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col">
@@ -390,7 +431,7 @@ function NotebookReviewPage() {
                 {/* 标题 */}
                 <div className="text-center">
                     <h1 className="text-lg font-semibold text-gray-800">{notebookName}</h1>
-                    <p className="text-sm text-gray-500">词汇复习</p>
+                    <p className="text-sm text-gray-500">{modeLabel}</p>
                 </div>
 
                 {/* 进度 */}
@@ -398,7 +439,7 @@ function NotebookReviewPage() {
                     <span className="text-lg font-semibold text-indigo-600">
                         {currentIndex + 1}
                     </span>
-                    <span className="text-gray-400"> / {vocabs.length}</span>
+                    <span className="text-gray-400"> / {total}</span>
                 </div>
             </div>
 
@@ -412,23 +453,13 @@ function NotebookReviewPage() {
 
             {/* 卡片区域 */}
             <div className="flex-1 flex items-center justify-center p-4">
-                <VocabReviewCard
-                    vocab={currentVocab}
-                    isFlipped={isFlipped}
-                    onFlip={handleFlip}
-                    canReveal={canReveal}
-                    onGoToVideo={() => handleGoToVideo(currentVocab)}
-                    sentences={sentences}
-                    sentencesVisible={sentencesVisible}
-                    sentencesLoading={sentencesLoading}
-                    onToggleSentences={() => handleToggleSentences(currentVocab)}
-                />
+                {card}
             </div>
 
             {/* 底部操作区域 */}
             <div className="p-4 bg-white/80 backdrop-blur-sm shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 {!isFlipped ? (
-                    /* 未翻面：显示释义按钮 - v1.1: 冷却期间禁用 */
+                    /* 未翻面：显示释义按钮 - 冷却期间禁用 */
                     <button
                         onClick={handleFlip}
                         disabled={!canReveal}
@@ -440,7 +471,7 @@ function NotebookReviewPage() {
                         {canReveal ? '显示释义' : '想一想…'}
                     </button>
                 ) : (
-                    /* 已翻面：我会了 / 还不熟 */
+                    /* 已翻面：还不熟 / 我会了（我懂了） */
                     <div className="flex gap-4">
                         <button
                             onClick={handleUnknown}
@@ -454,7 +485,7 @@ function NotebookReviewPage() {
                             className="flex-1 py-4 bg-green-500 text-white rounded-xl font-medium text-lg hover:bg-green-600 transition-colors flex items-center justify-center gap-2"
                         >
                             <Check className="w-5 h-5" />
-                            我会了
+                            {knownButtonLabel}
                         </button>
                     </div>
                 )}
