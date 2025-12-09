@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { Volume2 } from 'lucide-react';
 
 /**
@@ -18,8 +17,10 @@ const speak = (text, lang = 'en-US') => {
  * @param {object} vocab - 词汇对象 { id, word, type, ipa_us, ipa_uk, meaning, examples, collocations, videoId }
  * @param {boolean} isFlipped - 是否已翻面
  * @param {function} onFlip - 翻面回调
+ * @param {boolean} canReveal - v1.1: 是否允许翻面（冷却期后为 true）
+ * @param {function} onGoToVideo - v1.1: 去原视频回调
  */
-const VocabReviewCard = ({ vocab, isFlipped, onFlip }) => {
+const VocabReviewCard = ({ vocab, isFlipped, onFlip, canReveal = true, onGoToVideo }) => {
     if (!vocab) return null;
 
     const { word, type, ipa_us, ipa_uk, meaning, examples, collocations } = vocab;
@@ -27,10 +28,17 @@ const VocabReviewCard = ({ vocab, isFlipped, onFlip }) => {
     // 处理 meaning：可能是 string 或 string[]
     const meaningList = Array.isArray(meaning) ? meaning : [meaning];
 
+    // v1.1: 点击卡片时需要检查 canReveal
+    const handleCardClick = () => {
+        if (!canReveal) return; // 冷却期内不允许翻面
+        onFlip();
+    };
+
     return (
         <div
-            onClick={onFlip}
-            className="w-[90%] max-w-md mx-auto bg-white rounded-2xl shadow-xl cursor-pointer transition-all duration-300 hover:shadow-2xl transform hover:scale-[1.02] min-h-[320px] md:min-h-[400px] flex flex-col"
+            onClick={handleCardClick}
+            className={`w-[90%] max-w-md mx-auto bg-white rounded-2xl shadow-xl transition-all duration-300 hover:shadow-2xl min-h-[320px] md:min-h-[400px] flex flex-col ${canReveal ? 'cursor-pointer transform hover:scale-[1.02]' : 'cursor-default'
+                }`}
         >
             {/* 正面：只显示英文信息 */}
             {!isFlipped ? (
@@ -81,8 +89,10 @@ const VocabReviewCard = ({ vocab, isFlipped, onFlip }) => {
                         <span className="text-sm text-gray-400 mt-2">{type}</span>
                     )}
 
-                    {/* 点击提示 */}
-                    <p className="mt-8 text-sm text-gray-300">点击卡片查看释义</p>
+                    {/* v1.1: 口语化提示文案 */}
+                    <p className="mt-8 text-sm text-gray-400">
+                        先在心里说一遍中文意思，再点卡片看答案 👀
+                    </p>
                 </div>
             ) : (
                 /* 背面：显示完整信息 */
@@ -151,23 +161,29 @@ const VocabReviewCard = ({ vocab, isFlipped, onFlip }) => {
                         </div>
                     )}
 
-                    {/* 预留按钮区域 - v1 只做 UI */}
+                    {/* 底部按钮区域 */}
                     <div className="flex gap-2 mt-4 pt-4 border-t">
+                        {/* 查看所在句子 - v1.1: 保持占位，暂不实现 */}
                         <button
+                            type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('TODO: 查看所在句子', vocab);
+                                console.log('view sentences TODO');
                             }}
-                            className="flex-1 py-2 text-sm text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            className="flex-1 py-2 text-sm text-gray-400 bg-gray-100 rounded-lg cursor-not-allowed"
                         >
-                            查看所在句子
+                            查看所在句子（即将上线）
                         </button>
+                        {/* 去原视频 - v1.1: 已打通跳转 */}
                         <button
+                            type="button"
                             onClick={(e) => {
                                 e.stopPropagation();
-                                console.log('TODO: 去原视频', vocab);
+                                if (onGoToVideo) {
+                                    onGoToVideo();
+                                }
                             }}
-                            className="flex-1 py-2 text-sm text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            className="flex-1 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
                         >
                             去原视频
                         </button>

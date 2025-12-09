@@ -34,6 +34,9 @@ function NotebookReviewPage() {
     const [isFlipped, setIsFlipped] = useState(false);
     const [stats, setStats] = useState({ known: 0, unknown: 0 });
 
+    // v1.1: 1秒冷却状态 - 强制用户先想一想
+    const [canReveal, setCanReveal] = useState(false);
+
     // 加载本子词汇数据
     useEffect(() => {
         if (!user || !notebookId) return;
@@ -54,7 +57,21 @@ function NotebookReviewPage() {
         loadData();
     }, [user, notebookId]);
 
-    // 键盘事件处理（PC 端）
+    // v1.1: 当前单词变化时，重置状态 + 启动 1 秒定时器
+    useEffect(() => {
+        // 重置翻面和冷却状态
+        setIsFlipped(false);
+        setCanReveal(false);
+
+        // 1 秒后才允许翻面
+        const timer = setTimeout(() => {
+            setCanReveal(true);
+        }, 1000);
+
+        return () => clearTimeout(timer);
+    }, [currentIndex]);
+
+    // 键盘事件处理（PC 端）- 需要尊重 canReveal
     useEffect(() => {
         const handleKeyDown = (e) => {
             // 避免影响输入框等元素
@@ -62,7 +79,8 @@ function NotebookReviewPage() {
 
             if (e.code === 'Space' || e.code === 'Enter') {
                 e.preventDefault();
-                if (!isFlipped && currentIndex < vocabs.length) {
+                // v1.1: 需要检查 canReveal
+                if (!isFlipped && canReveal && currentIndex < vocabs.length) {
                     setIsFlipped(true);
                 }
             }
@@ -70,14 +88,15 @@ function NotebookReviewPage() {
 
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [isFlipped, currentIndex, vocabs.length]);
+    }, [isFlipped, canReveal, currentIndex, vocabs.length]);
 
-    // 翻面
+    // 翻面 - v1.1: 需要尊重 canReveal
     const handleFlip = useCallback(() => {
+        if (!canReveal) return; // 还在"想一想"阶段，不允许翻
         if (!isFlipped) {
             setIsFlipped(true);
         }
-    }, [isFlipped]);
+    }, [isFlipped, canReveal]);
 
     // 我会了
     const handleKnown = useCallback(() => {
@@ -87,9 +106,8 @@ function NotebookReviewPage() {
         setStats(prev => ({ ...prev, known: prev.known + 1 }));
         recordReviewResult(currentVocab, true);
 
-        // 切换到下一条
+        // 切换到下一条（useEffect 会自动重置 isFlipped 和 canReveal）
         setCurrentIndex(prev => prev + 1);
-        setIsFlipped(false);
     }, [currentIndex, vocabs]);
 
     // 还不熟
@@ -100,15 +118,14 @@ function NotebookReviewPage() {
         setStats(prev => ({ ...prev, unknown: prev.unknown + 1 }));
         recordReviewResult(currentVocab, false);
 
-        // 切换到下一条
+        // 切换到下一条（useEffect 会自动重置 isFlipped 和 canReveal）
         setCurrentIndex(prev => prev + 1);
-        setIsFlipped(false);
     }, [currentIndex, vocabs]);
 
     // 再来一轮
     const handleRestart = () => {
         setCurrentIndex(0);
-        setIsFlipped(false);
+        // useEffect 会自动处理 isFlipped 和 canReveal 的重置
         setStats({ known: 0, unknown: 0 });
     };
 
@@ -116,6 +133,13 @@ function NotebookReviewPage() {
     const handleBack = () => {
         navigate('/notebooks');
     };
+
+    // v1.1: 去原视频 - 复用 Notebooks 页"去学习"的跳转逻辑
+    const handleGoToVideo = useCallback((vocabItem) => {
+        // 跳转到视频详情页，并定位到该词汇
+        // 路径格式与 Notebooks.jsx 中"去学习"按钮保持一致
+        navigate(`/video/${vocabItem.videoId}?mode=intensive&vocabId=${vocabItem.id}`);
+    }, [navigate]);
 
     // 未登录
     if (!user) {
@@ -284,18 +308,24 @@ function NotebookReviewPage() {
                     vocab={currentVocab}
                     isFlipped={isFlipped}
                     onFlip={handleFlip}
+                    canReveal={canReveal}
+                    onGoToVideo={() => handleGoToVideo(currentVocab)}
                 />
             </div>
 
             {/* 底部操作区域 */}
             <div className="p-4 bg-white/80 backdrop-blur-sm shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.05)]">
                 {!isFlipped ? (
-                    /* 未翻面：显示释义按钮 */
+                    /* 未翻面：显示释义按钮 - v1.1: 冷却期间禁用 */
                     <button
                         onClick={handleFlip}
-                        className="w-full py-4 bg-indigo-600 text-white rounded-xl font-medium text-lg hover:bg-indigo-700 transition-colors"
+                        disabled={!canReveal}
+                        className={`w-full py-4 rounded-xl font-medium text-lg transition-colors ${canReveal
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            }`}
                     >
-                        显示释义
+                        {canReveal ? '显示释义' : '想一想…'}
                     </button>
                 ) : (
                     /* 已翻面：我会了 / 还不熟 */
