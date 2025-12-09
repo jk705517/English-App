@@ -1,6 +1,42 @@
 import { supabase } from './supabaseClient';
 
 /**
+ * 按记忆状态拆分词汇（纯函数）
+ * @param {Array} vocabs - 词汇列表（必须包含 id 或 item_id）
+ * @param {Array} states - 复习状态列表（必须包含 item_id, next_review_at）
+ * @param {Date} now - 当前时间
+ * @returns {object} { due, fresh, future }
+ */
+function splitVocabsByReviewState(vocabs, states, now = new Date()) {
+    const due = [];
+    const fresh = [];
+    const future = [];
+
+    // Map states by item_id for O(1) lookup
+    const stateMap = new Map();
+    states.forEach(s => stateMap.set(String(s.item_id), s));
+
+    vocabs.forEach(vocab => {
+        // 兼容处理：vocab 可能是 fullVocab (有 id) 或 notebookItem (有 item_id)
+        const vocabId = String(vocab.id || vocab.item_id);
+        const state = stateMap.get(vocabId);
+
+        if (!state) {
+            fresh.push(vocab);
+        } else {
+            const nextReviewAt = state.next_review_at ? new Date(state.next_review_at) : null;
+            if (nextReviewAt && nextReviewAt <= now) {
+                due.push(vocab);
+            } else {
+                future.push(vocab);
+            }
+        }
+    });
+
+    return { due, fresh, future };
+}
+
+/**
  * 加载用户的所有本子列表（按创建时间倒序）
  * @param {object} user - 当前登录用户
  * @returns {Promise<Array>} 本子列表，包含句子/词汇统计
@@ -29,7 +65,7 @@ async function loadNotebooks(user) {
         const notebookIds = notebooks.map(nb => nb.id);
         const { data: items, error: itemsError } = await supabase
             .from('user_notebook_items')
-            .select('notebook_id, item_type')
+            .select('notebook_id, item_type, item_id')
             .eq('user_id', user.id)
             .in('notebook_id', notebookIds);
 
@@ -39,7 +75,8 @@ async function loadNotebooks(user) {
             return notebooks.map(nb => ({
                 ...nb,
                 sentenceCount: 0,
-                vocabCount: 0
+                vocabCount: 0,
+                dueVocabCount: 0
             }));
         }
 
@@ -59,32 +96,44 @@ async function loadNotebooks(user) {
             }
         }
 
-        // 4. 获取到期的词汇状态
+        // 4. 获取所有相关的 review states
         if (allVocabIds.length > 0) {
-            const now = new Date().toISOString();
-            const { data: dueStates, error: dueError } = await supabase
+            const { data: allStates, error: statesError } = await supabase
                 .from('user_review_states')
-                .select('item_id')
+                .select('item_id, next_review_at')
                 .eq('user_id', user.id)
                 .eq('item_type', 'vocab')
-                .in('item_id', allVocabIds)
-                .lte('next_review_at', now);
+                .in('item_id', allVocabIds);
 
-            if (!dueError && dueStates) {
-                const dueVocabIdSet = new Set(dueStates.map(s => String(s.item_id)));
+            if (!statesError && allStates) {
+                const now = new Date();
 
-                // 再次遍历 items 统计 dueVocabCount
-                for (const item of items || []) {
-                    if (item.item_type === 'vocab' && dueVocabIdSet.has(String(item.item_id))) {
-                        if (statsMap[item.notebook_id]) {
-                            statsMap[item.notebook_id].dueVocabCount++;
+                // 按 notebook 分组计算
+                for (const notebookId of notebookIds) {
+                    // 找出该 notebook 下的所有 vocab items
+                    const notebookVocabItems = (items || []).filter(
+                        item => item.notebook_id === notebookId && item.item_type === 'vocab'
+                    );
+
+                    if (notebookVocabItems.length > 0) {
+                        const { due } = splitVocabsByReviewState(notebookVocabItems, allStates, now);
+                        if (statsMap[notebookId]) {
+                            statsMap[notebookId].dueVocabCount = due.length;
                         }
                     }
                 }
-            } else if (dueError) {
-                console.error('Error loading due states:', dueError);
+            } else if (statesError) {
+                console.error('Error loading review states:', statesError);
             }
         }
+
+        // 调试日志
+        console.log('[NotebookList] stats', notebooks.map(n => ({
+            id: n.id,
+            name: n.name,
+            total: statsMap[n.id]?.vocabCount || 0,
+            due: statsMap[n.id]?.dueVocabCount || 0,
+        })));
 
         // 5. 合并统计数据到本子列表
         return notebooks.map(nb => ({
@@ -488,66 +537,50 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             return { notebook, vocabs: fullVocabs, totalVocabCount: fullVocabs.length };
         }
 
-        // 6. 构建 stateByItemId Map
+        // 6. 使用统一工具函数拆分状态
+        const now = new Date();
+        const { due, fresh, future } = splitVocabsByReviewState(fullVocabs, states, now);
+
+        // 7. 对到期词按 next_review_at 升序排序
         const stateByItemId = new Map();
         for (const s of (states || [])) {
             stateByItemId.set(String(s.item_id), s);
         }
 
-        // 7. 分类：到期词 vs 新词
-        const now = new Date();
-        const due = [];   // 已有状态且到期
-        const fresh = []; // 从未复习过
+        const dueWithState = due.map(v => ({
+            vocab: v,
+            state: stateByItemId.get(String(v.id))
+        }));
 
-        for (const v of fullVocabs) {
-            const key = String(v.id);
-            const state = stateByItemId.get(key);
-
-            if (!state) {
-                // 没有任何状态，是新词
-                fresh.push(v);
-            } else {
-                const nextAt = state.next_review_at ? new Date(state.next_review_at) : null;
-                if (!nextAt || nextAt <= now) {
-                    // 已到期或没设 next_review_at
-                    due.push({ vocab: v, state });
-                }
-                // 如果 nextAt > now，说明还没到复习时间，不选入本轮
-            }
-        }
-
-        // 8. 对到期词按 next_review_at 升序排序（最早到期的先复习）
-        due.sort((a, b) => {
-            const t1 = a.state.next_review_at ? new Date(a.state.next_review_at).getTime() : 0;
-            const t2 = b.state.next_review_at ? new Date(b.state.next_review_at).getTime() : 0;
+        dueWithState.sort((a, b) => {
+            const t1 = a.state?.next_review_at ? new Date(a.state.next_review_at).getTime() : 0;
+            const t2 = b.state?.next_review_at ? new Date(b.state.next_review_at).getTime() : 0;
             return t1 - t2;
         });
 
-        // 9. 组合本轮复习列表
+        // 8. 组合本轮复习列表
         let selectedVocabs;
-        if (due.length >= MAX_PER_SESSION) {
+        if (dueWithState.length >= MAX_PER_SESSION) {
             // 到期词够多，只取前 20 个
-            selectedVocabs = due.slice(0, MAX_PER_SESSION).map(x => x.vocab);
+            selectedVocabs = dueWithState.slice(0, MAX_PER_SESSION).map(x => x.vocab);
         } else {
             // 到期词不够，用新词补足
-            const needFresh = MAX_PER_SESSION - due.length;
+            const needFresh = MAX_PER_SESSION - dueWithState.length;
             selectedVocabs = [
-                ...due.map(x => x.vocab),
+                ...dueWithState.map(x => x.vocab),
                 ...fresh.slice(0, needFresh),
             ];
         }
 
-        // 10. 兜底：如果 fullVocabs 有内容但 selectedVocabs 还是空，至少给一轮
+        // 9. 兜底：如果 fullVocabs 有内容但 selectedVocabs 还是空，至少给一轮
         if (fullVocabs.length > 0 && selectedVocabs.length === 0) {
             console.warn('[loadNotebookVocabsForReview] Fallback: selectedVocabs empty but fullVocabs has items');
             selectedVocabs = fullVocabs.slice(0, MAX_PER_SESSION);
         }
 
         // 调试日志
-        console.log('[loadNotebookVocabsForReview]', {
-            notebookId,
-            fullVocabs: fullVocabs.length,
-            states: (states || []).length,
+        console.log('[ReviewDetail] notebook', notebookId, {
+            total: fullVocabs.length,
             due: due.length,
             fresh: fresh.length,
             selected: selectedVocabs.length,
