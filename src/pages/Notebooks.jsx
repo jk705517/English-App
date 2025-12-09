@@ -397,7 +397,10 @@ function Notebooks() {
                                             ) : vocabStats.dueCount > 0 ? (
                                                 <>今日待复习：<span className="font-medium text-indigo-600">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
                                             ) : (
-                                                <>🎉 今天这个本子暂无需要复习的词（共 {vocabStats.totalVocabCount} 个词）</>
+                                                <div className="flex flex-col gap-1">
+                                                    <div>🎉 今天这个本子没有到期要复习的词（共 {vocabStats.totalVocabCount} 个词）</div>
+                                                    <div className="text-xs text-gray-400">之后会按记忆节奏自动安排再来复习。</div>
+                                                </div>
                                             )}
                                         </div>
                                     )}
@@ -412,7 +415,7 @@ function Notebooks() {
                                                 }`}
                                         >
                                             <Play className="w-4 h-4" />
-                                            开始词汇复习
+                                            {vocabStats.totalVocabCount > 0 && vocabStats.dueCount === 0 ? '随便练一练' : '开始词汇复习'}
                                         </button>
                                     </div>
                                     {notebookDetail.vocabs.length > 0 ? (
