@@ -333,6 +333,94 @@ async function loadNotebookDetail(user, notebookId) {
     }
 }
 
+/**
+ * 加载本子中的词汇（用于复习模式，包含完整词汇信息）
+ * @param {object} user - 当前登录用户
+ * @param {number} notebookId - 本子 ID
+ * @returns {Promise<object|null>} { notebook, vocabs }
+ */
+async function loadNotebookVocabsForReview(user, notebookId) {
+    if (!user || !notebookId) return null;
+
+    try {
+        // 1. 获取本子基本信息
+        const { data: notebook, error: notebookError } = await supabase
+            .from('user_notebooks')
+            .select('id, name, color, created_at')
+            .eq('id', notebookId)
+            .eq('user_id', user.id)
+            .single();
+
+        if (notebookError || !notebook) {
+            console.error('Error loading notebook:', notebookError);
+            return null;
+        }
+
+        // 2. 获取本子里的词汇条目（按添加时间升序，用于复习顺序）
+        const { data: items, error: itemsError } = await supabase
+            .from('user_notebook_items')
+            .select('item_type, item_id, video_id, created_at')
+            .eq('notebook_id', notebookId)
+            .eq('user_id', user.id)
+            .eq('item_type', 'vocab')
+            .order('created_at', { ascending: true });
+
+        if (itemsError) {
+            console.error('Error loading notebook vocab items:', itemsError);
+            return { notebook, vocabs: [] };
+        }
+
+        if (!items || items.length === 0) {
+            return { notebook, vocabs: [] };
+        }
+
+        // 3. 获取所有相关的视频信息（包含词汇数据）
+        const videoIds = [...new Set(items.map(item => item.video_id).filter(Boolean))];
+        if (videoIds.length === 0) {
+            return { notebook, vocabs: [] };
+        }
+
+        const { data: videos, error: videosError } = await supabase
+            .from('videos')
+            .select('id, title, episode, vocab')
+            .in('id', videoIds);
+
+        if (videosError) {
+            console.error('Error loading videos:', videosError);
+            return { notebook, vocabs: [] };
+        }
+
+        // 4. 匹配词汇详情（复用现有 vocab 数据结构）
+        const vocabs = [];
+        for (const item of items) {
+            const video = videos?.find(v => v.id === item.video_id);
+            if (!video?.vocab) continue;
+
+            const vocabItem = video.vocab.find(v => v.id === item.item_id);
+            if (vocabItem) {
+                vocabs.push({
+                    id: item.item_id,
+                    word: vocabItem.word,
+                    type: vocabItem.type,
+                    ipa_us: vocabItem.ipa_us,
+                    ipa_uk: vocabItem.ipa_uk,
+                    meaning: vocabItem.meaning,
+                    examples: vocabItem.examples || [],
+                    collocations: vocabItem.collocations || [],
+                    videoId: item.video_id,
+                    episode: video.episode,
+                    title: video.title
+                });
+            }
+        }
+
+        return { notebook, vocabs };
+    } catch (error) {
+        console.error('Error in loadNotebookVocabsForReview:', error);
+        return null;
+    }
+}
+
 export const notebookService = {
     loadNotebooks,
     createNotebook,
@@ -340,5 +428,6 @@ export const notebookService = {
     deleteNotebook,
     addItemToNotebook,
     removeItemFromNotebook,
-    loadNotebookDetail
+    loadNotebookDetail,
+    loadNotebookVocabsForReview
 };

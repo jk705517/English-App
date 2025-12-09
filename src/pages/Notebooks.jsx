@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, ChevronRight, Trash2, Edit2, X } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, ChevronRight, Trash2, Edit2, X, Play } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
 
@@ -299,103 +299,131 @@ function Notebooks() {
 
                             {/* 句子列表 */}
                             {activeTab === 'sentence' && (
-                                notebookDetail.sentences.length > 0 ? (
-                                    <div className="space-y-4">
-                                        {notebookDetail.sentences.map((sentence) => (
-                                            <div
-                                                key={`${sentence.videoId}-${sentence.sentenceId}`}
-                                                className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                            >
-                                                <div className="flex justify-between items-start gap-4">
-                                                    <div className="flex-1">
-                                                        <p className="text-lg text-gray-800 font-medium mb-2 leading-relaxed">
-                                                            {sentence.en}
-                                                        </p>
-                                                        <p className="text-gray-500 mb-3">
-                                                            {sentence.cn}
-                                                        </p>
-                                                        <p className="text-sm text-gray-400">
-                                                            第 {sentence.episode} 期 · {sentence.title}
-                                                        </p>
-                                                    </div>
-                                                    <div className="flex gap-2 shrink-0">
-                                                        <button
-                                                            onClick={() => handleRemoveSentence(sentence.sentenceId)}
-                                                            className="px-3 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
-                                                            title="从本子中移除"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
-                                                            className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                                        >
-                                                            去学习
-                                                        </button>
+                                <>
+                                    {/* 句子复习按钮（占位，暂不可用） */}
+                                    <div className="mb-4">
+                                        <button
+                                            disabled
+                                            className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-400 rounded-lg font-medium cursor-not-allowed"
+                                        >
+                                            <Play className="w-4 h-4" />
+                                            句子复习（即将上线）
+                                        </button>
+                                    </div>
+                                    {notebookDetail.sentences.length > 0 ? (
+                                        <div className="space-y-4">
+                                            {notebookDetail.sentences.map((sentence) => (
+                                                <div
+                                                    key={`${sentence.videoId}-${sentence.sentenceId}`}
+                                                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <div className="flex justify-between items-start gap-4">
+                                                        <div className="flex-1">
+                                                            <p className="text-lg text-gray-800 font-medium mb-2 leading-relaxed">
+                                                                {sentence.en}
+                                                            </p>
+                                                            <p className="text-gray-500 mb-3">
+                                                                {sentence.cn}
+                                                            </p>
+                                                            <p className="text-sm text-gray-400">
+                                                                第 {sentence.episode} 期 · {sentence.title}
+                                                            </p>
+                                                        </div>
+                                                        <div className="flex gap-2 shrink-0">
+                                                            <button
+                                                                onClick={() => handleRemoveSentence(sentence.sentenceId)}
+                                                                className="px-3 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
+                                                                title="从本子中移除"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                            >
+                                                                去学习
+                                                            </button>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500">本子里还没有句子</p>
-                                    </div>
-                                )
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12">
+                                            <MessageSquare className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500">本子里还没有句子</p>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {/* 词汇列表 */}
                             {activeTab === 'vocab' && (
-                                notebookDetail.vocabs.length > 0 ? (
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        {notebookDetail.vocabs.map((vocab) => (
-                                            <div
-                                                key={`${vocab.videoId}-${vocab.vocabId}`}
-                                                className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                                            >
-                                                <div className="flex justify-between items-start mb-3">
-                                                    <div>
-                                                        <span className="text-xl font-bold text-indigo-700">
-                                                            {vocab.word}
-                                                        </span>
-                                                        {vocab.phonetic && (
-                                                            <span className="ml-2 text-sm text-gray-400 font-mono">
-                                                                /{vocab.phonetic}/
+                                <>
+                                    {/* 开始词汇复习按钮 */}
+                                    <div className="mb-4">
+                                        <button
+                                            onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=vocab`)}
+                                            disabled={notebookDetail.vocabs.length === 0}
+                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${notebookDetail.vocabs.length > 0
+                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                }`}
+                                        >
+                                            <Play className="w-4 h-4" />
+                                            开始词汇复习
+                                        </button>
+                                    </div>
+                                    {notebookDetail.vocabs.length > 0 ? (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {notebookDetail.vocabs.map((vocab) => (
+                                                <div
+                                                    key={`${vocab.videoId}-${vocab.vocabId}`}
+                                                    className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                                                >
+                                                    <div className="flex justify-between items-start mb-3">
+                                                        <div>
+                                                            <span className="text-xl font-bold text-indigo-700">
+                                                                {vocab.word}
                                                             </span>
-                                                        )}
+                                                            {vocab.phonetic && (
+                                                                <span className="ml-2 text-sm text-gray-400 font-mono">
+                                                                    /{vocab.phonetic}/
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        <div className="flex gap-1 shrink-0">
+                                                            <button
+                                                                onClick={() => handleRemoveVocab(vocab.vocabId)}
+                                                                className="px-2 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                                                                title="从本子中移除"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                            </button>
+                                                            <button
+                                                                onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                                className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                            >
+                                                                去学习
+                                                            </button>
+                                                        </div>
                                                     </div>
-                                                    <div className="flex gap-1 shrink-0">
-                                                        <button
-                                                            onClick={() => handleRemoveVocab(vocab.vocabId)}
-                                                            className="px-2 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                            title="从本子中移除"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
-                                                            className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
-                                                        >
-                                                            去学习
-                                                        </button>
-                                                    </div>
+                                                    <p className="text-gray-600 mb-3">
+                                                        {vocab.meaning}
+                                                    </p>
+                                                    <p className="text-sm text-gray-400">
+                                                        第 {vocab.episode} 期 · {vocab.title}
+                                                    </p>
                                                 </div>
-                                                <p className="text-gray-600 mb-3">
-                                                    {vocab.meaning}
-                                                </p>
-                                                <p className="text-sm text-gray-400">
-                                                    第 {vocab.episode} 期 · {vocab.title}
-                                                </p>
-                                            </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center py-12">
-                                        <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-3" />
-                                        <p className="text-gray-500">本子里还没有词汇</p>
-                                    </div>
-                                )
+                                            ))}
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-12">
+                                            <BookOpen className="w-16 h-16 text-gray-300 mx-auto mb-3" />
+                                            <p className="text-gray-500">本子里还没有词汇</p>
+                                        </div>
+                                    )}
+                                </>
                             )}
                         </div>
                     ) : null}

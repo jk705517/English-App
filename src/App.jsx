@@ -6,6 +6,7 @@ import VocabDetail from './pages/VocabDetail';
 import Settings from './pages/Settings';
 import Favorites from './pages/Favorites';
 import Notebooks from './pages/Notebooks';
+import NotebookReviewPage from './pages/NotebookReviewPage';
 import DataCheck from './pages/DataCheck';
 import Auth from './pages/Auth';
 
@@ -19,6 +20,7 @@ function App() {
                     <Route path="vocab-detail/:word" element={<VocabDetail />} />
                     <Route path="favorites" element={<Favorites />} />
                     <Route path="notebooks" element={<Notebooks />} />
+                    <Route path="notebooks/:notebookId/review" element={<NotebookReviewPage />} />
                     <Route path="settings" element={<Settings />} />
                     <Route path="data-check" element={<DataCheck />} />
                     <Route path="login" element={<Auth />} />
