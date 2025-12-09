@@ -335,12 +335,18 @@ async function loadNotebookDetail(user, notebookId) {
 
 /**
  * 加载本子中的词汇（用于复习模式，包含完整词汇信息）
+ * v2: 按记忆曲线选题
+ *   - 优先返回"到期的词"（next_review_at <= now）
+ *   - 如果到期的不够 20 个，再补充一些"新词"（从未有状态）
+ * 
  * @param {object} user - 当前登录用户
  * @param {number} notebookId - 本子 ID
  * @returns {Promise<object|null>} { notebook, vocabs }
  */
 async function loadNotebookVocabsForReview(user, notebookId) {
     if (!user || !notebookId) return null;
+
+    const MAX_PER_SESSION = 20;
 
     try {
         // 1. 获取本子基本信息
@@ -356,7 +362,7 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             return null;
         }
 
-        // 2. 获取本子里的词汇条目（按添加时间升序，用于复习顺序）
+        // 2. 获取本子里的词汇条目（按添加时间升序）
         const { data: items, error: itemsError } = await supabase
             .from('user_notebook_items')
             .select('item_type, item_id, video_id, created_at')
@@ -390,15 +396,15 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             return { notebook, vocabs: [] };
         }
 
-        // 4. 匹配词汇详情（复用现有 vocab 数据结构）
-        const vocabs = [];
+        // 4. 构建 fullVocabs 数组（匹配词汇详情）
+        const fullVocabs = [];
         for (const item of items) {
             const video = videos?.find(v => v.id === item.video_id);
             if (!video?.vocab) continue;
 
             const vocabItem = video.vocab.find(v => v.id === item.item_id);
             if (vocabItem) {
-                vocabs.push({
+                fullVocabs.push({
                     id: item.item_id,
                     word: vocabItem.word,
                     type: vocabItem.type,
@@ -414,7 +420,75 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             }
         }
 
-        return { notebook, vocabs };
+        if (fullVocabs.length === 0) {
+            return { notebook, vocabs: [] };
+        }
+
+        // 5. 查询 user_review_states，获取这些词汇的复习状态
+        const itemIds = fullVocabs.map(v => String(v.id));
+        const { data: states, error: statesError } = await supabase
+            .from('user_review_states')
+            .select('item_id, next_review_at, familiarity_level')
+            .eq('user_id', user.id)
+            .eq('item_type', 'vocab')
+            .in('item_id', itemIds);
+
+        if (statesError) {
+            console.error('Error loading review states:', statesError);
+            // 出错时回退到返回所有词汇
+            return { notebook, vocabs: fullVocabs };
+        }
+
+        // 6. 构建 stateByItemId Map
+        const stateByItemId = new Map();
+        for (const s of (states || [])) {
+            stateByItemId.set(String(s.item_id), s);
+        }
+
+        // 7. 分类：到期词 vs 新词
+        const now = new Date();
+        const due = [];   // 已有状态且到期
+        const fresh = []; // 从未复习过
+
+        for (const v of fullVocabs) {
+            const key = String(v.id);
+            const state = stateByItemId.get(key);
+
+            if (!state) {
+                // 没有任何状态，是新词
+                fresh.push(v);
+            } else {
+                const nextAt = state.next_review_at ? new Date(state.next_review_at) : null;
+                if (!nextAt || nextAt <= now) {
+                    // 已到期或没设 next_review_at
+                    due.push({ vocab: v, state });
+                }
+                // 如果 nextAt > now，说明还没到复习时间，不选入本轮
+            }
+        }
+
+        // 8. 对到期词按 next_review_at 升序排序（最早到期的先复习）
+        due.sort((a, b) => {
+            const t1 = a.state.next_review_at ? new Date(a.state.next_review_at).getTime() : 0;
+            const t2 = b.state.next_review_at ? new Date(b.state.next_review_at).getTime() : 0;
+            return t1 - t2;
+        });
+
+        // 9. 组合本轮复习列表
+        let selectedVocabs;
+        if (due.length >= MAX_PER_SESSION) {
+            // 到期词够多，只取前 20 个
+            selectedVocabs = due.slice(0, MAX_PER_SESSION).map(x => x.vocab);
+        } else {
+            // 到期词不够，用新词补足
+            const needFresh = MAX_PER_SESSION - due.length;
+            selectedVocabs = [
+                ...due.map(x => x.vocab),
+                ...fresh.slice(0, needFresh),
+            ];
+        }
+
+        return { notebook, vocabs: selectedVocabs };
     } catch (error) {
         console.error('Error in loadNotebookVocabsForReview:', error);
         return null;

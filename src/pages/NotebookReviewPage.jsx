@@ -3,7 +3,7 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
-import { recordReviewLog } from '../services/reviewService';
+import { recordReviewLog, updateReviewState } from '../services/reviewService';
 import VocabReviewCard from '../components/VocabReviewCard';
 import SentenceReviewCard from '../components/SentenceReviewCard';
 
@@ -40,6 +40,11 @@ function recordReviewResult(item, isKnown, type, notebookId, userId) {
 
     // 3. 异步写入日志（不阻塞 UI）
     recordReviewLog(payload, userId);
+
+    // 4. 对 vocab 更新记忆曲线状态（不阻塞 UI）
+    if (payload.itemType === 'vocab') {
+        updateReviewState(payload, userId);
+    }
 }
 
 
