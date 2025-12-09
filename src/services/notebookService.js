@@ -332,7 +332,6 @@ async function loadNotebookDetail(user, notebookId) {
         return null;
     }
 }
-
 /**
  * 加载本子中的词汇（用于复习模式，包含完整词汇信息）
  * v2: 按记忆曲线选题
@@ -341,7 +340,7 @@ async function loadNotebookDetail(user, notebookId) {
  * 
  * @param {object} user - 当前登录用户
  * @param {number} notebookId - 本子 ID
- * @returns {Promise<object|null>} { notebook, vocabs }
+ * @returns {Promise<object|null>} { notebook, vocabs, totalVocabCount }
  */
 async function loadNotebookVocabsForReview(user, notebookId) {
     if (!user || !notebookId) return null;
@@ -373,17 +372,21 @@ async function loadNotebookVocabsForReview(user, notebookId) {
 
         if (itemsError) {
             console.error('Error loading notebook vocab items:', itemsError);
-            return { notebook, vocabs: [] };
+            return { notebook, vocabs: [], totalVocabCount: 0 };
         }
 
         if (!items || items.length === 0) {
-            return { notebook, vocabs: [] };
+            console.log('[loadNotebookVocabsForReview] No vocab items in notebook');
+            return { notebook, vocabs: [], totalVocabCount: 0 };
         }
+
+        console.log('[loadNotebookVocabsForReview] Found notebook items:', items.length);
 
         // 3. 获取所有相关的视频信息（包含词汇数据）
         const videoIds = [...new Set(items.map(item => item.video_id).filter(Boolean))];
         if (videoIds.length === 0) {
-            return { notebook, vocabs: [] };
+            console.log('[loadNotebookVocabsForReview] No video IDs found');
+            return { notebook, vocabs: [], totalVocabCount: 0 };
         }
 
         const { data: videos, error: videosError } = await supabase
@@ -393,16 +396,24 @@ async function loadNotebookVocabsForReview(user, notebookId) {
 
         if (videosError) {
             console.error('Error loading videos:', videosError);
-            return { notebook, vocabs: [] };
+            return { notebook, vocabs: [], totalVocabCount: 0 };
         }
 
         // 4. 构建 fullVocabs 数组（匹配词汇详情）
         const fullVocabs = [];
         for (const item of items) {
             const video = videos?.find(v => v.id === item.video_id);
-            if (!video?.vocab) continue;
+            if (!video?.vocab) {
+                console.warn('[loadNotebookVocabsForReview] Video or vocab not found for item:', item);
+                continue;
+            }
 
-            const vocabItem = video.vocab.find(v => v.id === item.item_id);
+            // 尝试多种匹配方式
+            const vocabItem = video.vocab.find(v =>
+                v.id === item.item_id ||
+                String(v.id) === String(item.item_id)
+            );
+
             if (vocabItem) {
                 fullVocabs.push({
                     id: item.item_id,
@@ -417,11 +428,18 @@ async function loadNotebookVocabsForReview(user, notebookId) {
                     episode: video.episode,
                     title: video.title
                 });
+            } else {
+                console.warn('[loadNotebookVocabsForReview] Vocab item not found in video:', {
+                    item_id: item.item_id,
+                    video_id: item.video_id,
+                    available_vocab_ids: video.vocab.slice(0, 5).map(v => v.id)
+                });
             }
         }
 
         if (fullVocabs.length === 0) {
-            return { notebook, vocabs: [] };
+            console.log('[loadNotebookVocabsForReview] No vocabs matched from videos');
+            return { notebook, vocabs: [], totalVocabCount: 0 };
         }
 
         // 5. 查询 user_review_states，获取这些词汇的复习状态
@@ -436,7 +454,7 @@ async function loadNotebookVocabsForReview(user, notebookId) {
         if (statesError) {
             console.error('Error loading review states:', statesError);
             // 出错时回退到返回所有词汇
-            return { notebook, vocabs: fullVocabs };
+            return { notebook, vocabs: fullVocabs, totalVocabCount: fullVocabs.length };
         }
 
         // 6. 构建 stateByItemId Map
@@ -488,12 +506,29 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             ];
         }
 
-        return { notebook, vocabs: selectedVocabs };
+        // 10. 兜底：如果 fullVocabs 有内容但 selectedVocabs 还是空，至少给一轮
+        if (fullVocabs.length > 0 && selectedVocabs.length === 0) {
+            console.warn('[loadNotebookVocabsForReview] Fallback: selectedVocabs empty but fullVocabs has items');
+            selectedVocabs = fullVocabs.slice(0, MAX_PER_SESSION);
+        }
+
+        // 调试日志
+        console.log('[loadNotebookVocabsForReview]', {
+            notebookId,
+            fullVocabs: fullVocabs.length,
+            states: (states || []).length,
+            due: due.length,
+            fresh: fresh.length,
+            selected: selectedVocabs.length,
+        });
+
+        return { notebook, vocabs: selectedVocabs, totalVocabCount: fullVocabs.length };
     } catch (error) {
         console.error('Error in loadNotebookVocabsForReview:', error);
         return null;
     }
 }
+
 
 /**
  * v1.3: 加载某个词汇在原视频中的字幕句子

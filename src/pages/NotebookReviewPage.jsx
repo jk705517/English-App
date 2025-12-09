@@ -65,6 +65,7 @@ function NotebookReviewPage() {
     const [notebookName, setNotebookName] = useState('');
     const [vocabs, setVocabs] = useState([]);
     const [sentences, setSentences] = useState([]);
+    const [totalVocabCount, setTotalVocabCount] = useState(0); // 本子里所有词汇总数
 
     // 复习会话状态
     const [currentIndex, setCurrentIndex] = useState(0);
@@ -114,6 +115,7 @@ function NotebookReviewPage() {
                     if (data) {
                         setNotebookName(data.notebook.name);
                         setVocabs(data.vocabs || []);
+                        setTotalVocabCount(data.totalVocabCount || 0);
                         setSentences([]); // 清空另一个模式的数据
                     }
                 }
@@ -331,17 +333,32 @@ function NotebookReviewPage() {
         );
     }
 
-    // 没有数据
+    // 没有数据 - 区分“本子真的空”和“本轮没有到期的词”
     if (total === 0) {
+        const isReallyEmpty = type === 'vocab' ? totalVocabCount === 0 : true;
+
         return (
             <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
                 <div className="text-center">
-                    <p className="text-xl text-gray-600 mb-4">
-                        这个本子里还没有{type === 'sentence' ? '句子' : '词汇'}
-                    </p>
-                    <p className="text-gray-400 mb-6">
-                        先去视频页面添加一些{type === 'sentence' ? '句子' : '词汇'}到本子吧
-                    </p>
+                    {isReallyEmpty ? (
+                        <>
+                            <p className="text-xl text-gray-600 mb-4">
+                                这个本子里还没有{type === 'sentence' ? '句子' : '词汇'}
+                            </p>
+                            <p className="text-gray-400 mb-6">
+                                先去视频页面添加一些{type === 'sentence' ? '句子' : '词汇'}到本子吧
+                            </p>
+                        </>
+                    ) : (
+                        <>
+                            <p className="text-xl text-gray-600 mb-4">
+                                🎉 暂时没有需要复习的词汇
+                            </p>
+                            <p className="text-gray-400 mb-6">
+                                本子里共有 {totalVocabCount} 个词，但都还没到复习时间。稍后再来吧！
+                            </p>
+                        </>
+                    )}
                     <button
                         onClick={handleBack}
                         className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
