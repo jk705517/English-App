@@ -71,6 +71,10 @@ function getNextReviewAtFromLevel(level) {
  * 根据本次复习结果，更新 user_review_states
  * 目前只对 item_type='vocab' 生效
  * 
+ * v2 规则：
+ * - isKnown=true: level+1（最高3），间隔按 level 计算
+ * - isKnown=false: level-1（最低0），next_review_at=now（立即到期，下轮优先出现）
+ * 
  * @param {Object} params
  * @param {'vocab'|'sentence'} params.itemType - 复习对象类型
  * @param {string} params.itemId - 该词/句子的唯一标识
@@ -116,9 +120,22 @@ export async function updateReviewState({
         let payload;
 
         if (!existing) {
-            // 首次创建
-            const level = isKnown ? 1 : 0;
-            const nextReviewAt = getNextReviewAtFromLevel(level);
+            // ========== 首次创建 ==========
+            let level;
+            let nextReviewAt;
+            let successStreak;
+
+            if (isKnown) {
+                // 答对：level=1，按 level 算间隔
+                level = 1;
+                successStreak = 1;
+                nextReviewAt = getNextReviewAtFromLevel(level);
+            } else {
+                // 答错：level=0，next_review_at=now（立即到期）
+                level = 0;
+                successStreak = 0;
+                nextReviewAt = nowIso;
+            }
 
             payload = {
                 user_id: userId,
@@ -128,7 +145,7 @@ export async function updateReviewState({
                 notebook_id: notebookId ? String(notebookId) : null,
                 review_count: 1,
                 familiarity_level: level,
-                success_streak: isKnown ? 1 : 0,
+                success_streak: successStreak,
                 last_result_known: isKnown,
                 last_review_at: nowIso,
                 next_review_at: nextReviewAt,
@@ -143,24 +160,23 @@ export async function updateReviewState({
                 console.error('[updateReviewState] insert error:', insertError);
             }
         } else {
-            // 更新已有状态
+            // ========== 更新已有状态 ==========
             let level = existing.familiarity_level ?? 0;
             let successStreak = existing.success_streak ?? 0;
             const reviewCount = (existing.review_count ?? 0) + 1;
+            let nextReviewAt;
 
             if (isKnown) {
+                // 答对：level+1（最高3），successStreak+1
+                level = Math.min(3, level + 1);
                 successStreak += 1;
-                // 连续答对 2 次以上才升级
-                if (level < 3 && successStreak >= 2) {
-                    level += 1;
-                    successStreak = 0; // 升级后清零连续计数
-                }
+                nextReviewAt = getNextReviewAtFromLevel(level);
             } else {
+                // 答错：level-1（最低0），successStreak清零，next_review_at=now
+                level = Math.max(0, level - 1);
                 successStreak = 0;
-                level = Math.max(0, level - 1); // 答错掉一级，不低于 0
+                nextReviewAt = nowIso; // 关键：立即到期，下轮优先出现
             }
-
-            const nextReviewAt = getNextReviewAtFromLevel(level);
 
             payload = {
                 review_count: reviewCount,
