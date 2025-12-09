@@ -24,6 +24,10 @@ function Notebooks() {
     const [vocabStats, setVocabStats] = useState({ dueCount: 0, totalVocabCount: 0 });
     const [vocabStatsLoading, setVocabStatsLoading] = useState(false);
 
+    // 句子复习统计（记忆曲线）
+    const [sentenceStats, setSentenceStats] = useState({ dueCount: 0, totalSentenceCount: 0 });
+    const [sentenceStatsLoading, setSentenceStatsLoading] = useState(false);
+
     // 新建本子 Modal
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newNotebookName, setNewNotebookName] = useState('');
@@ -48,12 +52,15 @@ function Notebooks() {
         setSelectedNotebook(notebook);
         setDetailLoading(true);
         setVocabStats({ dueCount: 0, totalVocabCount: 0 }); // 重置统计
+        setSentenceStats({ dueCount: 0, totalSentenceCount: 0 }); // 重置统计
+
         const detail = await notebookService.loadNotebookDetail(user, notebook.id);
         setNotebookDetail(detail);
         setDetailLoading(false);
 
-        // 异步加载词汇复习统计（不阻塞详情加载）
+        // 异步加载复习统计（不阻塞详情加载）
         loadVocabStats(notebook.id);
+        loadSentenceStats(notebook.id);
     };
 
     // 加载词汇复习统计
@@ -71,6 +78,30 @@ function Notebooks() {
             console.error('Error loading vocab stats:', err);
         }
         setVocabStatsLoading(false);
+    };
+
+    // 加载句子复习统计
+    const loadSentenceStats = async (notebookId) => {
+        setSentenceStatsLoading(true);
+        try {
+            const data = await notebookService.loadNotebookSentencesForReview(user, notebookId);
+            if (data) {
+                const stats = {
+                    dueCount: data.dueSentenceCount || 0,
+                    totalSentenceCount: data.totalSentenceCount || 0,
+                };
+                setSentenceStats(stats);
+
+                console.log('[SentenceNotebookHeader]', {
+                    notebookId,
+                    totalSentenceCount: stats.totalSentenceCount,
+                    dueSentenceCount: stats.dueCount,
+                });
+            }
+        } catch (err) {
+            console.error('Error loading sentence stats:', err);
+        }
+        setSentenceStatsLoading(false);
     };
 
     // 创建新本子
@@ -277,7 +308,6 @@ function Notebooks() {
                         </div>
                     )}
                 </div>
-
                 {/* 右侧：本子详情 */}
                 <div className="flex-1 min-w-0">
                     {!selectedNotebook ? (
@@ -331,6 +361,21 @@ function Notebooks() {
                             {/* 句子列表 */}
                             {activeTab === 'sentence' && (
                                 <>
+                                    {/* 句子复习统计提示 */}
+                                    {sentenceStats.totalSentenceCount > 0 && (
+                                        <div className="text-sm text-gray-500 mb-2">
+                                            {sentenceStatsLoading ? (
+                                                <span>加载中...</span>
+                                            ) : sentenceStats.dueCount > 0 ? (
+                                                <>今日待复习：<span className="font-medium text-indigo-600">{sentenceStats.dueCount}</span> / 共 {sentenceStats.totalSentenceCount} 个句子</>
+                                            ) : (
+                                                <div className="flex flex-col gap-1">
+                                                    <div>🎉 今天这个本子没有到期要复习的句子（共 {sentenceStats.totalSentenceCount} 个句子）</div>
+                                                    <div className="text-xs text-gray-400">之后会按记忆节奏自动安排再来复习。</div>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
                                     {/* 开始句子复习按钮 */}
                                     <div className="mb-4">
                                         <button
@@ -342,7 +387,7 @@ function Notebooks() {
                                                 }`}
                                         >
                                             <Play className="w-4 h-4" />
-                                            开始句子复习
+                                            {sentenceStats.totalSentenceCount > 0 && sentenceStats.dueCount === 0 ? '随便练一练' : '开始句子复习'}
                                         </button>
                                     </div>
                                     {notebookDetail.sentences.length > 0 ? (

@@ -1,13 +1,13 @@
 import { supabase } from './supabaseClient';
 
 /**
- * 按记忆状态拆分词汇（纯函数）
- * @param {Array} vocabs - 词汇列表（必须包含 id 或 item_id）
+ * 按记忆状态拆分条目（纯函数，通用）
+ * @param {Array} items - 条目列表（必须包含 id 或 item_id）
  * @param {Array} states - 复习状态列表（必须包含 item_id, next_review_at）
  * @param {Date} now - 当前时间
  * @returns {object} { due, fresh, future }
  */
-function splitVocabsByReviewState(vocabs, states, now = new Date()) {
+function splitItemsByReviewState(items, states, now = new Date()) {
     const due = [];
     const fresh = [];
     const future = [];
@@ -16,19 +16,19 @@ function splitVocabsByReviewState(vocabs, states, now = new Date()) {
     const stateMap = new Map();
     states.forEach(s => stateMap.set(String(s.item_id), s));
 
-    vocabs.forEach(vocab => {
-        // 兼容处理：vocab 可能是 fullVocab (有 id) 或 notebookItem (有 item_id)
-        const vocabId = String(vocab.id || vocab.item_id);
-        const state = stateMap.get(vocabId);
+    items.forEach(item => {
+        // 兼容处理：item 可能是 fullItem (有 id) 或 notebookItem (有 item_id)
+        const itemId = String(item.id || item.item_id);
+        const state = stateMap.get(itemId);
 
         if (!state) {
-            fresh.push(vocab);
+            fresh.push(item);
         } else {
             const nextReviewAt = state.next_review_at ? new Date(state.next_review_at) : null;
             if (nextReviewAt && nextReviewAt <= now) {
-                due.push(vocab);
+                due.push(item);
             } else {
-                future.push(vocab);
+                future.push(item);
             }
         }
     });
@@ -76,49 +76,65 @@ async function loadNotebooks(user) {
                 ...nb,
                 sentenceCount: 0,
                 vocabCount: 0,
-                dueVocabCount: 0
+                dueVocabCount: 0,
+                dueSentenceCount: 0
             }));
         }
 
-        // 3. 计算每个本子的句子/词汇数量，并收集所有词汇 ID
+        // 3. 计算每个本子的句子/词汇数量，并收集所有 ID
         const statsMap = {};
         const allVocabIds = [];
+        const allSentenceIds = [];
 
         for (const item of items || []) {
             if (!statsMap[item.notebook_id]) {
-                statsMap[item.notebook_id] = { sentenceCount: 0, vocabCount: 0, dueVocabCount: 0 };
+                statsMap[item.notebook_id] = { sentenceCount: 0, vocabCount: 0, dueVocabCount: 0, dueSentenceCount: 0 };
             }
             if (item.item_type === 'sentence') {
                 statsMap[item.notebook_id].sentenceCount++;
+                allSentenceIds.push(item.item_id);
             } else if (item.item_type === 'vocab') {
                 statsMap[item.notebook_id].vocabCount++;
                 allVocabIds.push(item.item_id);
             }
         }
 
-        // 4. 获取所有相关的 review states
-        if (allVocabIds.length > 0) {
+        // 4. 获取所有相关的 review states (vocab & sentence)
+        const allItemIds = [...allVocabIds, ...allSentenceIds];
+
+        if (allItemIds.length > 0) {
             const { data: allStates, error: statesError } = await supabase
                 .from('user_review_states')
-                .select('item_id, next_review_at')
+                .select('item_id, item_type, next_review_at')
                 .eq('user_id', user.id)
-                .eq('item_type', 'vocab')
-                .in('item_id', allVocabIds);
+                .in('item_id', allItemIds);
 
             if (!statesError && allStates) {
                 const now = new Date();
 
                 // 按 notebook 分组计算
                 for (const notebookId of notebookIds) {
-                    // 找出该 notebook 下的所有 vocab items
+                    // Vocab stats
                     const notebookVocabItems = (items || []).filter(
                         item => item.notebook_id === notebookId && item.item_type === 'vocab'
                     );
-
                     if (notebookVocabItems.length > 0) {
-                        const { due } = splitVocabsByReviewState(notebookVocabItems, allStates, now);
+                        const vocabStates = allStates.filter(s => s.item_type === 'vocab');
+                        const { due } = splitItemsByReviewState(notebookVocabItems, vocabStates, now);
                         if (statsMap[notebookId]) {
                             statsMap[notebookId].dueVocabCount = due.length;
+                        }
+                    }
+
+                    // Sentence stats
+                    const notebookSentenceItems = (items || []).filter(
+                        item => item.notebook_id === notebookId && item.item_type === 'sentence'
+                    );
+                    if (notebookSentenceItems.length > 0) {
+                        const sentenceStates = allStates.filter(s => s.item_type === 'sentence');
+                        const { due } = splitItemsByReviewState(notebookSentenceItems, sentenceStates, now);
+                        if (statsMap[notebookId]) {
+                            statsMap[notebookId].dueSentenceCount = due.length;
                         }
                     }
                 }
@@ -131,8 +147,10 @@ async function loadNotebooks(user) {
         console.log('[NotebookList] stats', notebooks.map(n => ({
             id: n.id,
             name: n.name,
-            total: statsMap[n.id]?.vocabCount || 0,
-            due: statsMap[n.id]?.dueVocabCount || 0,
+            vocabTotal: statsMap[n.id]?.vocabCount || 0,
+            vocabDue: statsMap[n.id]?.dueVocabCount || 0,
+            sentenceTotal: statsMap[n.id]?.sentenceCount || 0,
+            sentenceDue: statsMap[n.id]?.dueSentenceCount || 0,
         })));
 
         // 5. 合并统计数据到本子列表
@@ -140,7 +158,8 @@ async function loadNotebooks(user) {
             ...nb,
             sentenceCount: statsMap[nb.id]?.sentenceCount || 0,
             vocabCount: statsMap[nb.id]?.vocabCount || 0,
-            dueVocabCount: statsMap[nb.id]?.dueVocabCount || 0
+            dueVocabCount: statsMap[nb.id]?.dueVocabCount || 0,
+            dueSentenceCount: statsMap[nb.id]?.dueSentenceCount || 0
         }));
     } catch (error) {
         console.error('Error in loadNotebooks:', error);
@@ -539,7 +558,7 @@ async function loadNotebookVocabsForReview(user, notebookId) {
 
         // 6. 使用统一工具函数拆分状态
         const now = new Date();
-        const { due, fresh, future } = splitVocabsByReviewState(fullVocabs, states, now);
+        const { due, fresh, future } = splitItemsByReviewState(fullVocabs, states, now);
 
         // 7. 对到期词按 next_review_at 升序排序
         const stateByItemId = new Map();
@@ -657,12 +676,15 @@ async function loadSentencesForVocab(user, vocabItem) {
 
 /**
  * 句子复习模式：加载本子中的句子（包含完整句子信息）
+ * v2: 接入记忆曲线
  * @param {object} user - 当前登录用户
  * @param {number} notebookId - 本子 ID
- * @returns {Promise<object|null>} { notebook, sentences }
+ * @returns {Promise<object|null>} { notebook, sentences, totalSentenceCount, dueSentenceCount }
  */
 async function loadNotebookSentencesForReview(user, notebookId) {
     if (!user || !notebookId) return null;
+
+    const MAX_PER_SESSION = 50; // 句子复习上限可以稍微多一点，或者保持一致
 
     try {
         // 1. 获取本子基本信息
@@ -678,7 +700,7 @@ async function loadNotebookSentencesForReview(user, notebookId) {
             return null;
         }
 
-        // 2. 获取本子里的句子条目（按添加时间升序，用于复习顺序）
+        // 2. 获取本子里的句子条目（按添加时间升序）
         const { data: items, error: itemsError } = await supabase
             .from('user_notebook_items')
             .select('item_type, item_id, video_id, created_at')
@@ -689,17 +711,17 @@ async function loadNotebookSentencesForReview(user, notebookId) {
 
         if (itemsError) {
             console.error('Error loading notebook sentence items:', itemsError);
-            return { notebook, sentences: [] };
+            return { notebook, sentences: [], totalSentenceCount: 0, dueSentenceCount: 0 };
         }
 
         if (!items || items.length === 0) {
-            return { notebook, sentences: [] };
+            return { notebook, sentences: [], totalSentenceCount: 0, dueSentenceCount: 0 };
         }
 
         // 3. 获取所有相关的视频信息（包含字幕数据）
         const videoIds = [...new Set(items.map(item => item.video_id).filter(Boolean))];
         if (videoIds.length === 0) {
-            return { notebook, sentences: [] };
+            return { notebook, sentences: [], totalSentenceCount: 0, dueSentenceCount: 0 };
         }
 
         const { data: videos, error: videosError } = await supabase
@@ -709,11 +731,11 @@ async function loadNotebookSentencesForReview(user, notebookId) {
 
         if (videosError) {
             console.error('Error loading videos:', videosError);
-            return { notebook, sentences: [] };
+            return { notebook, sentences: [], totalSentenceCount: 0, dueSentenceCount: 0 };
         }
 
         // 4. 匹配句子详情（从 transcript 中查找）
-        const sentences = [];
+        const fullSentences = [];
         for (const item of items) {
             const video = videos?.find(v => v.id === item.video_id);
             if (!video?.transcript) continue;
@@ -726,7 +748,7 @@ async function loadNotebookSentencesForReview(user, notebookId) {
 
             if (sentenceItem) {
                 const index = video.transcript.indexOf(sentenceItem);
-                sentences.push({
+                fullSentences.push({
                     id: item.item_id,
                     videoId: item.video_id,
                     index: index >= 0 ? index : 0,
@@ -739,7 +761,75 @@ async function loadNotebookSentencesForReview(user, notebookId) {
             }
         }
 
-        return { notebook, sentences };
+        // 5. 查询 user_review_states
+        const itemIds = fullSentences.map(s => String(s.id));
+        const { data: states, error: statesError } = await supabase
+            .from('user_review_states')
+            .select('item_id, next_review_at, familiarity_level')
+            .eq('user_id', user.id)
+            .eq('item_type', 'sentence')
+            .in('item_id', itemIds);
+
+        if (statesError) {
+            console.error('Error loading review states for sentences:', statesError);
+            // 出错时回退到返回所有
+            return {
+                notebook,
+                sentences: fullSentences,
+                totalSentenceCount: fullSentences.length,
+                dueSentenceCount: fullSentences.length
+            };
+        }
+
+        // 6. 拆分状态
+        const now = new Date();
+        const { due, fresh, future } = splitItemsByReviewState(fullSentences, states, now);
+
+        // 7. 对到期句子按 next_review_at 升序排序
+        const stateByItemId = new Map();
+        for (const s of (states || [])) {
+            stateByItemId.set(String(s.item_id), s);
+        }
+
+        const dueWithState = due.map(s => ({
+            sentence: s,
+            state: stateByItemId.get(String(s.id))
+        }));
+
+        dueWithState.sort((a, b) => {
+            const t1 = a.state?.next_review_at ? new Date(a.state.next_review_at).getTime() : 0;
+            const t2 = b.state?.next_review_at ? new Date(b.state.next_review_at).getTime() : 0;
+            return t1 - t2;
+        });
+
+        // 8. 决定本轮返回哪些句子
+        let selectedSentences;
+        if (dueWithState.length > 0) {
+            // 有到期的，优先复习到期的（可加 limit）
+            selectedSentences = dueWithState.slice(0, MAX_PER_SESSION).map(x => x.sentence);
+        } else if (fullSentences.length > 0) {
+            // 没有到期的，但本子不为空 -> "随便练一练"
+            // 可以返回全部，或者随机取一些，这里先返回全部（受 MAX_PER_SESSION 限制）
+            selectedSentences = fullSentences.slice(0, MAX_PER_SESSION);
+        } else {
+            selectedSentences = [];
+        }
+
+        // 调试输出
+        console.log('[SentenceReviewDetail]', {
+            notebookId,
+            total: fullSentences.length,
+            due: due.length,
+            fresh: fresh.length,
+        });
+
+        return {
+            notebook,
+            sentences: selectedSentences,
+            totalSentenceCount: fullSentences.length,
+            dueSentenceCount: due.length
+        };
+
     } catch (error) {
         console.error('Error in loadNotebookSentencesForReview:', error);
         return null;

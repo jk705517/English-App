@@ -90,10 +90,10 @@ export async function updateReviewState({
     videoId,
     notebookId,
 }, userId) {
-    // 现在只对 vocab 做记忆曲线；sentence 先跳过
-    if (itemType !== 'vocab') {
-        return;
-    }
+    // 现在对 vocab 和 sentence 都做记忆曲线
+    // if (itemType !== 'vocab') {
+    //     return;
+    // }
 
     try {
         if (!userId) {
