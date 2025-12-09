@@ -42,9 +42,113 @@ function Notebooks() {
 
     const loadNotebookList = async () => {
         setLoading(true);
-        const data = await notebookService.loadNotebooks(user);
-        setNotebooks(data);
+        const { notebooks, summary } = await notebookService.loadNotebooks(user);
+        setNotebooks(notebooks);
+        setSummary(summary);
+        console.log('[NotebooksPage] summary', summary);
         setLoading(false);
+    };
+
+    // 选中本子并切换 Tab
+    const handleJumpToNotebook = (notebookId, tab) => {
+        const notebook = notebooks.find(nb => nb.id === notebookId);
+        if (notebook) {
+            handleSelectNotebook(notebook);
+            if (tab === 'vocab' || tab === 'sentence') {
+                setActiveTab(tab);
+            }
+        }
+    };
+
+    // 渲染今日汇总
+    const renderTodaySummary = (summary, notebooks) => {
+        if (!summary) return null;
+
+        const {
+            totalNotebooks,
+            totalVocabCount,
+            totalSentenceCount,
+            totalDueVocabCount,
+            totalDueSentenceCount,
+            firstDueNotebookId,
+            firstDueNotebookTab,
+        } = summary;
+
+        const totalDue = totalDueVocabCount + totalDueSentenceCount;
+        const totalItems = totalVocabCount + totalSentenceCount;
+
+        // 没有任何本子或条目
+        if (totalNotebooks === 0 || totalItems === 0) {
+            return (
+                <div className="flex flex-col gap-1">
+                    <div>你还没有创建任何本子或添加内容。</div>
+                    <div className="text-gray-500">
+                        去视频页挑一些喜欢的句子和词汇，加到本子里再来复习吧。
+                    </div>
+                </div>
+            );
+        }
+
+        // 有到期的任务
+        if (totalDue > 0 && firstDueNotebookId) {
+            const firstNotebook = notebooks.find(nb => nb.id === firstDueNotebookId);
+            const firstName = firstNotebook?.name || '某个本子';
+
+            return (
+                <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div className="space-y-1">
+                        <div>
+                            今天待复习：<span className="font-semibold">{totalDueVocabCount}</span> 个词 ·{' '}
+                            <span className="font-semibold">{totalDueSentenceCount}</span> 个句子
+                            （分布在 <span className="font-semibold">{totalNotebooks}</span> 个本子里）
+                        </div>
+                        <div className="text-gray-500">
+                            建议从《{firstName}》开始（优先跑有到期任务的 Tab）。
+                        </div>
+                    </div>
+                    <button
+                        type="button"
+                        className="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 md:mt-0"
+                        onClick={() => handleJumpToNotebook(firstDueNotebookId, firstDueNotebookTab)}
+                    >
+                        开始今天的复习
+                    </button>
+                </div>
+            );
+        }
+
+        // 没有到期任务，但本子里有内容
+        return (
+            <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                <div className="space-y-1">
+                    <div>
+                        🎉 今天所有本子的复习任务都完成啦！
+                    </div>
+                    <div className="text-gray-500">
+                        共 {totalVocabCount} 个词、{totalSentenceCount} 个句子。
+                        你可以随便练一练，或者明天再来～
+                    </div>
+                </div>
+                {!!notebooks.length && (
+                    <button
+                        type="button"
+                        className="mt-2 inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 md:mt-0"
+                        onClick={() => {
+                            // 简单策略：跳到第一个有内容的本子（优先词汇）
+                            const target = notebooks.find(
+                                nb => (nb.vocabCount || 0) + (nb.sentenceCount || 0) > 0
+                            );
+                            if (target) {
+                                const tab = (target.vocabCount || 0) > 0 ? 'vocab' : 'sentence';
+                                handleJumpToNotebook(target.id, tab);
+                            }
+                        }}
+                    >
+                        随便练一练
+                    </button>
+                )}
+            </div>
+        );
     };
 
     // 加载本子详情
@@ -233,6 +337,13 @@ function Notebooks() {
                     {loading ? '正在加载...' : `共 ${notebooks.length} 个本子`}
                 </p>
             </div>
+
+            {/* 今日复习总览 */}
+            {summary && (
+                <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm">
+                    {renderTodaySummary(summary, notebooks)}
+                </div>
+            )}
 
             {/* 主内容区：左右布局 */}
             <div className="flex flex-col md:flex-row gap-6">

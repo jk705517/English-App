@@ -37,16 +37,65 @@ function splitItemsByReviewState(items, states, now = new Date()) {
 }
 
 /**
+ * 构建本子汇总信息
+ * @param {Array} notebooks - 包含统计信息的本子列表
+ */
+function buildNotebooksSummary(notebooks) {
+    const totalNotebooks = notebooks.length;
+
+    let totalVocabCount = 0;
+    let totalSentenceCount = 0;
+    let totalDueVocabCount = 0;
+    let totalDueSentenceCount = 0;
+
+    // 找出第一个“有任务”的本子
+    let firstDueNotebookId = null;
+    let firstDueNotebookTab = null; // 'vocab' | 'sentence'
+
+    for (const nb of notebooks) {
+        const vocabCount = nb.vocabCount || 0;
+        const sentenceCount = nb.sentenceCount || 0;
+        const dueVocabCount = nb.dueVocabCount || 0;
+        const dueSentenceCount = nb.dueSentenceCount || 0;
+
+        totalVocabCount += vocabCount;
+        totalSentenceCount += sentenceCount;
+        totalDueVocabCount += dueVocabCount;
+        totalDueSentenceCount += dueSentenceCount;
+
+        if (!firstDueNotebookId && (dueVocabCount > 0 || dueSentenceCount > 0)) {
+            firstDueNotebookId = nb.id;
+            // 优先词汇；如果没有到期词，就用句子
+            if (dueVocabCount > 0) {
+                firstDueNotebookTab = 'vocab';
+            } else {
+                firstDueNotebookTab = 'sentence';
+            }
+        }
+    }
+
+    return {
+        totalNotebooks,
+        totalVocabCount,
+        totalSentenceCount,
+        totalDueVocabCount,
+        totalDueSentenceCount,
+        firstDueNotebookId,
+        firstDueNotebookTab,
+    };
+}
+
+/**
  * 加载用户的所有本子列表（按创建时间倒序）
  * @param {object} user - 当前登录用户
- * @returns {Promise<Array>} 本子列表，包含句子/词汇统计
+ * @returns {Promise<object>} { notebooks, summary }
  */
 async function loadNotebooks(user) {
-    if (!user) return [];
+    if (!user) return { notebooks: [], summary: null };
 
     try {
         // 1. 获取用户的所有本子
-        const { data: notebooks, error: notebooksError } = await supabase
+        const { data: notebooksData, error: notebooksError } = await supabase
             .from('user_notebooks')
             .select('id, name, color, created_at')
             .eq('user_id', user.id)
@@ -54,15 +103,18 @@ async function loadNotebooks(user) {
 
         if (notebooksError) {
             console.error('Error loading notebooks:', notebooksError);
-            return [];
+            return { notebooks: [], summary: null };
         }
 
-        if (!notebooks || notebooks.length === 0) {
-            return [];
+        if (!notebooksData || notebooksData.length === 0) {
+            return {
+                notebooks: [],
+                summary: buildNotebooksSummary([])
+            };
         }
 
         // 2. 获取每个本子的条目统计
-        const notebookIds = notebooks.map(nb => nb.id);
+        const notebookIds = notebooksData.map(nb => nb.id);
         const { data: items, error: itemsError } = await supabase
             .from('user_notebook_items')
             .select('notebook_id, item_type, item_id')
@@ -72,13 +124,16 @@ async function loadNotebooks(user) {
         if (itemsError) {
             console.error('Error loading notebook items for stats:', itemsError);
             // 即使统计失败，也返回本子列表（只是没有统计数据）
-            return notebooks.map(nb => ({
+            const notebooks = notebooksData.map(nb => ({
                 ...nb,
                 sentenceCount: 0,
                 vocabCount: 0,
                 dueVocabCount: 0,
-                dueSentenceCount: 0
+                dueSentenceCount: 0,
+                hasVocabReviewState: false,
+                hasSentenceReviewState: false
             }));
+            return { notebooks, summary: buildNotebooksSummary(notebooks) };
         }
 
         // 3. 计算每个本子的句子/词汇数量，并收集所有 ID
@@ -148,7 +203,7 @@ async function loadNotebooks(user) {
         }
 
         // 调试日志
-        console.log('[NotebookList] stats', notebooks.map(n => ({
+        console.log('[NotebookList] stats', notebooksData.map(n => ({
             id: n.id,
             name: n.name,
             vocabTotal: statsMap[n.id]?.vocabCount || 0,
@@ -158,7 +213,7 @@ async function loadNotebooks(user) {
         })));
 
         // 5. 合并统计数据到本子列表
-        return notebooks.map(nb => ({
+        const notebooks = notebooksData.map(nb => ({
             ...nb,
             sentenceCount: statsMap[nb.id]?.sentenceCount || 0,
             vocabCount: statsMap[nb.id]?.vocabCount || 0,
@@ -167,9 +222,14 @@ async function loadNotebooks(user) {
             hasVocabReviewState: statsMap[nb.id]?.hasVocabReviewState || false,
             hasSentenceReviewState: statsMap[nb.id]?.hasSentenceReviewState || false
         }));
+
+        const summary = buildNotebooksSummary(notebooks);
+        console.log('[NotebooksSummary]', summary);
+
+        return { notebooks, summary };
     } catch (error) {
         console.error('Error in loadNotebooks:', error);
-        return [];
+        return { notebooks: [], summary: null };
     }
 }
 
