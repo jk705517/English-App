@@ -419,13 +419,13 @@ function NotebookReviewPage() {
                                 className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
                             >
                                 <RotateCcw className="w-5 h-5" />
-                                再来一轮
+                                再刷这一轮
                             </button>
                             <button
                                 onClick={handleBack}
                                 className="w-full py-3 bg-gray-100 text-gray-600 rounded-lg font-medium hover:bg-gray-200 transition-colors"
                             >
-                                返回本子
+                                回到本子页
                             </button>
                         </div>
                     </div>
