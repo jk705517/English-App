@@ -3,16 +3,45 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
+import { recordReviewLog } from '../services/reviewService';
 import VocabReviewCard from '../components/VocabReviewCard';
 import SentenceReviewCard from '../components/SentenceReviewCard';
 
+
 /**
- * 预留函数：记录复习结果
- * TODO: 未来在这里调用 Supabase，写入 user_review_states 表
+ * 记录复习结果：调用 reviewService 写入 Supabase
+ * @param {object} item - 当前复习的词汇或句子对象
+ * @param {boolean} isKnown - true=我会了, false=还不熟
+ * @param {string} type - 'vocab' 或 'sentence'
+ * @param {string} notebookId - 当前本子的 id
+ * @param {string} userId - 当前用户 id
  */
-function recordReviewResult(item, isKnown, type) {
-    console.log('review result', { itemId: item.id, isKnown, type, word: item.word || item.en?.substring(0, 30) });
+function recordReviewResult(item, isKnown, type, notebookId, userId) {
+    // 1. 仍然保留 console.log，方便本地调试
+    console.log('review result', {
+        type,
+        itemId: item?.id,
+        isKnown,
+        word: item?.word || item?.en?.substring(0, 30),
+    });
+
+    if (!item) return;
+
+    // 2. 组装公共字段
+    const payload = {
+        itemType: type === 'sentence' ? 'sentence' : 'vocab',
+        // 尽量用当前数据里最稳定的 id
+        itemId: item.id ?? item.subtitleId ?? item.word,
+        isKnown,
+        videoId: item.videoId,
+        notebookId,
+        reviewMode: type === 'sentence' ? 'sentence_review' : 'vocab_review',
+    };
+
+    // 3. 异步写入日志（不阻塞 UI）
+    recordReviewLog(payload, userId);
 }
+
 
 /**
  * 本子复习页面（支持词汇和句子两种模式）
@@ -203,11 +232,11 @@ function NotebookReviewPage() {
 
         const item = items[currentIndex];
         setStats(prev => ({ ...prev, known: prev.known + 1 }));
-        recordReviewResult(item, true, type);
+        recordReviewResult(item, true, type, notebookId, user?.id);
 
         // 切换到下一条
         setCurrentIndex(prev => prev + 1);
-    }, [currentIndex, items, total, type]);
+    }, [currentIndex, items, total, type, notebookId, user?.id]);
 
     // 还不熟
     const handleUnknown = useCallback(() => {
@@ -215,11 +244,11 @@ function NotebookReviewPage() {
 
         const item = items[currentIndex];
         setStats(prev => ({ ...prev, unknown: prev.unknown + 1 }));
-        recordReviewResult(item, false, type);
+        recordReviewResult(item, false, type, notebookId, user?.id);
 
         // 切换到下一条
         setCurrentIndex(prev => prev + 1);
-    }, [currentIndex, items, total, type]);
+    }, [currentIndex, items, total, type, notebookId, user?.id]);
 
     // 再来一轮 - 清理存储并重置
     const handleRestart = () => {
@@ -464,8 +493,8 @@ function NotebookReviewPage() {
                         onClick={handleFlip}
                         disabled={!canReveal}
                         className={`w-full py-4 rounded-xl font-medium text-lg transition-colors ${canReveal
-                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                     >
                         {canReveal ? '显示释义' : '想一想…'}
