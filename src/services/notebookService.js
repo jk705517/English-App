@@ -522,7 +522,7 @@ async function loadNotebookVocabsForReview(user, notebookId) {
             selected: selectedVocabs.length,
         });
 
-        return { notebook, vocabs: selectedVocabs, totalVocabCount: fullVocabs.length };
+        return { notebook, vocabs: selectedVocabs, totalVocabCount: fullVocabs.length, dueCount: due.length };
     } catch (error) {
         console.error('Error in loadNotebookVocabsForReview:', error);
         return null;

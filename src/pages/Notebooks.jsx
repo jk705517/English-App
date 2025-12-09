@@ -20,6 +20,10 @@ function Notebooks() {
     // Tab 状态
     const [activeTab, setActiveTab] = useState('sentence'); // 'sentence' | 'vocab'
 
+    // 词汇复习统计（记忆曲线）
+    const [vocabStats, setVocabStats] = useState({ dueCount: 0, totalVocabCount: 0 });
+    const [vocabStatsLoading, setVocabStatsLoading] = useState(false);
+
     // 新建本子 Modal
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newNotebookName, setNewNotebookName] = useState('');
@@ -43,9 +47,30 @@ function Notebooks() {
     const handleSelectNotebook = async (notebook) => {
         setSelectedNotebook(notebook);
         setDetailLoading(true);
+        setVocabStats({ dueCount: 0, totalVocabCount: 0 }); // 重置统计
         const detail = await notebookService.loadNotebookDetail(user, notebook.id);
         setNotebookDetail(detail);
         setDetailLoading(false);
+
+        // 异步加载词汇复习统计（不阻塞详情加载）
+        loadVocabStats(notebook.id);
+    };
+
+    // 加载词汇复习统计
+    const loadVocabStats = async (notebookId) => {
+        setVocabStatsLoading(true);
+        try {
+            const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
+            if (data) {
+                setVocabStats({
+                    dueCount: data.dueCount || 0,
+                    totalVocabCount: data.totalVocabCount || 0,
+                });
+            }
+        } catch (err) {
+            console.error('Error loading vocab stats:', err);
+        }
+        setVocabStatsLoading(false);
     };
 
     // 创建新本子
@@ -306,8 +331,8 @@ function Notebooks() {
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=sentence`)}
                                             disabled={notebookDetail.sentences.length === 0}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${notebookDetail.sentences.length > 0
-                                                    ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                                    : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                 }`}
                                         >
                                             <Play className="w-4 h-4" />
@@ -364,6 +389,18 @@ function Notebooks() {
                             {/* 词汇列表 */}
                             {activeTab === 'vocab' && (
                                 <>
+                                    {/* 词汇复习统计提示 */}
+                                    {vocabStats.totalVocabCount > 0 && (
+                                        <div className="text-sm text-gray-500 mb-2">
+                                            {vocabStatsLoading ? (
+                                                <span>加载中...</span>
+                                            ) : vocabStats.dueCount > 0 ? (
+                                                <>今日待复习：<span className="font-medium text-indigo-600">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
+                                            ) : (
+                                                <>🎉 今天这个本子暂无需要复习的词（共 {vocabStats.totalVocabCount} 个词）</>
+                                            )}
+                                        </div>
+                                    )}
                                     {/* 开始词汇复习按钮 */}
                                     <div className="mb-4">
                                         <button
