@@ -43,24 +43,55 @@ async function loadNotebooks(user) {
             }));
         }
 
-        // 3. 计算每个本子的句子/词汇数量
+        // 3. 计算每个本子的句子/词汇数量，并收集所有词汇 ID
         const statsMap = {};
+        const allVocabIds = [];
+
         for (const item of items || []) {
             if (!statsMap[item.notebook_id]) {
-                statsMap[item.notebook_id] = { sentenceCount: 0, vocabCount: 0 };
+                statsMap[item.notebook_id] = { sentenceCount: 0, vocabCount: 0, dueVocabCount: 0 };
             }
             if (item.item_type === 'sentence') {
                 statsMap[item.notebook_id].sentenceCount++;
             } else if (item.item_type === 'vocab') {
                 statsMap[item.notebook_id].vocabCount++;
+                allVocabIds.push(item.item_id);
             }
         }
 
-        // 4. 合并统计数据到本子列表
+        // 4. 获取到期的词汇状态
+        if (allVocabIds.length > 0) {
+            const now = new Date().toISOString();
+            const { data: dueStates, error: dueError } = await supabase
+                .from('user_review_states')
+                .select('item_id')
+                .eq('user_id', user.id)
+                .eq('item_type', 'vocab')
+                .in('item_id', allVocabIds)
+                .lte('next_review_at', now);
+
+            if (!dueError && dueStates) {
+                const dueVocabIdSet = new Set(dueStates.map(s => String(s.item_id)));
+
+                // 再次遍历 items 统计 dueVocabCount
+                for (const item of items || []) {
+                    if (item.item_type === 'vocab' && dueVocabIdSet.has(String(item.item_id))) {
+                        if (statsMap[item.notebook_id]) {
+                            statsMap[item.notebook_id].dueVocabCount++;
+                        }
+                    }
+                }
+            } else if (dueError) {
+                console.error('Error loading due states:', dueError);
+            }
+        }
+
+        // 5. 合并统计数据到本子列表
         return notebooks.map(nb => ({
             ...nb,
             sentenceCount: statsMap[nb.id]?.sentenceCount || 0,
-            vocabCount: statsMap[nb.id]?.vocabCount || 0
+            vocabCount: statsMap[nb.id]?.vocabCount || 0,
+            dueVocabCount: statsMap[nb.id]?.dueVocabCount || 0
         }));
     } catch (error) {
         console.error('Error in loadNotebooks:', error);

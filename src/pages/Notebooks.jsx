@@ -250,7 +250,13 @@ function Notebooks() {
                                         </div>
                                         <div className={`text-sm mt-1 ${selectedNotebook?.id === notebook.id ? 'text-indigo-200' : 'text-gray-400'
                                             }`}>
-                                            {notebook.sentenceCount} 句子 · {notebook.vocabCount} 词汇
+                                            {notebook.sentenceCount} 句子 · {
+                                                notebook.vocabCount === 0
+                                                    ? '暂无词汇'
+                                                    : notebook.dueVocabCount > 0
+                                                        ? `今日待复习：${notebook.dueVocabCount} 词`
+                                                        : '今日无待复习词'
+                                            }
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
