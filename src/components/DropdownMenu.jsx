@@ -22,7 +22,13 @@ const DropdownMenu = ({ trigger, items, align = 'right' }) => {
     }, [isOpen]);
 
     return (
-        <div className="relative" ref={menuRef} onClick={(e) => e.stopPropagation()}>
+        <div
+            className="relative"
+            ref={menuRef}
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+        >
             <div onClick={() => setIsOpen(!isOpen)}>
                 {trigger || (
                     <button className="p-1.5 text-gray-400 hover:bg-gray-100 rounded-lg transition-colors">
