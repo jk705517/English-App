@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useRef } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { Heart, BookOpen, MessageSquare } from 'lucide-react';
@@ -11,9 +11,16 @@ import { supabase } from '../services/supabaseClient';
 function Favorites() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
+    const scrollContainerRef = useRef(null);
+
+    // 从 URL 参数读取初始 Tab，默认为 'video'
+    const urlTab = searchParams.get('tab');
+    const validTabs = ['video', 'sentence', 'vocab'];
+    const initialTab = validTabs.includes(urlTab) ? urlTab : 'video';
 
     // Tab state
-    const [activeTab, setActiveTab] = useState('video'); // 'video' | 'sentence' | 'vocab'
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     // Video favorites state
     const [favoriteVideoIds, setFavoriteVideoIds] = useState([]);
@@ -35,6 +42,36 @@ function Favorites() {
     // Loading/error state
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+
+    // Tab 切换处理：更新状态并同步 URL
+    const handleTabChange = (tabKey) => {
+        // 保存当前滚动位置
+        sessionStorage.setItem(`favorites_scroll_${activeTab}`, window.scrollY.toString());
+
+        setActiveTab(tabKey);
+        // 使用 replace 避免产生多余的历史记录
+        setSearchParams({ tab: tabKey }, { replace: true });
+
+        // 恢复目标 Tab 的滚动位置
+        setTimeout(() => {
+            const savedScroll = sessionStorage.getItem(`favorites_scroll_${tabKey}`);
+            if (savedScroll) {
+                window.scrollTo(0, parseInt(savedScroll, 10));
+            } else {
+                window.scrollTo(0, 0);
+            }
+        }, 0);
+    };
+
+    // 页面加载时恢复滚动位置
+    useEffect(() => {
+        const savedScroll = sessionStorage.getItem(`favorites_scroll_${activeTab}`);
+        if (savedScroll) {
+            setTimeout(() => {
+                window.scrollTo(0, parseInt(savedScroll, 10));
+            }, 100);
+        }
+    }, []);
 
     // 从 Supabase/localStorage 读取收藏和已学习的视频 ID 列表
     useEffect(() => {
@@ -174,7 +211,7 @@ function Favorites() {
                 ].map(tab => (
                     <button
                         key={tab.key}
-                        onClick={() => setActiveTab(tab.key)}
+                        onClick={() => handleTabChange(tab.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab.key
                             ? 'bg-indigo-600 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'

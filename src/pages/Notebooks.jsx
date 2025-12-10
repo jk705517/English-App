@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Plus, MessageSquare, ChevronRight, Edit2, X, Play, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
@@ -11,7 +11,17 @@ import useLongPress from '../hooks/useLongPress';
 function Notebooks() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const [searchParams, setSearchParams] = useSearchParams();
     const detailRef = useRef(null);
+
+    // 从 URL 参数读取初始状态
+    const urlNotebookId = searchParams.get('notebookId');
+    const urlTab = searchParams.get('tab');
+    const validTabs = ['sentence', 'vocab'];
+    const initialTab = validTabs.includes(urlTab) ? urlTab : 'sentence';
+
+    // 用于追踪需要自动选中的本子 ID（在本子列表加载完成后使用）
+    const pendingNotebookIdRef = useRef(urlNotebookId);
 
     // 本子列表状态
     const [notebooks, setNotebooks] = useState([]);
@@ -23,8 +33,8 @@ function Notebooks() {
     const [notebookDetail, setNotebookDetail] = useState(null);
     const [detailLoading, setDetailLoading] = useState(false);
 
-    // Tab 状态
-    const [activeTab, setActiveTab] = useState('sentence'); // 'sentence' | 'vocab'
+    // Tab 状态（从 URL 初始化）
+    const [activeTab, setActiveTab] = useState(initialTab);
 
     // 词汇复习统计（记忆曲线）
     const [vocabStats, setVocabStats] = useState({ dueCount: 0, totalVocabCount: 0 });
@@ -107,6 +117,31 @@ function Notebooks() {
         );
     };
 
+    // 更新 URL 参数（同步状态到 URL）
+    const updateUrlParams = (notebookId, tab) => {
+        const params = {};
+        if (notebookId) params.notebookId = notebookId;
+        if (tab) params.tab = tab;
+        setSearchParams(params, { replace: true });
+    };
+
+    // Tab 切换处理：更新状态并同步 URL
+    const handleTabChange = (tabKey) => {
+        // 保存当前滚动位置
+        sessionStorage.setItem(`notebooks_scroll_${activeTab}`, window.scrollY.toString());
+
+        setActiveTab(tabKey);
+        updateUrlParams(selectedNotebook?.id, tabKey);
+
+        // 恢复目标 Tab 的滚动位置
+        setTimeout(() => {
+            const savedScroll = sessionStorage.getItem(`notebooks_scroll_${tabKey}`);
+            if (savedScroll) {
+                window.scrollTo(0, parseInt(savedScroll, 10));
+            }
+        }, 0);
+    };
+
     // 加载本子列表
     useEffect(() => {
         if (user) {
@@ -116,20 +151,43 @@ function Notebooks() {
 
     const loadNotebookList = async () => {
         setLoading(true);
-        const { notebooks, summary } = await notebookService.loadNotebooks(user);
-        setNotebooks(notebooks);
+        const { notebooks: loadedNotebooks, summary } = await notebookService.loadNotebooks(user);
+        setNotebooks(loadedNotebooks);
         setSummary(summary);
         console.log('[NotebooksPage] summary', summary);
         setLoading(false);
+
+        // 如果 URL 中有 notebookId，自动选中该本子
+        if (pendingNotebookIdRef.current && loadedNotebooks.length > 0) {
+            const targetNotebook = loadedNotebooks.find(nb => nb.id === pendingNotebookIdRef.current);
+            if (targetNotebook) {
+                // 使用 setTimeout 确保状态更新后再选中
+                setTimeout(() => {
+                    handleSelectNotebook(targetNotebook, false); // false = 不更新 URL（因为已经在 URL 里了）
+                }, 0);
+            }
+            pendingNotebookIdRef.current = null; // 清除，避免重复触发
+        }
     };
 
-    // 选中本子并切换 Tab
+    // 页面加载时恢复滚动位置
+    useEffect(() => {
+        const savedScroll = sessionStorage.getItem(`notebooks_scroll_${activeTab}`);
+        if (savedScroll) {
+            setTimeout(() => {
+                window.scrollTo(0, parseInt(savedScroll, 10));
+            }, 100);
+        }
+    }, []);
+
+    // 选中本子并切换 Tab（用于今日汇总的快捷跳转）
     const handleJumpToNotebook = (notebookId, tab) => {
         const notebook = notebooks.find(nb => nb.id === notebookId);
         if (notebook) {
             handleSelectNotebook(notebook);
             if (tab === 'vocab' || tab === 'sentence') {
                 setActiveTab(tab);
+                updateUrlParams(notebookId, tab);
             }
         }
     };
@@ -226,11 +284,16 @@ function Notebooks() {
     };
 
     // 加载本子详情
-    const handleSelectNotebook = async (notebook) => {
+    const handleSelectNotebook = async (notebook, shouldUpdateUrl = true) => {
         setSelectedNotebook(notebook);
         setDetailLoading(true);
         setVocabStats({ dueCount: 0, totalVocabCount: 0 }); // 重置统计
         setSentenceStats({ dueCount: 0, totalSentenceCount: 0 }); // 重置统计
+
+        // 更新 URL 参数（如果需要）
+        if (shouldUpdateUrl) {
+            updateUrlParams(notebook.id, activeTab);
+        }
 
         const detail = await notebookService.loadNotebookDetail(user, notebook.id);
         setNotebookDetail(detail);
@@ -543,7 +606,7 @@ function Notebooks() {
                             {/* Tab 切换 */}
                             <div className="flex gap-2 mb-6">
                                 <button
-                                    onClick={() => setActiveTab('sentence')}
+                                    onClick={() => handleTabChange('sentence')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'sentence'
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -553,7 +616,7 @@ function Notebooks() {
                                     句子 ({notebookDetail.sentences.length})
                                 </button>
                                 <button
-                                    onClick={() => setActiveTab('vocab')}
+                                    onClick={() => handleTabChange('vocab')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'vocab'
                                         ? 'bg-indigo-600 text-white'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
