@@ -159,7 +159,8 @@ function Notebooks() {
 
         // 如果 URL 中有 notebookId，自动选中该本子
         if (pendingNotebookIdRef.current && loadedNotebooks.length > 0) {
-            const targetNotebook = loadedNotebooks.find(nb => nb.id === pendingNotebookIdRef.current);
+            // 使用 String() 统一类型进行比较
+            const targetNotebook = loadedNotebooks.find(nb => String(nb.id) === String(pendingNotebookIdRef.current));
             if (targetNotebook) {
                 // 使用 setTimeout 确保状态更新后再选中
                 setTimeout(() => {
@@ -188,12 +189,19 @@ function Notebooks() {
         const currentUrlNotebookId = searchParams.get('notebookId');
         const currentUrlTab = searchParams.get('tab');
 
-        // 如果 URL 中有 notebookId，但当前没有选中该本子，则自动选中
-        if (currentUrlNotebookId && selectedNotebook?.id !== currentUrlNotebookId) {
-            const targetNotebook = notebooks.find(nb => nb.id === currentUrlNotebookId);
-            if (targetNotebook) {
-                console.log('[Notebooks] Restoring notebook from URL:', currentUrlNotebookId);
-                handleSelectNotebook(targetNotebook, false); // false = 不更新 URL
+        // 如果 URL 中有 notebookId，检查是否需要恢复选中状态
+        if (currentUrlNotebookId) {
+            // 使用 String() 统一类型进行比较（URL 参数是字符串，Supabase ID 可能是数字）
+            const needsRestore = !selectedNotebook || String(selectedNotebook.id) !== String(currentUrlNotebookId);
+
+            if (needsRestore) {
+                const targetNotebook = notebooks.find(nb => String(nb.id) === String(currentUrlNotebookId));
+                if (targetNotebook) {
+                    console.log('[Notebooks] Restoring notebook from URL:', currentUrlNotebookId, 'found:', targetNotebook.name);
+                    handleSelectNotebook(targetNotebook, false); // false = 不更新 URL
+                } else {
+                    console.warn('[Notebooks] Notebook not found for ID:', currentUrlNotebookId);
+                }
             }
         }
 
