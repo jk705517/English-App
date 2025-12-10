@@ -42,3 +42,63 @@
         transform: translateY(0);
     }
 }
+
+/* 底部弹窗上滑动画 */
+@keyframes slideUp {
+    from {
+        transform: translateY(100%);
+    }
+
+    to {
+        transform: translateY(0);
+    }
+}
+
+.animate-slide-up {
+    animation: slideUp 0.3s ease-out forwards;
+}
+
+/* 全屏弹窗淡入动画 */
+@keyframes fadeInScale {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+.animate-fade-in-scale {
+    animation: fadeInScale 0.2s ease-out forwards;
+}
+
+/* Toast 提示样式 */
+.toast-message {
+    position: fixed;
+    bottom: 100px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    z-index: 9999;
+    font-size: 14px;
+    animation: toastFade 2s ease-out forwards;
+    pointer-events: none;
+}
+
+@keyframes toastFade {
+
+    0%,
+    70% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+    }
+}
