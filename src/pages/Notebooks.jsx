@@ -180,6 +180,30 @@ function Notebooks() {
         }
     }, []);
 
+    // 监听 URL 参数变化（处理浏览器后退）
+    useEffect(() => {
+        // 只在本子列表已加载完成后处理
+        if (loading || notebooks.length === 0) return;
+
+        const currentUrlNotebookId = searchParams.get('notebookId');
+        const currentUrlTab = searchParams.get('tab');
+
+        // 如果 URL 中有 notebookId，但当前没有选中该本子，则自动选中
+        if (currentUrlNotebookId && selectedNotebook?.id !== currentUrlNotebookId) {
+            const targetNotebook = notebooks.find(nb => nb.id === currentUrlNotebookId);
+            if (targetNotebook) {
+                console.log('[Notebooks] Restoring notebook from URL:', currentUrlNotebookId);
+                handleSelectNotebook(targetNotebook, false); // false = 不更新 URL
+            }
+        }
+
+        // 如果 URL 中的 tab 与当前 activeTab 不同，同步 tab 状态
+        if (currentUrlTab && validTabs.includes(currentUrlTab) && activeTab !== currentUrlTab) {
+            console.log('[Notebooks] Restoring tab from URL:', currentUrlTab);
+            setActiveTab(currentUrlTab);
+        }
+    }, [searchParams, notebooks, loading]);
+
     // 选中本子并切换 Tab（用于今日汇总的快捷跳转）
     const handleJumpToNotebook = (notebookId, tab) => {
         const notebook = notebooks.find(nb => nb.id === notebookId);
