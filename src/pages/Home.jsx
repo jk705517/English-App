@@ -45,7 +45,7 @@ function Home() {
     const unlearnedVideos = totalVideos - learnedVideos;
 
     return (
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-7xl mx-auto fade-in">
             {/* 页面标题 */}
             <div className="mb-8">
                 <div className="mb-4 text-sm font-medium text-indigo-600">
