@@ -86,7 +86,11 @@ function Notebooks() {
         });
 
         return (
-            <div {...longPressProps} className={className}>
+            <div
+                {...longPressProps}
+                className={`${className} ${isMobile ? 'mobile-longpress-target' : ''}`}
+                onContextMenu={isMobile ? (e) => e.preventDefault() : undefined}
+            >
                 {children}
             </div>
         );
