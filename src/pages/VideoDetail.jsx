@@ -116,6 +116,24 @@ const VideoDetail = () => {
         dictationStateRef.current = { isPlaying, isSeeking, dictationIndex };
     }, [isPlaying, isSeeking, dictationIndex]);
 
+    // 防止浏览器在页面重新获得焦点时自动恢复播放（用于词汇查询等场景）
+    useEffect(() => {
+        const handleVisibilityChange = () => {
+            if (document.hidden) {
+                // 页面隐藏时，如果正在播放则暂停
+                if (isPlaying && playerRef.current) {
+                    playerRef.current.pause();
+                    setIsPlaying(false);
+                }
+            }
+            // 注意：页面恢复可见时不自动恢复播放
+            // 用户必须手动点击播放按钮才能继续
+        };
+
+        document.addEventListener('visibilitychange', handleVisibilityChange);
+        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    }, [isPlaying]);
+
     // Load learned status
     useEffect(() => {
         const loadLearnedStatus = async () => {
