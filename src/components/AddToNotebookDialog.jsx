@@ -37,9 +37,17 @@ const AddToNotebookDialog = ({
 
     const loadNotebooks = async () => {
         setLoading(true);
-        const data = await notebookService.loadNotebooks(user);
-        setNotebooks(data);
-        setLoading(false);
+        try {
+            const result = await notebookService.loadNotebooks(user);
+            // loadNotebooks returns { notebooks: [], summary: {} }, extract the notebooks array
+            setNotebooks(result?.notebooks || []);
+        } catch (error) {
+            console.error('Error loading notebooks:', error);
+            setMessage({ type: 'error', text: '加载本子列表失败，请重试' });
+            setNotebooks([]);
+        } finally {
+            setLoading(false);
+        }
     };
 
     // 添加到现有本子
@@ -48,25 +56,31 @@ const AddToNotebookDialog = ({
         setAdding(notebook.id);
         setMessage(null);
 
-        const success = await notebookService.addItemToNotebook(user, {
-            notebookId: notebook.id,
-            itemType,
-            itemId,
-            videoId
-        });
+        try {
+            const success = await notebookService.addItemToNotebook(user, {
+                notebookId: notebook.id,
+                itemType,
+                itemId,
+                videoId
+            });
 
-        setAdding(null);
+            if (success) {
+                setMessage({ type: 'success', text: `已加入本子：${notebook.name}` });
+                if (onSuccess) onSuccess(notebook.name);
 
-        if (success) {
-            // 检查是否是重复添加（service 里会返回 true）
-            setMessage({ type: 'success', text: `已加入本子：${notebook.name}` });
-            if (onSuccess) onSuccess(notebook.name);
-
-            // 短暂显示成功消息后关闭
-            setTimeout(() => {
-                onClose();
-                setMessage(null);
-            }, 1000);
+                // 短暂显示成功消息后关闭
+                setTimeout(() => {
+                    onClose();
+                    setMessage(null);
+                }, 1000);
+            } else {
+                setMessage({ type: 'error', text: '添加失败，请重试' });
+            }
+        } catch (error) {
+            console.error('Error adding to notebook:', error);
+            setMessage({ type: 'error', text: '添加失败，请重试' });
+        } finally {
+            setAdding(null);
         }
     };
 
@@ -76,38 +90,49 @@ const AddToNotebookDialog = ({
         setCreating(true);
         setMessage(null);
 
-        // 1. 创建本子
-        const newNotebook = await notebookService.createNotebook(user, {
-            name: newNotebookName.trim()
-        });
+        try {
+            // 1. 创建本子
+            const newNotebook = await notebookService.createNotebook(user, {
+                name: newNotebookName.trim()
+            });
 
-        if (!newNotebook) {
-            setCreating(false);
+            if (!newNotebook) {
+                setMessage({ type: 'error', text: '创建本子失败，请重试' });
+                return;
+            }
+
+            // 2. 添加当前条目到新本子
+            const addSuccess = await notebookService.addItemToNotebook(user, {
+                notebookId: newNotebook.id,
+                itemType,
+                itemId,
+                videoId
+            });
+
+            if (!addSuccess) {
+                setMessage({ type: 'error', text: '本子已创建但添加条目失败，请重试' });
+                loadNotebooks(); // 刷新列表以显示新本子
+                return;
+            }
+
+            setNewNotebookName('');
+            setMessage({ type: 'success', text: `已创建并加入本子：${newNotebook.name}` });
+            if (onSuccess) onSuccess(newNotebook.name);
+
+            // 刷新列表
+            loadNotebooks();
+
+            // 短暂显示成功消息后关闭
+            setTimeout(() => {
+                onClose();
+                setMessage(null);
+            }, 1000);
+        } catch (error) {
+            console.error('Error creating notebook:', error);
             setMessage({ type: 'error', text: '创建本子失败，请重试' });
-            return;
+        } finally {
+            setCreating(false);
         }
-
-        // 2. 添加当前条目到新本子
-        await notebookService.addItemToNotebook(user, {
-            notebookId: newNotebook.id,
-            itemType,
-            itemId,
-            videoId
-        });
-
-        setCreating(false);
-        setNewNotebookName('');
-        setMessage({ type: 'success', text: `已创建并加入本子：${newNotebook.name}` });
-        if (onSuccess) onSuccess(newNotebook.name);
-
-        // 刷新列表
-        loadNotebooks();
-
-        // 短暂显示成功消息后关闭
-        setTimeout(() => {
-            onClose();
-            setMessage(null);
-        }, 1000);
     };
 
     if (!isOpen) return null;
@@ -203,8 +228,8 @@ const AddToNotebookDialog = ({
                 {/* 消息提示 */}
                 {message && (
                     <div className={`p-3 border-t shrink-0 flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' :
-                            message.type === 'error' ? 'bg-red-50 text-red-700' :
-                                'bg-blue-50 text-blue-700'
+                        message.type === 'error' ? 'bg-red-50 text-red-700' :
+                            'bg-blue-50 text-blue-700'
                         }`}>
                         {message.type === 'success' && <Check className="w-4 h-4" />}
                         <span className="text-sm font-medium">{message.text}</span>
