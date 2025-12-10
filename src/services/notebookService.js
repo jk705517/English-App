@@ -113,13 +113,23 @@ async function loadNotebooks(user) {
             };
         }
 
-        // 2. 获取每个本子的条目统计
         const notebookIds = notebooksData.map(nb => nb.id);
-        const { data: items, error: itemsError } = await supabase
-            .from('user_notebook_items')
-            .select('notebook_id, item_type, item_id')
-            .eq('user_id', user.id)
-            .in('notebook_id', notebookIds);
+
+        // 2. 并行获取条目和用户的所有复习状态
+        const [itemsResult, statesResult] = await Promise.all([
+            supabase
+                .from('user_notebook_items')
+                .select('notebook_id, item_type, item_id')
+                .eq('user_id', user.id)
+                .in('notebook_id', notebookIds),
+            supabase
+                .from('user_review_states')
+                .select('item_id, item_type, next_review_at')
+                .eq('user_id', user.id)
+        ]);
+
+        const { data: items, error: itemsError } = itemsResult;
+        const { data: allStates, error: statesError } = statesResult;
 
         if (itemsError) {
             console.error('Error loading notebook items for stats:', itemsError);
@@ -136,69 +146,56 @@ async function loadNotebooks(user) {
             return { notebooks, summary: buildNotebooksSummary(notebooks) };
         }
 
-        // 3. 计算每个本子的句子/词汇数量，并收集所有 ID
-        const statsMap = {};
-        const allVocabIds = [];
-        const allSentenceIds = [];
+        if (statesError) {
+            console.error('Error loading review states:', statesError);
+        }
 
+        // 3. 计算每个本子的句子/词汇数量
+        const statsMap = {};
         for (const item of items || []) {
             if (!statsMap[item.notebook_id]) {
                 statsMap[item.notebook_id] = { sentenceCount: 0, vocabCount: 0, dueVocabCount: 0, dueSentenceCount: 0 };
             }
             if (item.item_type === 'sentence') {
                 statsMap[item.notebook_id].sentenceCount++;
-                allSentenceIds.push(item.item_id);
             } else if (item.item_type === 'vocab') {
                 statsMap[item.notebook_id].vocabCount++;
-                allVocabIds.push(item.item_id);
             }
         }
 
-        // 4. 获取所有相关的 review states (vocab & sentence)
-        const allItemIds = [...allVocabIds, ...allSentenceIds];
+        // 4. 计算到期复习数量（使用已并行获取的复习状态）
+        if (!statesError && allStates && allStates.length > 0) {
+            const now = new Date();
 
-        if (allItemIds.length > 0) {
-            const { data: allStates, error: statesError } = await supabase
-                .from('user_review_states')
-                .select('item_id, item_type, next_review_at')
-                .eq('user_id', user.id)
-                .in('item_id', allItemIds);
-
-            if (!statesError && allStates) {
-                const now = new Date();
-
-                // 按 notebook 分组计算
-                for (const notebookId of notebookIds) {
-                    // Vocab stats
-                    const notebookVocabItems = (items || []).filter(
-                        item => item.notebook_id === notebookId && item.item_type === 'vocab'
-                    );
-                    if (notebookVocabItems.length > 0) {
-                        const vocabStates = allStates.filter(s => s.item_type === 'vocab');
-                        const { due, fresh } = splitItemsByReviewState(notebookVocabItems, vocabStates, now);
-                        if (statsMap[notebookId]) {
-                            statsMap[notebookId].dueVocabCount = due.length;
-                            // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
-                            statsMap[notebookId].hasVocabReviewState = fresh.length < notebookVocabItems.length;
-                        }
-                    }
-
-                    // Sentence stats
-                    const notebookSentenceItems = (items || []).filter(
-                        item => item.notebook_id === notebookId && item.item_type === 'sentence'
-                    );
-                    if (notebookSentenceItems.length > 0) {
-                        const sentenceStates = allStates.filter(s => s.item_type === 'sentence');
-                        const { due, fresh } = splitItemsByReviewState(notebookSentenceItems, sentenceStates, now);
-                        if (statsMap[notebookId]) {
-                            statsMap[notebookId].dueSentenceCount = due.length;
-                            // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
-                            statsMap[notebookId].hasSentenceReviewState = fresh.length < notebookSentenceItems.length;
-                        }
+            // 按 notebook 分组计算
+            for (const notebookId of notebookIds) {
+                // Vocab stats
+                const notebookVocabItems = (items || []).filter(
+                    item => item.notebook_id === notebookId && item.item_type === 'vocab'
+                );
+                if (notebookVocabItems.length > 0) {
+                    const vocabStates = allStates.filter(s => s.item_type === 'vocab');
+                    const { due, fresh } = splitItemsByReviewState(notebookVocabItems, vocabStates, now);
+                    if (statsMap[notebookId]) {
+                        statsMap[notebookId].dueVocabCount = due.length;
+                        // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
+                        statsMap[notebookId].hasVocabReviewState = fresh.length < notebookVocabItems.length;
                     }
                 }
-            } else if (statesError) {
-                console.error('Error loading review states:', statesError);
+
+                // Sentence stats
+                const notebookSentenceItems = (items || []).filter(
+                    item => item.notebook_id === notebookId && item.item_type === 'sentence'
+                );
+                if (notebookSentenceItems.length > 0) {
+                    const sentenceStates = allStates.filter(s => s.item_type === 'sentence');
+                    const { due, fresh } = splitItemsByReviewState(notebookSentenceItems, sentenceStates, now);
+                    if (statsMap[notebookId]) {
+                        statsMap[notebookId].dueSentenceCount = due.length;
+                        // 如果 fresh 数量小于总数，说明有条目在 due 或 future 中，即有复习状态
+                        statsMap[notebookId].hasSentenceReviewState = fresh.length < notebookSentenceItems.length;
+                    }
+                }
             }
         }
 

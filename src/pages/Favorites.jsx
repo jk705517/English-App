@@ -43,8 +43,11 @@ function Favorites() {
                 setLoading(true);
                 setError(null);
 
-                const storedFavoriteIds = await favoritesService.loadFavoriteVideoIds(user);
-                const loadedLearnedIds = await progressService.loadLearnedVideoIds(user);
+                // 并行获取收藏和已学习的视频ID
+                const [storedFavoriteIds, loadedLearnedIds] = await Promise.all([
+                    favoritesService.loadFavoriteVideoIds(user),
+                    progressService.loadLearnedVideoIds(user)
+                ]);
 
                 setFavoriteVideoIds(storedFavoriteIds);
                 setLearnedVideoIds(loadedLearnedIds);

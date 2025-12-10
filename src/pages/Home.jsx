@@ -15,31 +15,23 @@ function Home() {
     // 分类列表
     const categories = ['全部', '日常', '职场', '旅行', '时尚', '美食', '科技', '成长'];
 
-    // 从 Supabase 获取视频数据
+    // 并行获取视频数据和已学习状态
     useEffect(() => {
-        const fetchVideos = async () => {
-            const { data, error } = await supabase
-                .from('videos')
-                .select('*')
-                .order('episode', { ascending: false });
+        const loadData = async () => {
+            const [videosResult, learnedIds] = await Promise.all([
+                supabase.from('videos').select('*').order('episode', { ascending: false }),
+                progressService.loadLearnedVideoIds(user)
+            ]);
 
-            if (error) {
-                console.error('Error fetching videos:', error);
+            if (!videosResult.error) {
+                setVideos(videosResult.data || []);
             } else {
-                setVideos(data || []);
+                console.error('Error fetching videos:', videosResult.error);
             }
+            setLearnedVideoIds(learnedIds);
         };
 
-        fetchVideos();
-    }, []);
-
-    // 加载已学习的视频 ID 列表
-    useEffect(() => {
-        const loadProgress = async () => {
-            const ids = await progressService.loadLearnedVideoIds(user);
-            setLearnedVideoIds(ids);
-        };
-        loadProgress();
+        loadData();
     }, [user]);
 
     // 筛选视频
