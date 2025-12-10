@@ -10,6 +10,7 @@ function Notebooks() {
 
     // 本子列表状态
     const [notebooks, setNotebooks] = useState([]);
+    const [summary, setSummary] = useState(null);
     const [loading, setLoading] = useState(true);
 
     // 选中的本子
