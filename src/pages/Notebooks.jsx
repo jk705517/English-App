@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Plus, MessageSquare, ChevronRight, Edit2, X, Play, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -11,6 +11,7 @@ import useLongPress from '../hooks/useLongPress';
 function Notebooks() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const detailRef = useRef(null);
 
     // 本子列表状态
     const [notebooks, setNotebooks] = useState([]);
@@ -61,6 +62,16 @@ function Notebooks() {
         window.addEventListener('resize', handleResize);
         return () => window.removeEventListener('resize', handleResize);
     }, []);
+
+    // 自动滚动到详情区域 (Mobile)
+    useEffect(() => {
+        if (isMobile && selectedNotebook && detailRef.current) {
+            detailRef.current.scrollIntoView({
+                behavior: 'smooth',
+                block: 'start',
+            });
+        }
+    }, [selectedNotebook, isMobile]);
 
     // 长按处理 Wrapper
     const LongPressWrapper = ({ children, data, type, onClick, className }) => {
@@ -504,7 +515,7 @@ function Notebooks() {
                     )}
                 </div>
                 {/* 右侧：本子详情 */}
-                <div className="flex-1 min-w-0">
+                <div className="flex-1 min-w-0" ref={detailRef}>
                     {!selectedNotebook ? (
                         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm">
                             <BookOpen className="w-20 h-20 text-gray-300 mb-4" />
