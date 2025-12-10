@@ -417,6 +417,18 @@ const VideoDetail = () => {
         setIsSeeking(true);
         setCurrentTime(time);
 
+        // 🔧 修复单句循环点击问题：当开启单句循环时，点击字幕行需要更新 activeIndex
+        // 这样循环目标会切换到被点击的句子，而不是停留在原来的句子
+        if (isLooping && videoData?.transcript) {
+            const targetIndex = videoData.transcript.findIndex((item, idx) => {
+                const nextItem = videoData.transcript[idx + 1];
+                return time >= item.start && (!nextItem || time < nextItem.start);
+            });
+            if (targetIndex !== -1 && targetIndex !== activeIndex) {
+                setActiveIndex(targetIndex);
+            }
+        }
+
         if (playerRef.current) {
             playerRef.current.currentTime = time;
         }
@@ -430,7 +442,7 @@ const VideoDetail = () => {
         } else {
             setTimeout(() => setIsSeeking(false), 300);
         }
-    }, [mode]);
+    }, [mode, isLooping, videoData, activeIndex]);
 
     // Render cloze text
     const renderClozeText = useCallback((text, lineIndex) => {
