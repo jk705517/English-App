@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Plus, MessageSquare, ChevronRight, Trash2, Edit2, X, Play } from 'lucide-react';
+import { BookOpen, Plus, MessageSquare, ChevronRight, Edit2, X, Play, MoreHorizontal } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
+import Modal from '../components/Modal';
+import DropdownMenu from '../components/DropdownMenu';
 
 function Notebooks() {
     const { user } = useAuth();
@@ -33,6 +35,13 @@ function Notebooks() {
     const [showCreateModal, setShowCreateModal] = useState(false);
     const [newNotebookName, setNewNotebookName] = useState('');
     const [creating, setCreating] = useState(false);
+
+    // 删除确认 Modal
+    const [deleteConfirm, setDeleteConfirm] = useState({
+        isOpen: false,
+        type: null, // 'notebook' | 'sentence' | 'vocab'
+        data: null
+    });
 
     // 加载本子列表
     useEffect(() => {
@@ -227,10 +236,7 @@ function Notebooks() {
     };
 
     // 删除本子
-    const handleDeleteNotebook = async (notebookId, e) => {
-        e.stopPropagation();
-        if (!confirm('确定要删除这个本子吗？本子里的所有内容也会被删除。')) return;
-
+    const handleDeleteNotebook = async (notebookId) => {
         const success = await notebookService.deleteNotebook(user, notebookId);
         if (success) {
             setNotebooks(notebooks.filter(nb => nb.id !== notebookId));
@@ -243,7 +249,6 @@ function Notebooks() {
 
     // 移除单条句子
     const handleRemoveSentence = async (sentenceId) => {
-        if (!confirm('确认从本子中移除这条句子吗？')) return;
 
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
@@ -273,7 +278,6 @@ function Notebooks() {
 
     // 移除单条词汇
     const handleRemoveVocab = async (vocabId) => {
-        if (!confirm('确认从本子中移除这个词汇吗？')) return;
 
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
@@ -299,6 +303,21 @@ function Notebooks() {
                 vocabCount: prev.vocabCount - 1
             }));
         }
+    };
+
+    // 执行删除
+    const executeDelete = async () => {
+        const { type, data } = deleteConfirm;
+        if (!type || !data) return;
+
+        if (type === 'notebook') {
+            await handleDeleteNotebook(data.id);
+        } else if (type === 'sentence') {
+            await handleRemoveSentence(data.sentenceId);
+        } else if (type === 'vocab') {
+            await handleRemoveVocab(data.vocabId);
+        }
+        setDeleteConfirm({ isOpen: false, type: null, data: null });
     };
 
     // 未登录提示
@@ -403,15 +422,23 @@ function Notebooks() {
                                         </div>
                                     </div>
                                     <div className="flex items-center gap-1 shrink-0 ml-2">
-                                        <button
-                                            onClick={(e) => handleDeleteNotebook(notebook.id, e)}
-                                            className={`p-1.5 rounded-lg transition-colors ${selectedNotebook?.id === notebook.id
-                                                ? 'hover:bg-indigo-500'
-                                                : 'hover:bg-gray-200 opacity-0 group-hover:opacity-100'
-                                                }`}
-                                        >
-                                            <Trash2 className="w-4 h-4" />
-                                        </button>
+                                        <DropdownMenu
+                                            trigger={
+                                                <button className={`p-2 rounded-lg transition-colors ${selectedNotebook?.id === notebook.id
+                                                    ? 'hover:bg-indigo-500 text-indigo-100'
+                                                    : 'hover:bg-gray-200 text-gray-400'
+                                                    }`}>
+                                                    <MoreHorizontal className="w-5 h-5" />
+                                                </button>
+                                            }
+                                            items={[
+                                                {
+                                                    label: '删除本子',
+                                                    danger: true,
+                                                    onClick: () => setDeleteConfirm({ isOpen: true, type: 'notebook', data: notebook })
+                                                }
+                                            ]}
+                                        />
                                         <ChevronRight className={`w-5 h-5 ${selectedNotebook?.id === notebook.id ? 'text-white' : 'text-gray-400'
                                             }`} />
                                     </div>
@@ -532,13 +559,15 @@ function Notebooks() {
                                                             </p>
                                                         </div>
                                                         <div className="flex gap-2 shrink-0">
-                                                            <button
-                                                                onClick={() => handleRemoveSentence(sentence.sentenceId)}
-                                                                className="px-3 py-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors text-sm"
-                                                                title="从本子中移除"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                            <DropdownMenu
+                                                                items={[
+                                                                    {
+                                                                        label: '删除句子',
+                                                                        danger: true,
+                                                                        onClick: () => setDeleteConfirm({ isOpen: true, type: 'sentence', data: sentence })
+                                                                    }
+                                                                ]}
+                                                            />
                                                             <button
                                                                 onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
                                                                 className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
@@ -620,13 +649,15 @@ function Notebooks() {
                                                             )}
                                                         </div>
                                                         <div className="flex gap-1 shrink-0">
-                                                            <button
-                                                                onClick={() => handleRemoveVocab(vocab.vocabId)}
-                                                                className="px-2 py-1 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
-                                                                title="从本子中移除"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                            </button>
+                                                            <DropdownMenu
+                                                                items={[
+                                                                    {
+                                                                        label: '删除单词',
+                                                                        danger: true,
+                                                                        onClick: () => setDeleteConfirm({ isOpen: true, type: 'vocab', data: vocab })
+                                                                    }
+                                                                ]}
+                                                            />
                                                             <button
                                                                 onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
                                                                 className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
@@ -703,6 +734,39 @@ function Notebooks() {
                     </div>
                 </div>
             )}
+
+            {/* 删除确认 Modal */}
+            <Modal
+                isOpen={deleteConfirm.isOpen}
+                onClose={() => setDeleteConfirm({ ...deleteConfirm, isOpen: false })}
+                title={
+                    deleteConfirm.type === 'notebook' ? '删除本子' :
+                        deleteConfirm.type === 'sentence' ? '删除句子' :
+                            '删除单词'
+                }
+                footer={
+                    <>
+                        <button
+                            onClick={() => setDeleteConfirm({ ...deleteConfirm, isOpen: false })}
+                            className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                        >
+                            取消
+                        </button>
+                        <button
+                            onClick={executeDelete}
+                            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-medium transition-colors"
+                        >
+                            确认删除
+                        </button>
+                    </>
+                }
+            >
+                <p className="text-gray-600">
+                    {deleteConfirm.type === 'notebook' && '确定要删除这个本子吗？本子里的句子和单词也会一并移除，但你的学习记录会保留。'}
+                    {deleteConfirm.type === 'sentence' && '确定要把这条句子从本子里删除吗？'}
+                    {deleteConfirm.type === 'vocab' && '确定要把这个单词从本子里删除吗？'}
+                </p>
+            </Modal>
         </div>
     );
 }
