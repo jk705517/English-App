@@ -204,3 +204,167 @@ export async function updateReviewState({
         console.error('[updateReviewState] unexpected error:', err);
     }
 }
+
+// ========== 复习统计 v0.1 ==========
+
+/**
+ * 获取最近 N 天的复习统计数据
+ * @param {Object} user - 当前用户对象
+ * @param {Object} options - 可选参数
+ * @param {number} options.days - 统计天数，默认 7
+ * @returns {Promise<{days: Array, summary: Object}>}
+ */
+export async function loadReviewStats(user, { days = 7 } = {}) {
+    try {
+        if (!user || !user.id) {
+            console.warn('[loadReviewStats] no user, returning empty stats');
+            return getEmptyStats(days);
+        }
+
+        // 1. 计算起始日期（days-1 天前的 00:00 本地时间）
+        const now = new Date();
+        const startDate = new Date(now);
+        startDate.setDate(now.getDate() - (days - 1));
+        startDate.setHours(0, 0, 0, 0);
+
+        // 2. 查询 user_review_logs
+        const { data: logs, error } = await supabase
+            .from('user_review_logs')
+            .select('item_type, created_at')
+            .eq('user_id', user.id)
+            .gte('created_at', startDate.toISOString())
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('[loadReviewStats] query error:', error);
+            return getEmptyStats(days);
+        }
+
+        // 3. 按本地日期分组
+        const dateMap = new Map(); // date string -> { total, vocab, sentence }
+
+        for (const log of logs || []) {
+            const localDate = new Date(log.created_at);
+            const dateKey = formatDateKey(localDate);
+
+            if (!dateMap.has(dateKey)) {
+                dateMap.set(dateKey, { total: 0, vocab: 0, sentence: 0 });
+            }
+
+            const stats = dateMap.get(dateKey);
+            stats.total += 1;
+            if (log.item_type === 'vocab') {
+                stats.vocab += 1;
+            } else if (log.item_type === 'sentence') {
+                stats.sentence += 1;
+            }
+        }
+
+        // 4. 生成最近 days 天的数据（包括没有记录的天）
+        const daysArray = [];
+        for (let i = 0; i < days; i++) {
+            const date = new Date(now);
+            date.setDate(now.getDate() - i);
+            const dateKey = formatDateKey(date);
+            const label = getDayLabel(i);
+            const stats = dateMap.get(dateKey) || { total: 0, vocab: 0, sentence: 0 };
+
+            daysArray.push({
+                date: dateKey,
+                label,
+                total: stats.total,
+                vocab: stats.vocab,
+                sentence: stats.sentence,
+            });
+        }
+
+        // 5. 计算汇总
+        let totalCount = 0;
+        let vocabCount = 0;
+        let sentenceCount = 0;
+
+        for (const day of daysArray) {
+            totalCount += day.total;
+            vocabCount += day.vocab;
+            sentenceCount += day.sentence;
+        }
+
+        // 6. 计算连续打卡天数（从今天往前数）
+        let currentStreak = 0;
+        for (const day of daysArray) {
+            if (day.total > 0) {
+                currentStreak += 1;
+            } else {
+                break;
+            }
+        }
+
+        const result = {
+            days: daysArray,
+            summary: {
+                totalCount,
+                vocabCount,
+                sentenceCount,
+                currentStreak,
+            },
+        };
+
+        return result;
+    } catch (err) {
+        console.error('[loadReviewStats] unexpected error:', err);
+        return getEmptyStats(days);
+    }
+}
+
+/**
+ * 格式化日期为 YYYY-MM-DD
+ */
+function formatDateKey(date) {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+}
+
+/**
+ * 获取日期标签
+ */
+function getDayLabel(daysAgo) {
+    if (daysAgo === 0) return '今天';
+    if (daysAgo === 1) return '昨天';
+    if (daysAgo === 2) return '前天';
+
+    const date = new Date();
+    date.setDate(date.getDate() - daysAgo);
+    return `${date.getMonth() + 1}-${String(date.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * 返回空的统计数据
+ */
+function getEmptyStats(days) {
+    const now = new Date();
+    const daysArray = [];
+
+    for (let i = 0; i < days; i++) {
+        const date = new Date(now);
+        date.setDate(now.getDate() - i);
+        daysArray.push({
+            date: formatDateKey(date),
+            label: getDayLabel(i),
+            total: 0,
+            vocab: 0,
+            sentence: 0,
+        });
+    }
+
+    return {
+        days: daysArray,
+        summary: {
+            totalCount: 0,
+            vocabCount: 0,
+            sentenceCount: 0,
+            currentStreak: 0,
+        },
+    };
+}
