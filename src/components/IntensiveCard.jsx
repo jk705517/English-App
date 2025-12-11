@@ -186,7 +186,7 @@ const IntensiveCard = ({
                                         </div>
                                         <div className="space-y-0.5 text-gray-800">
                                             <p>{exp.example_en}</p>
-                                            {showChinese && <p className="text-gray-500 text-xs">{exp.example_cn}</p>}
+                                            {showExplanations && <p className="text-gray-500 text-xs">{exp.example_cn}</p>}
                                         </div>
                                     </div>
                                 ))}
