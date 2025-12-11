@@ -5,7 +5,7 @@ const IntensiveCard = ({
     sentence,
     isActive,
     isVisited,
-    showChinese,
+    showExplanations,
     onSelect,
     // Favorite props
     isFavorite = false,
@@ -148,15 +148,13 @@ const IntensiveCard = ({
                 <h3 className={`text-lg md:text-xl font-bold leading-relaxed mb-2 ${isActive ? 'text-gray-900' : 'text-gray-800'}`}>
                     {highlightedText}
                 </h3>
-                {showChinese && (
-                    <p className="text-base text-gray-600 leading-relaxed">
-                        {cn}
-                    </p>
-                )}
+                <p className="text-base text-gray-600 leading-relaxed">
+                    {cn}
+                </p>
             </div>
 
             {/* Analysis Content */}
-            {hasAnalysis ? (
+            {showExplanations && hasAnalysis ? (
                 <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-indigo-100' : 'border-gray-100'}`}>
 
                     {/* Syntax */}

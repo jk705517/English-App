@@ -13,7 +13,7 @@ const IntensiveSentenceList = ({
     onAddToNotebook
 }) => {
     const activeRef = useRef(null);
-    const [showChinese, setShowChinese] = useState(true);
+    const [showExplanations, setShowExplanations] = useState(true);
 
     // Auto-scroll to active item
     useEffect(() => {
@@ -51,21 +51,28 @@ const IntensiveSentenceList = ({
                         </span>
                     </div>
 
-                    <button
-                        onClick={() => setShowChinese(!showChinese)}
-                        className={`
-                            relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
-                            ${showChinese ? 'bg-indigo-600' : 'bg-gray-200'}
-                        `}
-                    >
-                        <span
+                    <div className="flex items-center gap-2">
+                        <span className={`text-xs font-medium ${!showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                            {showExplanations ? '只看英文' : '只看英文'}
+                        </span>
+                        <button
+                            onClick={() => setShowExplanations(!showExplanations)}
                             className={`
-                                inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                ${showChinese ? 'translate-x-6' : 'translate-x-1'}
+                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                                ${showExplanations ? 'bg-indigo-600' : 'bg-gray-200'}
                             `}
-                        />
-                        <span className="sr-only">显示中文</span>
-                    </button>
+                        >
+                            <span
+                                className={`
+                                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
+                                    ${showExplanations ? 'translate-x-6' : 'translate-x-1'}
+                                `}
+                            />
+                        </button>
+                        <span className={`text-xs font-medium ${showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                            {showExplanations ? '显示中文讲解' : '显示中文讲解'}
+                        </span>
+                    </div>
                 </div>
 
                 {/* Progress Bar */}
@@ -91,7 +98,7 @@ const IntensiveSentenceList = ({
                                 sentence={item}
                                 isActive={isActive}
                                 isVisited={isVisited}
-                                showChinese={showChinese}
+                                showExplanations={showExplanations}
                                 onSelect={onSelectSentence}
                                 isFavorite={isFavorite}
                                 onToggleFavorite={onToggleFavorite}
