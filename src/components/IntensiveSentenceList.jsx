@@ -53,7 +53,7 @@ const IntensiveSentenceList = ({
 
                     <div className="flex items-center gap-2">
                         <span className={`text-xs font-medium ${!showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
-                            {showExplanations ? '只看英文' : '只看英文'}
+                            训练：只看中英
                         </span>
                         <button
                             onClick={() => setShowExplanations(!showExplanations)}
@@ -70,7 +70,7 @@ const IntensiveSentenceList = ({
                             />
                         </button>
                         <span className={`text-xs font-medium ${showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
-                            {showExplanations ? '显示中文讲解' : '显示中文讲解'}
+                            讲解：显示中文解析
                         </span>
                     </div>
                 </div>
@@ -82,6 +82,14 @@ const IntensiveSentenceList = ({
                         style={{ width: `${progressPercentage}%` }}
                     />
                 </div>
+
+                {/* Hint Text */}
+                <p className="text-xs text-gray-400 mt-2">
+                    {showExplanations
+                        ? '当前为「讲解：显示中文解析」模式，你可以查看语法结构和地道表达的详细讲解。'
+                        : '当前为「训练：只看中英」模式，如需查看语法和地道表达，请打开右侧「讲解：显示中文解析」。'
+                    }
+                </p>
             </div>
 
             {/* List of Cards */}

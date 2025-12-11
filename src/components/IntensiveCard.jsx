@@ -153,8 +153,9 @@ const IntensiveCard = ({
                 </p>
             </div>
 
-            {/* Analysis Content */}
-            {showExplanations && hasAnalysis ? (
+            {/* Analysis Content - 3 cases */}
+            {/* Case 1: Toggle ON + has analysis -> show analysis */}
+            {showExplanations && hasAnalysis && (
                 <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-indigo-100' : 'border-gray-100'}`}>
 
                     {/* Syntax */}
@@ -186,7 +187,7 @@ const IntensiveCard = ({
                                         </div>
                                         <div className="space-y-0.5 text-gray-800">
                                             <p>{exp.example_en}</p>
-                                            {showExplanations && <p className="text-gray-500 text-xs">{exp.example_cn}</p>}
+                                            <p className="text-gray-500 text-xs">{exp.example_cn}</p>
                                         </div>
                                     </div>
                                 ))}
@@ -234,13 +235,16 @@ const IntensiveCard = ({
                         </div>
                     )}
                 </div>
-            ) : (
-                <div className="border-t pt-4 mt-2">
-                    <p className="text-xs text-gray-400 italic text-center">
-                        本句暂未提供精读解析，你仍然可以点击本句进行跟读 / 精听。
-                    </p>
-                </div>
             )}
+
+            {/* Case 2: Toggle ON + no analysis -> show hint only */}
+            {showExplanations && !hasAnalysis && (
+                <p className="mt-3 text-sm text-gray-400">
+                    本句暂未提供精读讲解，你仍然可以点击本句进行跟读 / 精听。
+                </p>
+            )}
+
+            {/* Case 3: Toggle OFF -> show nothing extra */}
         </div>
     );
 };
