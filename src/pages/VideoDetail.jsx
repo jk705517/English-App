@@ -15,7 +15,7 @@ import IntensiveSentenceList from '../components/IntensiveSentenceList';
 import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { generateClozeData } from '../utils/clozeGenerator';
 
-// TTS 朗读函数
+// TTS 鏈楄鍑芥暟
 const speak = (text, lang = 'en-US') => {
     if (!window.speechSynthesis) return;
     window.speechSynthesis.cancel();
@@ -25,10 +25,10 @@ const speak = (text, lang = 'en-US') => {
     window.speechSynthesis.speak(utterance);
 };
 
-// ��Ļ�������
+// 字幕导航组件
 const SubtitleTabs = ({ mode, setMode, className = "" }) => (
     <div className={`flex items-center justify-between ${className}`}>
-        <h2 className="text-base md:text-lg font-bold flex items-center">?? ��Ļ</h2>
+        <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
 
         <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full overflow-x-auto">
             {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
@@ -37,7 +37,7 @@ const SubtitleTabs = ({ mode, setMode, className = "" }) => (
                     onClick={() => setMode(m)}
                     className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                 >
-                    {m === 'dual' ? '˫��' : m === 'en' ? 'Ӣ' : m === 'cn' ? '��' : m === 'intensive' ? '����' : m === 'cloze' ? '�ڿ�' : '��д'}
+                    {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                 </button>
             ))}
         </div>
@@ -65,21 +65,21 @@ const VideoDetail = () => {
     const [isLooping, setIsLooping] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
-    // 移动端：是否显示顶部"继续播放"小条（暂�?播放器被滚动隐藏时）
+    // 绉诲姩绔細鏄惁鏄剧ず椤堕儴"缁х画鎾斁"灏忔潯锛堟殏鍋?鎾斁鍣ㄨ婊氬姩闅愯棌鏃讹級
     const [showMobileMiniBar, setShowMobileMiniBar] = useState(false);
-    // 移动端：暂停后是否已滚动（用于延迟切换小窗口模式�?
+    // 绉诲姩绔細鏆傚仠鍚庢槸鍚﹀凡婊氬姩锛堢敤浜庡欢杩熷垏鎹㈠皬绐楀彛妯″紡锛?
     const [hasScrolledAfterPause, setHasScrolledAfterPause] = useState(false);
-    // 检测是否为移动�?
+    // 妫€娴嬫槸鍚︿负绉诲姩绔?
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
-    // 移动端：是否在页面顶部（用于标题区显示控制）
+    // 绉诲姩绔細鏄惁鍦ㄩ〉闈㈤《閮紙鐢ㄤ簬鏍囬鍖烘樉绀烘帶鍒讹級
     const [isAtTop, setIsAtTop] = useState(true);
 
-    // 挖空模式相关状�?
+    // 鎸栫┖妯″紡鐩稿叧鐘舵€?
     const [clozeData, setClozeData] = useState({});
     const [clozeResults, setClozeResults] = useState({}); // { `${lineIndex}-${clozeIndex}`: 'correct' | 'revealed' }
     const pausedByCloze = useRef(false);
 
-    // 移动端：是否为首次加载（保证初始进入页面时显示标题区�?
+    // 绉诲姩绔細鏄惁涓洪娆″姞杞斤紙淇濊瘉鍒濆杩涘叆椤甸潰鏃舵樉绀烘爣棰樺尯锛?
     const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [isSeeking, setIsSeeking] = useState(false);
     const [isBuffering, setIsBuffering] = useState(false);
@@ -92,15 +92,15 @@ const VideoDetail = () => {
     const [dictationIndex, setDictationIndex] = useState(0);
     const [hasPlayedCurrent, setHasPlayedCurrent] = useState(false);
 
-    // ���Ӻʹʻ��ղ�״̬
+    // 句子和词汇收藏状态
     const [favoriteSentenceIds, setFavoriteSentenceIds] = useState([]);
     const [favoriteVocabIds, setFavoriteVocabIds] = useState([]);
 
-    // ���ӵ���״̬
+    // 本子弹窗状态
     const [notebookDialogOpen, setNotebookDialogOpen] = useState(false);
     const [notebookDialogItem, setNotebookDialogItem] = useState(null); // { itemType, itemId, videoId }
 
-    // 检测移动端
+    // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 768);
@@ -116,18 +116,18 @@ const VideoDetail = () => {
         dictationStateRef.current = { isPlaying, isSeeking, dictationIndex };
     }, [isPlaying, isSeeking, dictationIndex]);
 
-    // ��ֹ�������ҳ�����»�ý���ʱ�Զ��ָ����ţ����ڴʻ��ѯ�ȳ�����
+    // 防止浏览器在页面重新获得焦点时自动恢复播放（用于词汇查询等场景）
     useEffect(() => {
         const handleVisibilityChange = () => {
             if (document.hidden) {
-                // ҳ������ʱ��������ڲ�������ͣ
+                // 页面隐藏时，如果正在播放则暂停
                 if (isPlaying && playerRef.current) {
                     playerRef.current.pause();
                     setIsPlaying(false);
                 }
             }
-            // ע�⣺ҳ��ָ��ɼ�ʱ���Զ��ָ�����
-            // �û������ֶ�������Ű�ť���ܼ���
+            // 注意：页面恢复可见时不自动恢复播放
+            // 用户必须手动点击播放按钮才能继续
         };
 
         document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -252,18 +252,18 @@ const VideoDetail = () => {
         fetchAllVideos();
     }, []);
 
-    // 移动端：监听滚动，判断是否显�?继续播放"小条
+    // 绉诲姩绔細鐩戝惉婊氬姩锛屽垽鏂槸鍚︽樉绀?缁х画鎾斁"灏忔潯
     useEffect(() => {
         if (!isMobile) return;
 
         const handleScroll = () => {
             if (!playerContainerRef.current) return;
 
-            // 检测是否在页面顶部（用于标题区显示控制�?
+            // 妫€娴嬫槸鍚﹀湪椤甸潰椤堕儴锛堢敤浜庢爣棰樺尯鏄剧ず鎺у埗锛?
             setIsAtTop(window.scrollY <= 10);
 
-            // 暂停状态下，用户滚动时才标记为"已滚�?
-            // 使用本地变量立即反映新状态，避免 React 闭包问题
+            // 鏆傚仠鐘舵€佷笅锛岀敤鎴锋粴鍔ㄦ椂鎵嶆爣璁颁负"宸叉粴鍔?
+            // 浣跨敤鏈湴鍙橀噺绔嬪嵆鍙嶆槧鏂扮姸鎬侊紝閬垮厤 React 闂寘闂
             let scrolledAfterPause = hasScrolledAfterPause;
             if (!isPlaying && !hasScrolledAfterPause) {
                 setHasScrolledAfterPause(true);
@@ -273,17 +273,17 @@ const VideoDetail = () => {
             const rect = playerContainerRef.current.getBoundingClientRect();
             const isPlayerHidden = rect.bottom < 60;
 
-            // 只有"暂停 + 已滚�?+ 播放器隐�?才显示小窗口
+            // 鍙湁"鏆傚仠 + 宸叉粴鍔?+ 鎾斁鍣ㄩ殣钘?鎵嶆樉绀哄皬绐楀彛
             setShowMobileMiniBar(!isPlaying && scrolledAfterPause && isPlayerHidden);
         };
 
         window.addEventListener('scroll', handleScroll, { passive: true });
-        // 不要初始调用 handleScroll()，避免页面加载时错误触发滚动标记
+        // 涓嶈鍒濆璋冪敤 handleScroll()锛岄伩鍏嶉〉闈㈠姞杞芥椂閿欒瑙﹀彂婊氬姩鏍囪
 
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isMobile, isPlaying, hasScrolledAfterPause]);
 
-    // 首次加载后，一旦有交互就关�?isInitialLoad
+    // 棣栨鍔犺浇鍚庯紝涓€鏃︽湁浜や簰灏卞叧闂?isInitialLoad
     useEffect(() => {
         if (!isInitialLoad) return;
         if (isPlaying || hasScrolledAfterPause || showMobileMiniBar) {
@@ -415,8 +415,8 @@ const VideoDetail = () => {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 修复：在精读模式下，如果是循环状态，不要�?handleProgress 自动更新 activeIndex
-            // 避免因为进度条跳转导�?activeIndex 被重置为基于时间的索�?
+            // 淇锛氬湪绮捐妯″紡涓嬶紝濡傛灉鏄惊鐜姸鎬侊紝涓嶈璁?handleProgress 鑷姩鏇存柊 activeIndex
+            // 閬垮厤鍥犱负杩涘害鏉¤烦杞鑷?activeIndex 琚噸缃负鍩轰簬鏃堕棿鐨勭储寮?
             if (mode === 'intensive' && isLooping) {
                 // Already handled at the top
                 return;
@@ -435,8 +435,8 @@ const VideoDetail = () => {
         setIsSeeking(true);
         setCurrentTime(time);
 
-        // ?? �޸�����ѭ��������⣺���������ѭ��ʱ�������Ļ����Ҫ���� activeIndex
-        // ����ѭ��Ŀ����л���������ľ��ӣ�������ͣ����ԭ���ľ���
+        // 🔧 修复单句循环点击问题：当开启单句循环时，点击字幕行需要更新 activeIndex
+        // 这样循环目标会切换到被点击的句子，而不是停留在原来的句子
         if (isLooping && videoData?.transcript) {
             const targetIndex = videoData.transcript.findIndex((item, idx) => {
                 const nextItem = videoData.transcript[idx + 1];
@@ -478,7 +478,7 @@ const VideoDetail = () => {
                                 answer={segment.content}
                                 vocabInfo={segment.vocabInfo}
                                 onStartAnswer={() => {
-                                    // 用户开始作答：如果正在播放，则暂停并标�?
+                                    // 鐢ㄦ埛寮€濮嬩綔绛旓細濡傛灉姝ｅ湪鎾斁锛屽垯鏆傚仠骞舵爣璁?
                                     if (isPlaying) {
                                         if (playerRef.current) playerRef.current.pause();
                                         setIsPlaying(false);
@@ -487,7 +487,7 @@ const VideoDetail = () => {
                                 }}
                                 onDone={(status) => {
                                     setClozeResults(prev => ({ ...prev, [key]: status }));
-                                    // 作答结束：如果是因挖空而暂停的，则恢复播放
+                                    // 浣滅瓟缁撴潫锛氬鏋滄槸鍥犳寲绌鸿€屾殏鍋滅殑锛屽垯鎭㈠鎾斁
                                     if (pausedByCloze.current) {
                                         if (playerRef.current) playerRef.current.play();
                                         setIsPlaying(true);
@@ -564,7 +564,7 @@ const VideoDetail = () => {
         const index = activeIndex >= 0 ? activeIndex : 0;
         if (videoData?.transcript[index]) {
             const sentence = videoData.transcript[index];
-            // 如果 activeIndex �? -1，需要更�?
+            // 濡傛灉 activeIndex 鏄? -1锛岄渶瑕佹洿鏂?
             if (activeIndex === -1) setActiveIndex(index);
 
             if (playerRef.current) {
@@ -581,7 +581,7 @@ const VideoDetail = () => {
         if (playerRef.current) {
             playerRef.current.pause();
         }
-        // 保持 isLooping = true，这样用户再次点击播放时依然是循环当前句
+        // 淇濇寔 isLooping = true锛岃繖鏍风敤鎴峰啀娆＄偣鍑绘挱鏀炬椂渚濈劧鏄惊鐜綋鍓嶅彞
     };
 
     const handleIntensivePrev = () => {
@@ -608,11 +608,11 @@ const VideoDetail = () => {
         await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
     };
 
-    // �����ղ��л�
+    // 句子收藏切换
     const handleToggleSentenceFavorite = async (sentenceId) => {
-        // ��ֹ sentenceId Ϊ undefined ��������
+        // 防止 sentenceId 为 undefined 导致问题
         if (sentenceId === undefined || sentenceId === null) {
-            console.warn('?? handleToggleSentenceFavorite: sentenceId is missing! Please run migration script to add IDs to transcript data.');
+            console.warn('⚠️ handleToggleSentenceFavorite: sentenceId is missing! Please run migration script to add IDs to transcript data.');
             return;
         }
         const shouldBeFavorite = !favoriteSentenceIds.includes(sentenceId);
@@ -624,11 +624,11 @@ const VideoDetail = () => {
         );
     };
 
-    // �ʻ��ղ��л�
+    // 词汇收藏切换
     const handleToggleVocabFavorite = async (vocabId) => {
-        // ��ֹ vocabId Ϊ undefined �������п�Ƭһ���ɫ
+        // 防止 vocabId 为 undefined 导致所有卡片一起变色
         if (vocabId === undefined || vocabId === null) {
-            console.warn('?? handleToggleVocabFavorite: vocabId is missing! Please run migration script to add IDs to vocab data.');
+            console.warn('⚠️ handleToggleVocabFavorite: vocabId is missing! Please run migration script to add IDs to vocab data.');
             return;
         }
         const shouldBeFavorite = !favoriteVocabIds.includes(vocabId);
@@ -640,15 +640,26 @@ const VideoDetail = () => {
         );
     };
 
-    // 移动端：点击"继续播放"，滚动到播放器并继续播放
+    // 绉诲姩绔細鐐瑰嚮"缁х画鎾斁"锛屾粴鍔ㄥ埌鎾斁鍣ㄥ苟缁х画鎾斁
     const handleMobileResume = () => {
         setShowMobileMiniBar(false);
-        setHasScrolledAfterPause(false); // 重置滚动标记
-        // 滚动到播放器位置
+        setHasScrolledAfterPause(false); // 閲嶇疆婊氬姩鏍囪
+        // 婊氬姩鍒版挱鏀惧櫒浣嶇疆
         if (playerContainerRef.current) {
             playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
-        // 继续播放（从当前时间点）
+        // 缁х画鎾斁锛堜粠褰撳墠鏃堕棿鐐癸級
+        setTimeout(() => {
+            setIsPlaying(true);
+            if (playerRef.current) playerRef.current.play();
+        }, 300);
+    };
+
+    // PC绔細杩斿洖鎾斁
+    const handlePCReturnToPlay = () => {
+        if (playerContainerRef.current) {
+            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
         setTimeout(() => {
             setIsPlaying(true);
             if (playerRef.current) playerRef.current.play();
@@ -682,14 +693,14 @@ const VideoDetail = () => {
     if (!videoData) {
         return (
             <div className="min-h-screen flex items-center justify-center">
-                <div className="text-xl text-gray-600">��Ƶ������...</div>
+                <div className="text-xl text-gray-600">视频加载中...</div>
             </div>
         );
     }
 
     return (
         <div className="min-h-screen bg-gray-50 md:h-screen md:flex md:flex-row">
-            {/* ========== �ƶ��ˣ�����"��������"С�� ========== */}
+            {/* ========== 移动端：顶部"继续播放"小条 ========== */}
             {showMobileMiniBar && (
                 <div
                     className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 cursor-pointer shadow-lg md:hidden"
@@ -699,18 +710,18 @@ const VideoDetail = () => {
                         <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                             <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
                         </svg>
-                        <span className="font-medium">��������</span>
+                        <span className="font-medium">继续播放</span>
                     </div>
                 </div>
             )}
 
-            {/* ��ࣺ��Ƶ�����⡢�ʻ� */}
+            {/* 左侧：视频、标题、词汇 */}
             <div className="w-full md:w-3/5 md:flex md:flex-col md:overflow-y-auto">
 
-                {/* ���������ƶ��˽���"���� + δ���� + ��С����ģʽ"ʱ��ʾ��PC��ʼ����ʾ */}
+                {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
                 {(!isMobile || (!isPlaying && !showMobileMiniBar)) && (
                     <div className="p-3 md:p-6 flex-shrink-0">
-                        {/* ��һ��/��һ�ڵ��� - �����㹻�Ķ������ܿ������� */}
+                        {/* 上一期/下一期导航 - 增加足够的顶部间距避开导航栏 */}
                         <div className="flex gap-3 mb-3 md:mb-4 pt-2 md:pt-0">
                             {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                                 <Link
@@ -720,7 +731,7 @@ const VideoDetail = () => {
                                     <svg className="w-4 h-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                     </svg>
-                                    ��һ��
+                                    上一期
                                 </Link>
                             )}
                             {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
@@ -728,7 +739,7 @@ const VideoDetail = () => {
                                     to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
                                     className="inline-flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm md:text-base"
                                 >
-                                    ��һ��
+                                    下一期
                                     <svg className="w-4 h-4 ml-1 md:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
@@ -736,14 +747,14 @@ const VideoDetail = () => {
                             )}
                         </div>
 
-                        {/* �������� */}
+                        {/* 标题区域 */}
                         <div className="flex items-start justify-between mb-2 md:mb-3">
                             <h1 className="text-xl md:text-3xl font-bold flex-1 mr-4">{videoData.title}</h1>
                             <div className="flex gap-2 shrink-0">
                                 <button
                                     onClick={handleToggleFavorite}
                                     className={`p-2 rounded-full transition-colors ${isFavorite ? 'bg-yellow-100 text-yellow-500 hover:bg-yellow-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                    title={isFavorite ? "ȡ���ղ�" : "�ղ���Ƶ"}
+                                    title={isFavorite ? "取消收藏" : "收藏视频"}
                                 >
                                     {isFavorite ? (
                                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -758,7 +769,7 @@ const VideoDetail = () => {
                                 <button
                                     onClick={handleToggleLearned}
                                     className={`p-2 rounded-full transition-colors ${isLearned ? 'bg-green-100 text-green-500 hover:bg-green-200' : 'bg-gray-100 text-gray-400 hover:bg-gray-200'}`}
-                                    title={isLearned ? "���δѧ" : "�����ѧ"}
+                                    title={isLearned ? "标记未学" : "标记已学"}
                                 >
                                     {isLearned ? (
                                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 20 20">
@@ -773,7 +784,7 @@ const VideoDetail = () => {
                             </div>
                         </div>
 
-                        {/* Ԫ���� */}
+                        {/* 元数据 */}
                         <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
                             <span className="flex items-center">
                                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
@@ -796,16 +807,16 @@ const VideoDetail = () => {
                 )}
 
 
-                {/* �ƶ��˼�������ģʽ����ʾ�˳���ť */}
+                {/* 移动端继续播放模式下显示退出按钮 */}
 
 
-                {/* ��Ƶ���������� */}
+                {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
-                    {/* �ƶ��˲���ʱ��ռλԪ�� */}
+                    {/* 移动端播放时的占位元素 */}
                     {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
                         <div style={{ paddingTop: 'calc(56.25% + 50px)' }} className="w-full" />
                     )}
-                    {/* ��Ƶ������ - �ƶ��˲���ʱ fixed */}
+                    {/* 视频播放器 - 移动端播放时 fixed */}
                     <div
                         ref={playerContainerRef}
                         className={`
@@ -822,7 +833,7 @@ const VideoDetail = () => {
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
                                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                                         </svg>
-                                        <span>������...</span>
+                                        <span>缓冲中...</span>
                                     </div>
                                 </div>
                             )}
@@ -847,7 +858,7 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* �ƶ��ˣ���Ļ�������������ڲ�����������ʱ�����������·��� */}
+                {/* 移动端：字幕导航条（独立于播放器，吸顶时紧贴播放器下方） */}
                 {isMobile && (
                     <div
                         className={`
@@ -860,31 +871,31 @@ const VideoDetail = () => {
                     </div>
                 )}
 
-                {/* �ص�ʻ� - ֻ�ڵ��Զ��ҷ�����ģʽ����ʾ */}
+                {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
                 <div className="hidden md:block p-6 pt-6">
                     <div className="p-6 bg-white rounded-xl shadow-sm">
-                        <h3 className="text-xl font-bold mb-4">�ص�ʻ�</h3>
+                        <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
                             {videoData.vocab?.map((item, index) => (
                                 <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
-                                    {/* �ղذ�ť�����Ͻǣ�*/}
+                                    {/* 收藏按钮（右上角）*/}
                                     <button
                                         onClick={() => handleToggleVocabFavorite(item.id)}
                                         className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.includes(item.id)
                                             ? 'text-yellow-500 hover:bg-yellow-100'
                                             : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                                             }`}
-                                        title={favoriteVocabIds.includes(item.id) ? "ȡ���ղ�" : "�ղشʻ�"}
+                                        title={favoriteVocabIds.includes(item.id) ? "取消收藏" : "收藏词汇"}
                                     >
                                         <svg className="w-4 h-4" fill={favoriteVocabIds.includes(item.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
                                         </svg>
                                     </button>
-                                    {/* ���뱾�Ӱ�ť */}
+                                    {/* 加入本子按钮 */}
                                     <button
                                         onClick={() => {
                                             if (!user) {
-                                                alert('��¼�����ʹ�ñ��ӹ���');
+                                                alert('登录后才能使用本子功能');
                                                 return;
                                             }
                                             setNotebookDialogItem({
@@ -895,7 +906,7 @@ const VideoDetail = () => {
                                             setNotebookDialogOpen(true);
                                         }}
                                         className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-indigo-500 hover:bg-indigo-50"
-                                        title="���뱾��"
+                                        title="加入本子"
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
@@ -911,7 +922,7 @@ const VideoDetail = () => {
                                             <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                 <span className="text-gray-400 w-4">US</span>
                                                 <span>/{item.ipa_us}/</span>
-                                                <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="��ʽ����">
+                                                <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                     </svg>
@@ -922,7 +933,7 @@ const VideoDetail = () => {
                                             <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                 <span className="text-gray-400 w-4">UK</span>
                                                 <span>/{item.ipa_uk}/</span>
-                                                <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="Ӣʽ����">
+                                                <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
                                                     <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                     </svg>
@@ -975,11 +986,11 @@ const VideoDetail = () => {
                         <div className="sticky top-0 z-10 bg-indigo-50 border-b px-4 py-2 flex items-center justify-between text-sm text-indigo-900">
                             <div className="flex items-center gap-4">
                                 <span>
-                                    <strong>���ȣ�</strong>
-                                    {Object.keys(clozeResults).length} / {Object.values(clozeData).flat().filter(s => s.type === 'cloze').length} ��
+                                    <strong>进度：</strong>
+                                    {Object.keys(clozeResults).length} / {Object.values(clozeData).flat().filter(s => s.type === 'cloze').length} 空
                                 </span>
                                 <span>
-                                    <strong>��ȷ�ʣ�</strong>
+                                    <strong>正确率：</strong>
                                     {(() => {
                                         const results = Object.values(clozeResults);
                                         if (results.length === 0) return '0%';
@@ -995,15 +1006,15 @@ const VideoDetail = () => {
                             <div className="flex justify-around">
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
-                                    <div className="text-xs text-gray-600">���</div>
+                                    <div className="text-xs text-gray-600">答对</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-red-600">{dictationStats.wrong}</div>
-                                    <div className="text-xs text-gray-600">���</div>
+                                    <div className="text-xs text-gray-600">答错</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-gray-600">{dictationStats.skipped}</div>
-                                    <div className="text-xs text-gray-600">����</div>
+                                    <div className="text-xs text-gray-600">跳过</div>
                                 </div>
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-blue-600">
@@ -1011,7 +1022,7 @@ const VideoDetail = () => {
                                             ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
                                             : 0}%
                                     </div>
-                                    <div className="text-xs text-gray-600">��ȷ��</div>
+                                    <div className="text-xs text-gray-600">正确率</div>
                                 </div>
                             </div>
                         </div>
@@ -1040,7 +1051,7 @@ const VideoDetail = () => {
                                 />
                                 <details className="mt-4">
                                     <summary className="cursor-pointer text-sm text-gray-600 hover:text-gray-800 font-medium">
-                                        ?? ��ʾ���ķ���
+                                        💡 显示中文翻译
                                     </summary>
                                     <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
                                 </details>
@@ -1056,7 +1067,7 @@ const VideoDetail = () => {
                                     onToggleFavorite={handleToggleSentenceFavorite}
                                     onAddToNotebook={(sentenceId) => {
                                         if (!user) {
-                                            alert('��¼�����ʹ�ñ��ӹ���');
+                                            alert('登录后才能使用本子功能');
                                             return;
                                         }
                                         setNotebookDialogItem({
@@ -1092,20 +1103,20 @@ const VideoDetail = () => {
                             })
                         )}
 
-                        {/* �ص�ʻ� - ֻ���ֻ�����ʾ */}
+                        {/* 重点词汇 - 只在手机端显示 */}
                         <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
-                            <h3 className="text-lg font-bold mb-3 text-indigo-900">�ص�ʻ�</h3>
+                            <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => (
                                     <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
-                                        {/* �ղذ�ť�����Ͻǣ�*/}
+                                        {/* 收藏按钮（右上角）*/}
                                         <button
                                             onClick={() => handleToggleVocabFavorite(item.id)}
                                             className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.includes(item.id)
                                                 ? 'text-yellow-500 hover:bg-yellow-100'
                                                 : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                                                 }`}
-                                            title={favoriteVocabIds.includes(item.id) ? "ȡ���ղ�" : "�ղشʻ�"}
+                                            title={favoriteVocabIds.includes(item.id) ? "取消收藏" : "收藏词汇"}
                                         >
                                             <svg className="w-4 h-4" fill={favoriteVocabIds.includes(item.id) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
@@ -1170,8 +1181,20 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
+                {/* ========== PC端：返回播放按钮 ========== */}
+                <div className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2">
+                    <button
+                        onClick={handlePCReturnToPlay}
+                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full font-medium shadow-lg hover:bg-indigo-700 transition-all hover:scale-105 text-sm"
+                    >
+                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
+                        </svg>
+                        返回播放
+                    </button>
+                </div>
 
-                {/* �������ư�ť */}
+                {/* 浮动控制按钮 */}
                 <FloatingControls
                     isPlaying={isPlaying}
                     onTogglePlay={handleTogglePlay}
