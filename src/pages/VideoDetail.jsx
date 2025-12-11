@@ -656,15 +656,7 @@ const VideoDetail = () => {
     };
 
     // PC绔細杩斿洖鎾斁
-    const handlePCReturnToPlay = () => {
-        if (playerContainerRef.current) {
-            playerContainerRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
-        setTimeout(() => {
-            setIsPlaying(true);
-            if (playerRef.current) playerRef.current.play();
-        }, 300);
-    };
+
 
     // Toggle play/pause
     const handleTogglePlay = () => {
@@ -1179,19 +1171,6 @@ const VideoDetail = () => {
                             </div>
                         </div>
                     </div>
-                </div>
-
-                {/* ========== PC端：返回播放按钮 ========== */}
-                <div className="hidden md:block absolute bottom-8 left-1/2 -translate-x-1/2">
-                    <button
-                        onClick={handlePCReturnToPlay}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-full font-medium shadow-lg hover:bg-indigo-700 transition-all hover:scale-105 text-sm"
-                    >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" clipRule="evenodd" />
-                        </svg>
-                        返回播放
-                    </button>
                 </div>
 
                 {/* 浮动控制按钮 */}
