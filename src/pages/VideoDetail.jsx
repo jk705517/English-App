@@ -975,24 +975,23 @@ const VideoDetail = () => {
                                 </div>
                             )}
 
-                            {/* 字幕叠加层 - 在视频画面底部居中 */}
                             {showOverlaySubtitles && activeIndex >= 0 && videoData.transcript?.[activeIndex] && (
-                                <div className="absolute bottom-10 md:bottom-12 left-0 right-0 z-10 flex justify-center pointer-events-none px-4">
-                                    <div className="bg-black/70 px-4 py-2 rounded max-w-[90%] text-center">
+                                <div className="absolute bottom-8 md:bottom-12 left-0 right-0 z-10 flex justify-center pointer-events-none px-4">
+                                    <div className="max-w-[90%] text-center">
                                         {mode === 'cn' ? (
-                                            <p className="text-white text-sm md:text-base leading-relaxed">
+                                            <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                 {videoData.transcript[activeIndex]?.cn}
                                             </p>
                                         ) : mode === 'en' ? (
-                                            <p className="text-white text-sm md:text-base leading-relaxed">
+                                            <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                 {videoData.transcript[activeIndex]?.text}
                                             </p>
                                         ) : (
                                             <>
-                                                <p className="text-white text-sm md:text-base leading-relaxed">
+                                                <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                     {videoData.transcript[activeIndex]?.text}
                                                 </p>
-                                                <p className="text-gray-300 text-xs md:text-sm mt-1">
+                                                <p className="text-gray-200 text-xs md:text-sm mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                     {videoData.transcript[activeIndex]?.cn}
                                                 </p>
                                             </>
@@ -1003,7 +1002,10 @@ const VideoDetail = () => {
 
                             {/* 手机端更多设置按钮 - 右上角 */}
                             <button
-                                onClick={() => setShowMobileSettings(true)}
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowMobileSettings(true);
+                                }}
                                 className="md:hidden absolute top-2 right-2 z-10 flex items-center justify-center rounded-full bg-black/40 text-white p-2 hover:bg-black/60 transition-colors"
                             >
                                 <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1018,7 +1020,10 @@ const VideoDetail = () => {
                                 <>
                                     <div
                                         className="md:hidden fixed inset-0 bg-black/50 z-[100]"
-                                        onClick={() => setShowMobileSettings(false)}
+                                        onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowMobileSettings(false);
+                                        }}
                                     />
                                     <div className="md:hidden fixed bottom-0 left-0 right-0 z-[101] bg-gray-900 rounded-t-2xl py-4 px-4 max-h-[70vh] overflow-y-auto">
                                         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
@@ -1046,24 +1051,30 @@ const VideoDetail = () => {
                                         </div>
 
                                         {/* 视频循环开关 */}
-                                        <div className="flex items-center justify-between py-3 border-t border-white/10">
+                                        <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <span className="text-white text-sm">视频循环</span>
                                             <button
-                                                onClick={() => setIsVideoLooping(!isVideoLooping)}
-                                                className={`relative w-12 h-6 rounded-full transition-colors ${isVideoLooping ? 'bg-indigo-500' : 'bg-white/20'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsVideoLooping(!isVideoLooping);
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVideoLooping ? 'bg-indigo-500' : 'bg-neutral-500/70'}`}
                                             >
-                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${isVideoLooping ? 'translate-x-7' : 'translate-x-1'}`} />
+                                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isVideoLooping ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
                                         </div>
 
                                         {/* 画面字幕开关 */}
-                                        <div className="flex items-center justify-between py-3 border-t border-white/10">
+                                        <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <span className="text-white text-sm">画面字幕</span>
                                             <button
-                                                onClick={() => setShowOverlaySubtitles(!showOverlaySubtitles)}
-                                                className={`relative w-12 h-6 rounded-full transition-colors ${showOverlaySubtitles ? 'bg-indigo-500' : 'bg-white/20'}`}
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowOverlaySubtitles(!showOverlaySubtitles);
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOverlaySubtitles ? 'bg-indigo-500' : 'bg-neutral-500/70'}`}
                                             >
-                                                <span className={`absolute top-1 w-4 h-4 bg-white rounded-full transition-transform ${showOverlaySubtitles ? 'translate-x-7' : 'translate-x-1'}`} />
+                                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${showOverlaySubtitles ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
                                         </div>
                                     </div>
@@ -1096,12 +1107,12 @@ const VideoDetail = () => {
 
                             {/* 自定义控制条 - 固定在视频底部 */}
                             <div
-                                className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 md:px-4 py-2 md:py-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                                className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 md:px-4 py-1.5 md:py-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 {/* 进度条 */}
                                 <div
-                                    className="w-full h-1.5 bg-white/30 rounded cursor-pointer mb-2 md:mb-3 group"
+                                    className="w-full h-1.5 bg-white/30 rounded cursor-pointer mb-1 md:mb-3 group"
                                     onClick={handleProgressClick}
                                 >
                                     <div
@@ -1269,6 +1280,23 @@ const VideoDetail = () => {
                                                 <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
                                             </svg>
                                             <span className="text-xs md:hidden">单句</span>
+                                        </button>
+
+                                        {/* 手机端全屏按钮 */}
+                                        <button
+                                            onClick={handleToggleFullscreen}
+                                            className="md:hidden text-white p-1.5 hover:bg-white/10 rounded transition-colors"
+                                            title={isFullscreen ? '退出全屏' : '全屏'}
+                                        >
+                                            {isFullscreen ? (
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
+                                                </svg>
+                                            ) : (
+                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
+                                                </svg>
+                                            )}
                                         </button>
 
                                         {/* 视频循环按钮 - 手机端隐藏 */}
