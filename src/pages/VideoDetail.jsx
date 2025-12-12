@@ -126,6 +126,9 @@ const VideoDetail = () => {
     const [notebookDialogOpen, setNotebookDialogOpen] = useState(false);
     const [notebookDialogItem, setNotebookDialogItem] = useState(null); // { itemType, itemId, videoId }
 
+    // PC端键盘快捷键 - 播放器激活状态
+    const [playerActive, setPlayerActive] = useState(false);
+
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
@@ -159,6 +162,27 @@ const VideoDetail = () => {
         document.addEventListener('visibilitychange', handleVisibilityChange);
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [isPlaying]);
+
+    // PC端键盘快捷键 - 空格键控制播放/暂停
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // 只处理播放器激活状态下的空格键
+            if (!playerActive) return;
+            if (e.code !== 'Space' && e.key !== ' ') return;
+
+            // 如果焦点在输入框内，不拦截空格
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
+                return;
+            }
+
+            e.preventDefault();
+            handleTogglePlay();
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [playerActive, handleTogglePlay]);
 
     // Load learned status
     useEffect(() => {
@@ -683,7 +707,7 @@ const VideoDetail = () => {
 
 
     // Toggle play/pause
-    const handleTogglePlay = () => {
+    const handleTogglePlay = useCallback(() => {
         if (isPlaying) {
             setIsPlaying(false);
             if (playerRef.current) playerRef.current.pause();
@@ -691,7 +715,7 @@ const VideoDetail = () => {
             setIsPlaying(true);
             if (playerRef.current) playerRef.current.play();
         }
-    };
+    }, [isPlaying]);
 
     // Change speed (for FloatingControls - cycles through speeds)
     const handleChangeSpeed = () => {
@@ -854,6 +878,8 @@ const VideoDetail = () => {
     const handleVideoAreaClick = (e) => {
         // 避免点击控制条区域时触发
         if (e.target.closest('.custom-controls')) return;
+        // 激活播放器（允许键盘快捷键）
+        setPlayerActive(true);
         // 切换播放/暂停
         handleTogglePlay();
         // 显示控制条并重置隐藏计时器
@@ -1150,7 +1176,7 @@ const VideoDetail = () => {
                             {/* 自定义控制条 - 固定在视频底部 */}
                             <div
                                 className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 md:px-4 py-1.5 md:py-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                                onClick={(e) => e.stopPropagation()}
+                                onClick={(e) => { e.stopPropagation(); setPlayerActive(true); }}
                             >
                                 {/* 进度条 */}
                                 <div
@@ -1492,7 +1518,7 @@ const VideoDetail = () => {
             </div>
 
             {/* Right Side Container Start */}
-            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative">
+            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative" onClick={() => setPlayerActive(false)}>
                 {/* PC Subtitle Tabs */}
                 {!isMobile && (
                     <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
