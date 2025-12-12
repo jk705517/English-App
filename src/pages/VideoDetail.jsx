@@ -1016,22 +1016,22 @@ const VideoDetail = () => {
                             )}
 
                             {showOverlaySubtitles && activeIndex >= 0 && videoData.transcript?.[activeIndex] && (
-                                <div className={`absolute left-0 right-0 z-10 flex justify-center pointer-events-none px-4 ${isMobile ? (showControls ? 'bottom-12' : 'bottom-4') : 'bottom-12'}`}>
-                                    <div className="max-w-[90%] text-center">
+                                <div className={`absolute left-0 right-0 z-10 flex justify-center pointer-events-none px-4 ${isMobile ? (showControls ? 'bottom-12' : 'bottom-4') : 'bottom-8'}`}>
+                                    <div className="max-w-[90%] md:max-w-[85%] text-center">
                                         {mode === 'cn' ? (
-                                            <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                            <p className="text-white text-[14px] md:text-[20px] leading-relaxed md:leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                 {videoData.transcript[activeIndex]?.cn}
                                             </p>
                                         ) : mode === 'en' ? (
-                                            <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                            <p className="text-white text-[15px] md:text-[22px] leading-relaxed md:leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                 {videoData.transcript[activeIndex]?.text}
                                             </p>
                                         ) : (
                                             <>
-                                                <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                                <p className="text-white text-[15px] md:text-[22px] leading-relaxed md:leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                     {videoData.transcript[activeIndex]?.text}
                                                 </p>
-                                                <p className="text-gray-200 text-xs md:text-sm mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+                                                <p className="text-white/90 text-[13px] md:text-[18px] leading-relaxed md:leading-snug mt-1 drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                                                     {videoData.transcript[activeIndex]?.cn}
                                                 </p>
                                             </>
