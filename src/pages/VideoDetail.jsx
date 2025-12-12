@@ -163,27 +163,6 @@ const VideoDetail = () => {
         return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
     }, [isPlaying]);
 
-    // PC端键盘快捷键 - 空格键控制播放/暂停
-    useEffect(() => {
-        const handleKeyDown = (e) => {
-            // 只处理播放器激活状态下的空格键
-            if (!playerActive) return;
-            if (e.code !== 'Space' && e.key !== ' ') return;
-
-            // 如果焦点在输入框内，不拦截空格
-            const activeElement = document.activeElement;
-            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
-                return;
-            }
-
-            e.preventDefault();
-            handleTogglePlay();
-        };
-
-        window.addEventListener('keydown', handleKeyDown);
-        return () => window.removeEventListener('keydown', handleKeyDown);
-    }, [playerActive, handleTogglePlay]);
-
     // Load learned status
     useEffect(() => {
         const loadLearnedStatus = async () => {
@@ -716,6 +695,27 @@ const VideoDetail = () => {
             if (playerRef.current) playerRef.current.play();
         }
     }, [isPlaying]);
+
+    // PC端键盘快捷键 - 空格键控制播放/暂停
+    useEffect(() => {
+        const handleKeyDown = (e) => {
+            // 只处理播放器激活状态下的空格键
+            if (!playerActive) return;
+            if (e.code !== 'Space' && e.key !== ' ') return;
+
+            // 如果焦点在输入框内，不拦截空格
+            const activeElement = document.activeElement;
+            if (activeElement && (activeElement.tagName === 'INPUT' || activeElement.tagName === 'TEXTAREA' || activeElement.isContentEditable)) {
+                return;
+            }
+
+            e.preventDefault();
+            handleTogglePlay();
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [playerActive, handleTogglePlay]);
 
     // Change speed (for FloatingControls - cycles through speeds)
     const handleChangeSpeed = () => {
