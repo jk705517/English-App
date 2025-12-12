@@ -51,26 +51,27 @@ const IntensiveSentenceList = ({
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                        <span className={`text-xs font-medium ${!showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
-                            训练：只看中英
+                    {/* 开关区域：紧凑布局，适配手机端 */}
+                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <span className={`text-xs font-medium whitespace-nowrap ${!showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                            只看中英
                         </span>
                         <button
                             onClick={() => setShowExplanations(!showExplanations)}
                             className={`
-                                relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2
+                                relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
                                 ${showExplanations ? 'bg-indigo-600' : 'bg-gray-200'}
                             `}
                         >
                             <span
                                 className={`
-                                    inline-block h-4 w-4 transform rounded-full bg-white transition-transform
-                                    ${showExplanations ? 'translate-x-6' : 'translate-x-1'}
+                                    inline-block h-3.5 w-3.5 transform rounded-full bg-white transition-transform
+                                    ${showExplanations ? 'translate-x-[18px]' : 'translate-x-0.5'}
                                 `}
                             />
                         </button>
-                        <span className={`text-xs font-medium ${showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
-                            讲解：显示中文解析
+                        <span className={`text-xs font-medium whitespace-nowrap ${showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                            中文解析
                         </span>
                     </div>
                 </div>
@@ -82,14 +83,6 @@ const IntensiveSentenceList = ({
                         style={{ width: `${progressPercentage}%` }}
                     />
                 </div>
-
-                {/* Hint Text */}
-                <p className="text-xs text-gray-400 mt-2">
-                    {showExplanations
-                        ? '当前为「讲解：显示中文解析」模式，你可以查看语法结构和地道表达的详细讲解。'
-                        : '当前为「训练：只看中英」模式，如需查看语法和地道表达，请打开右侧「讲解：显示中文解析」。'
-                    }
-                </p>
             </div>
 
             {/* List of Cards */}
