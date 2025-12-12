@@ -7,7 +7,6 @@ import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
 import HighlightedText from '../components/HighlightedText';
 import SubtitleItem from '../components/SubtitleItem';
-import FloatingControls from '../components/FloatingControls';
 import DictationInput from '../components/DictationInput';
 import ClozeInput from '../components/ClozeInput';
 import IntensiveSentencePanel from '../components/IntensiveSentencePanel';
@@ -1701,19 +1700,7 @@ const VideoDetail = () => {
                     </div>
                 </div>
 
-                {/* 浮动控制按钮 */}
-                <FloatingControls
-                    isPlaying={isPlaying}
-                    onTogglePlay={handleTogglePlay}
-                    isLooping={isSentenceLooping}
-                    onToggleLoop={() => setIsSentenceLooping(!isSentenceLooping)}
-                    isFavorited={isFavorite}
-                    onToggleFavorite={handleToggleFavorite}
-                    isLearned={isLearned}
-                    onToggleLearned={handleToggleLearned}
-                    playbackRate={playbackRate}
-                    onChangeSpeed={handleChangeSpeed}
-                />
+
             </div>
 
             {/* Add to Notebook Dialog */}
