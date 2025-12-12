@@ -749,16 +749,36 @@ const VideoDetail = () => {
         }
     };
 
-    // 全屏切换
+    // 全屏切换 - 兼容 iOS/Android
     const handleToggleFullscreen = async () => {
-        if (!playerContainerRef.current) return;
+        const videoEl = playerRef.current;
+        if (!videoEl) return;
 
         try {
-            if (!document.fullscreenElement) {
-                await playerContainerRef.current.requestFullscreen?.();
+            if (!isFullscreen) {
+                // 进入全屏
+                if (videoEl.requestFullscreen) {
+                    await videoEl.requestFullscreen();
+                } else if (videoEl.webkitEnterFullscreen) {
+                    // iOS Safari
+                    videoEl.webkitEnterFullscreen();
+                } else if (videoEl.webkitRequestFullscreen) {
+                    // Old Safari
+                    videoEl.webkitRequestFullscreen();
+                } else if (playerContainerRef.current?.requestFullscreen) {
+                    // Fallback to container
+                    await playerContainerRef.current.requestFullscreen();
+                }
                 setIsFullscreen(true);
             } else {
-                await document.exitFullscreen?.();
+                // 退出全屏
+                if (document.exitFullscreen) {
+                    await document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                } else if (videoEl.webkitExitFullscreen) {
+                    videoEl.webkitExitFullscreen();
+                }
                 setIsFullscreen(false);
             }
         } catch (err) {
@@ -766,14 +786,35 @@ const VideoDetail = () => {
         }
     };
 
-    // 监听全屏变化
+    // 监听全屏变化 - 兼容 webkit
     useEffect(() => {
         const handleFullscreenChange = () => {
-            setIsFullscreen(!!document.fullscreenElement);
+            const isFS = !!(document.fullscreenElement || document.webkitFullscreenElement);
+            setIsFullscreen(isFS);
         };
+
+        // 监听 video 元素的 webkitbeginfullscreen/webkitendfullscreen (iOS Safari)
+        const videoEl = playerRef.current;
+        const handleWebkitBeginFullscreen = () => setIsFullscreen(true);
+        const handleWebkitEndFullscreen = () => setIsFullscreen(false);
+
         document.addEventListener('fullscreenchange', handleFullscreenChange);
-        return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    }, []);
+        document.addEventListener('webkitfullscreenchange', handleFullscreenChange);
+
+        if (videoEl) {
+            videoEl.addEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+            videoEl.addEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+        }
+
+        return () => {
+            document.removeEventListener('fullscreenchange', handleFullscreenChange);
+            document.removeEventListener('webkitfullscreenchange', handleFullscreenChange);
+            if (videoEl) {
+                videoEl.removeEventListener('webkitbeginfullscreen', handleWebkitBeginFullscreen);
+                videoEl.removeEventListener('webkitendfullscreen', handleWebkitEndFullscreen);
+            }
+        };
+    }, [videoData]); // 依赖 videoData 确保 playerRef.current 已挂载
 
     // 控制条自动隐藏逻辑
     const resetControlsTimeout = useCallback(() => {
@@ -976,7 +1017,7 @@ const VideoDetail = () => {
                             )}
 
                             {showOverlaySubtitles && activeIndex >= 0 && videoData.transcript?.[activeIndex] && (
-                                <div className="absolute bottom-8 md:bottom-12 left-0 right-0 z-10 flex justify-center pointer-events-none px-4">
+                                <div className={`absolute left-0 right-0 z-10 flex justify-center pointer-events-none px-4 ${isMobile ? (showControls ? 'bottom-12' : 'bottom-4') : 'bottom-12'}`}>
                                     <div className="max-w-[90%] text-center">
                                         {mode === 'cn' ? (
                                             <p className="text-white text-sm md:text-base leading-relaxed drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
@@ -1000,20 +1041,22 @@ const VideoDetail = () => {
                                 </div>
                             )}
 
-                            {/* 手机端更多设置按钮 - 右上角 */}
-                            <button
-                                onClick={(e) => {
-                                    e.stopPropagation();
-                                    setShowMobileSettings(true);
-                                }}
-                                className="md:hidden absolute top-2 right-2 z-10 flex items-center justify-center rounded-full bg-black/40 text-white p-2 hover:bg-black/60 transition-colors"
-                            >
-                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                    <circle cx="12" cy="5" r="2" />
-                                    <circle cx="12" cy="12" r="2" />
-                                    <circle cx="12" cy="19" r="2" />
-                                </svg>
-                            </button>
+                            {/* 手机端更多设置按钮 - 右上角，仅在暂停时显示 */}
+                            {!isPlaying && (
+                                <button
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setShowMobileSettings(true);
+                                    }}
+                                    className="md:hidden absolute top-2 right-2 z-10 flex items-center justify-center rounded-full bg-black/40 text-white p-2 hover:bg-black/60 transition-colors"
+                                >
+                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                        <circle cx="12" cy="5" r="2" />
+                                        <circle cx="12" cy="12" r="2" />
+                                        <circle cx="12" cy="19" r="2" />
+                                    </svg>
+                                </button>
+                            )}
 
                             {/* 手机端更多设置面板 - 底部弹窗 */}
                             {showMobileSettings && (
