@@ -1604,6 +1604,7 @@ const VideoDetail = () => {
                         ) : mode === 'intensive' ? (
                             <>
                                 <IntensiveSentenceList
+                                    videoId={Number(id)}
                                     transcript={videoData.transcript}
                                     currentIndex={activeIndex}
                                     visitedSet={visitedSet}

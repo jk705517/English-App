@@ -10,7 +10,9 @@ const IntensiveSentenceList = ({
     favoriteSentenceIds = [],
     onToggleFavorite,
     // Notebook props
-    onAddToNotebook
+    onAddToNotebook,
+    // Video ID for generating fallback sentence IDs
+    videoId
 }) => {
     const activeRef = useRef(null);
     const [showExplanations, setShowExplanations] = useState(true);
@@ -36,6 +38,16 @@ const IntensiveSentenceList = ({
     const visitedCount = visitedSet ? visitedSet.size : 0;
     const totalCount = transcript.length;
     const progressPercentage = Math.min(100, (visitedCount / totalCount) * 100);
+
+    // Helper: generate stable ID for sentence
+    // Uses existing id if available, otherwise creates fallback from videoId-index
+    const getSentenceId = (item, index) => {
+        if (item.id !== undefined && item.id !== null) {
+            return item.id;
+        }
+        // Fallback: videoId-index (e.g., "123-0", "123-1")
+        return `${videoId}-${index}`;
+    };
 
     return (
         <div className="space-y-6">
@@ -90,13 +102,17 @@ const IntensiveSentenceList = ({
                 {transcript.map((item, index) => {
                     const isActive = index === currentIndex;
                     const isVisited = visitedSet ? visitedSet.has(index) : false;
-                    const isFavorite = item.id !== undefined && favoriteSentenceIds.includes(item.id);
+                    // Generate stable sentence ID (use existing or fallback)
+                    const sentenceId = getSentenceId(item, index);
+                    const isFavorite = favoriteSentenceIds.includes(sentenceId);
+                    // Enrich sentence object with stable id for IntensiveCard
+                    const enrichedSentence = { ...item, id: sentenceId };
 
                     return (
                         <div key={index} ref={isActive ? activeRef : null}>
                             <IntensiveCard
                                 index={index}
-                                sentence={item}
+                                sentence={enrichedSentence}
                                 isActive={isActive}
                                 isVisited={isVisited}
                                 showExplanations={showExplanations}
