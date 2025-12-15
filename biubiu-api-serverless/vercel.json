@@ -1,0 +1,15 @@
+{
+  "version": 2,
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
+  "env": {
+    "RDS_HOST": "@rds_host",
+    "RDS_PORT": "@rds_port",
+    "RDS_DB": "@rds_db",
+    "RDS_USER": "@rds_user",
+    "RDS_PASSWORD": "@rds_password"
+  }
+}
