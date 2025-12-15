@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
@@ -18,13 +17,34 @@ function Home() {
     // 并行获取视频数据和已学习状态
     useEffect(() => {
         const loadData = async () => {
+            // 获取视频列表的函数（从新 Vercel API）
+            const fetchVideos = async () => {
+                try {
+                    const response = await fetch('https://biubiu-api.vercel.app/api/videos');
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
+                    }
+                    const result = await response.json();
+                    // 新 API 返回格式: { success: true, data: [...], count: 10 }
+                    if (result.success) {
+                        return { data: result.data, error: null };
+                    } else {
+                        return { data: null, error: result.error || 'Unknown error' };
+                    }
+                } catch (error) {
+                    return { data: null, error: error.message };
+                }
+            };
+
             const [videosResult, learnedIds] = await Promise.all([
-                supabase.from('videos').select('*').order('episode', { ascending: false }),
+                fetchVideos(),
                 progressService.loadLearnedVideoIds(user)
             ]);
 
             if (!videosResult.error) {
-                setVideos(videosResult.data || []);
+                // API 返回数据后按 episode 降序排列
+                const sortedVideos = (videosResult.data || []).sort((a, b) => b.episode - a.episode);
+                setVideos(sortedVideos);
             } else {
                 console.error('Error fetching videos:', videosResult.error);
             }
