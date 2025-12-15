@@ -1,19 +1,24 @@
 {
-    "rewrites": [
+  "functions": {
+    "api/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/((?!api/).*)",
+      "destination": "/"
+    }
+  ],
+  "headers": [
+    {
+      "source": "/assets/(.*)",
+      "headers": [
         {
-            "source": "/(.*)",
-            "destination": "/"
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
         }
-    ],
-    "headers": [
-        {
-            "source": "/assets/(.*)",
-            "headers": [
-                {
-                    "key": "Cache-Control",
-                    "value": "no-cache, no-store, must-revalidate"
-                }
-            ]
-        }
-    ]
+      ]
+    }
+  ]
 }
