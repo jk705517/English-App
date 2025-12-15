@@ -1,6 +1,5 @@
 import pg from 'pg';
 const { Pool } = pg;
-
 // 创建数据库连接池
 const pool = new Pool({
   host: process.env.RDS_HOST,
@@ -13,18 +12,15 @@ const pool = new Pool({
   idleTimeoutMillis: 30000,
   connectionTimeoutMillis: 10000,
 });
-
 export default async function handler(req, res) {
   // 设置 CORS 头（允许前端跨域调用）
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
   // 处理 OPTIONS 预检请求
   if (req.method === 'OPTIONS') {
     return res.status(200).end();
   }
-
   // 只允许 GET 请求
   if (req.method !== 'GET') {
     return res.status(405).json({ 
@@ -32,7 +28,6 @@ export default async function handler(req, res) {
       error: 'Method Not Allowed' 
     });
   }
-
   let client;
   try {
     // 从连接池获取客户端
@@ -45,12 +40,10 @@ export default async function handler(req, res) {
         episode,
         title,
         transcript,
-        vocab,
-        created_at
+        vocab
       FROM videos
       ORDER BY episode ASC
     `);
-
     // 返回成功响应
     return res.status(200).json({
       success: true,
@@ -58,7 +51,6 @@ export default async function handler(req, res) {
       count: result.rows.length,
       timestamp: new Date().toISOString()
     });
-
   } catch (error) {
     console.error('❌ Database Error:', error);
     
@@ -76,5 +68,3 @@ export default async function handler(req, res) {
     }
   }
 }
- 
- 
