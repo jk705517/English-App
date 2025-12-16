@@ -20,11 +20,20 @@ function Home() {
             // 获取视频列表的函数（从新 Vercel API）
             const fetchVideos = async () => {
                 try {
-                    const response = await fetch('https://biubiu-api.vercel.app/api/videos');
+                    console.log('🚀 Fetching videos from API...');
+                    const response = await fetch('https://api.biubiuenglish.com/api/videos');
+                    console.log('📡 API response status:', response.status, response.ok);
+
                     if (!response.ok) {
                         throw new Error(`HTTP error! status: ${response.status}`);
                     }
+
                     const result = await response.json();
+                    console.log('📦 Parsed API result:', result);
+                    console.log('📦 result.success:', result.success);
+                    console.log('📦 result.data:', result.data);
+                    console.log('📦 result.data length:', result.data?.length);
+
                     // 新 API 返回格式: { success: true, data: [...], count: 10 }
                     if (result.success) {
                         return { data: result.data, error: null };
@@ -32,6 +41,7 @@ function Home() {
                         return { data: null, error: result.error || 'Unknown error' };
                     }
                 } catch (error) {
+                    console.error('❌ Fetch error:', error);
                     return { data: null, error: error.message };
                 }
             };
