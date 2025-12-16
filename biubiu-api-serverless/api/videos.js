@@ -40,7 +40,8 @@ export default async function handler(req, res) {
         episode,
         title,
         transcript,
-        vocab
+        vocab,
+        cover
       FROM videos
       ORDER BY episode ASC
     `);
