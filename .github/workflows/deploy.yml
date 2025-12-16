@@ -33,4 +33,4 @@ jobs:
           access-key-secret: ${{ secrets.ALIYUN_ACCESS_KEY_SECRET }}
       
       - name: Deploy to OSS
-        run: ossutil sync ./dist oss://biubiu-web/ --delete --force
+        run: ossutil cp -r ./dist oss://biubiu-web/ --force --update
