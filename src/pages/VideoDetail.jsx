@@ -183,8 +183,14 @@ const VideoDetail = () => {
 
     // Load sentence favorites (filtered by current video)
     useEffect(() => {
+        if (!user) {
+            console.log('📋 VideoDetail: No user, skipping sentence favorites load');
+            return;
+        }
         const loadSentenceFavorites = async () => {
+            console.log('📋 VideoDetail: Loading sentence favorites for video:', id, 'user:', user.id);
             const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(id));
+            console.log('📋 VideoDetail: Loaded sentence favorite IDs:', ids);
             setFavoriteSentenceIds(ids);
         };
         loadSentenceFavorites();
@@ -192,8 +198,14 @@ const VideoDetail = () => {
 
     // Load vocab favorites (filtered by current video)
     useEffect(() => {
+        if (!user) {
+            console.log('📋 VideoDetail: No user, skipping vocab favorites load');
+            return;
+        }
         const loadVocabFavorites = async () => {
+            console.log('📋 VideoDetail: Loading vocab favorites for video:', id, 'user:', user.id);
             const ids = await favoritesService.loadFavoriteVocabIds(user, Number(id));
+            console.log('📋 VideoDetail: Loaded vocab favorite IDs:', ids);
             setFavoriteVocabIds(ids);
         };
         loadVocabFavorites();

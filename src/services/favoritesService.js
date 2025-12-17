@@ -86,12 +86,20 @@ export const favoritesService = {
 
         try {
             const allFavorites = await getUserFavorites(user.id);
+            console.log('📋 loadFavoriteSentenceIds - All favorites:', allFavorites);
+            console.log('📋 loadFavoriteSentenceIds - Looking for videoId:', videoId, typeof videoId);
+
             // 过滤出该视频中 item_type 为 'sentence' 的收藏
+            // 使用 Number() 确保 video_id 比较类型一致
             const sentenceFavorites = allFavorites.filter(
-                f => f.item_type === 'sentence' && f.video_id === videoId
+                f => f.item_type === 'sentence' && Number(f.video_id) === Number(videoId)
             );
+            console.log('📋 loadFavoriteSentenceIds - Filtered sentence favorites:', sentenceFavorites);
+
             // 返回 item_id (可能是 number 或 string 如 "123-0")
-            return sentenceFavorites.map(f => f.item_id);
+            const ids = sentenceFavorites.map(f => f.item_id);
+            console.log('📋 loadFavoriteSentenceIds - Returning IDs:', ids);
+            return ids;
         } catch (error) {
             console.error('加载收藏句子ID失败:', error);
             return [];
@@ -109,11 +117,18 @@ export const favoritesService = {
 
         try {
             const allFavorites = await getUserFavorites(user.id);
+            console.log('📋 loadFavoriteVocabIds - Looking for videoId:', videoId, typeof videoId);
+
             // 过滤出该视频中 item_type 为 'vocab' 的收藏
+            // 使用 Number() 确保 video_id 比较类型一致
             const vocabFavorites = allFavorites.filter(
-                f => f.item_type === 'vocab' && f.video_id === videoId
+                f => f.item_type === 'vocab' && Number(f.video_id) === Number(videoId)
             );
-            return vocabFavorites.map(f => f.item_id);
+            console.log('📋 loadFavoriteVocabIds - Filtered vocab favorites:', vocabFavorites);
+
+            const ids = vocabFavorites.map(f => f.item_id);
+            console.log('📋 loadFavoriteVocabIds - Returning IDs:', ids);
+            return ids;
         } catch (error) {
             console.error('加载收藏词汇ID失败:', error);
             return [];
