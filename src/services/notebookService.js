@@ -264,6 +264,7 @@ export const notebookService = {
                     cn: sentence?.cn || '',
                     episode: video.episode || 0,
                     title: video.title || '',
+                    reviewState: item.review_state || null, // 介 API 返回的复习状态
                 };
             }).filter(s => s.en || s.cn); // 过滤掉找不到内容的
 
@@ -299,6 +300,7 @@ export const notebookService = {
                     phonetic: vocabItem?.ipa_us || vocabItem?.phonetic || '',
                     episode: video.episode || 0,
                     title: video.title || '',
+                    reviewState: item.review_state || null, // 介 API 返回的复习状态
                 };
             }).filter(v => v.word); // 过滤掉找不到内容的
 

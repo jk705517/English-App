@@ -336,7 +336,6 @@ function Notebooks() {
         loadSentenceStats(notebook.id);
     };
 
-    // 加载词汇复习统计
     const loadVocabStats = async (notebookId) => {
         setVocabStatsLoading(true);
         try {
@@ -344,6 +343,13 @@ function Notebooks() {
             if (data) {
                 // 检查是否有任何词汇已经有复习记录
                 const hasReviewState = data.vocabs?.some(v => v.reviewState != null) || false;
+                console.log('[VocabStats]', {
+                    notebookId,
+                    totalVocabCount: data.totalVocabCount,
+                    dueCount: data.dueCount,
+                    hasReviewState,
+                    vocabsWithReviewState: data.vocabs?.filter(v => v.reviewState != null).length || 0,
+                });
                 setVocabStats({
                     dueCount: data.dueCount || 0,
                     totalVocabCount: data.totalVocabCount || 0,
