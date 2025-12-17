@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, Link, useLocation } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
-import { supabase } from '../services/supabaseClient';
+import { videoAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
@@ -214,16 +214,15 @@ const VideoDetail = () => {
     // Fetch video data
     useEffect(() => {
         const fetchVideoData = async () => {
-            const { data, error } = await supabase
-                .from('videos')
-                .select('*')
-                .eq('id', id)
-                .single();
-
-            if (error) {
+            try {
+                const response = await videoAPI.getById(id);
+                if (response.success && response.data) {
+                    setVideoData(response.data);
+                } else {
+                    console.error('Error fetching video: API returned success:false');
+                }
+            } catch (error) {
                 console.error('Error fetching video:', error);
-            } else {
-                setVideoData(data);
             }
         };
         fetchVideoData();
@@ -281,13 +280,15 @@ const VideoDetail = () => {
     // Fetch all videos for navigation
     useEffect(() => {
         const fetchAllVideos = async () => {
-            const { data, error } = await supabase
-                .from('videos')
-                .select('id, episode')
-                .order('episode', { ascending: false });
-
-            if (!error) {
-                setAllVideos(data || []);
+            try {
+                const response = await videoAPI.getAll();
+                if (response.success && response.data) {
+                    // Sort by episode descending
+                    const sorted = [...response.data].sort((a, b) => b.episode - a.episode);
+                    setAllVideos(sorted);
+                }
+            } catch (error) {
+                console.error('Error fetching all videos:', error);
             }
         };
         fetchAllVideos();

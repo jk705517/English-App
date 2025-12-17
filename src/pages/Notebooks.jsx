@@ -191,7 +191,7 @@ function Notebooks() {
 
         // 如果 URL 中有 notebookId，检查是否需要恢复选中状态
         if (currentUrlNotebookId) {
-            // 使用 String() 统一类型进行比较（URL 参数是字符串，Supabase ID 可能是数字）
+            // 使用 String() 统一类型进行比较（URL 参数是字符串，ID 可能是数字）
             const needsRestore = !selectedNotebook || String(selectedNotebook.id) !== String(currentUrlNotebookId);
 
             if (needsRestore) {

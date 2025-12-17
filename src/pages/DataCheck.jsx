@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '../lib/supabase';
+import { videoAPI } from '../services/api';
 
 function DataCheck() {
     const [videos, setVideos] = useState([]);
@@ -8,15 +8,17 @@ function DataCheck() {
 
     useEffect(() => {
         async function fetchData() {
-            const { data, error } = await supabase
-                .from('videos')
-                .select('*')
-                .order('episode', { ascending: false });
-
-            if (error) {
-                setError(error.message);
-            } else {
-                setVideos(data || []);
+            try {
+                const response = await videoAPI.getAll();
+                if (response.success && response.data) {
+                    // Sort by episode descending
+                    const sorted = [...response.data].sort((a, b) => b.episode - a.episode);
+                    setVideos(sorted);
+                } else {
+                    setError('API 返回失败');
+                }
+            } catch (err) {
+                setError(err.message);
             }
             setLoading(false);
         }
@@ -28,7 +30,7 @@ function DataCheck() {
 
     return (
         <div className="p-8 max-w-7xl mx-auto">
-            <h1 className="text-3xl font-bold mb-6">Supabase 视频数据完整性检查</h1>
+            <h1 className="text-3xl font-bold mb-6">视频数据完整性检查</h1>
             <p className="mb-4">找到 {videos.length} 个视频</p>
 
             {videos.map(video => {

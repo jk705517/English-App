@@ -1,6 +1,5 @@
 // src/services/reviewService.js
-import { reviewStatesAPI } from './api';
-import { supabase } from './supabaseClient';
+import { reviewStatesAPI, reviewLogsAPI } from './api';
 
 /**
  * 记录一次复习结果并更新复习状态
@@ -91,29 +90,20 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
             return getEmptyStats(days);
         }
 
-        // 1. 计算起始日期（days-1 天前的 00:00 本地时间）
-        const now = new Date();
-        const startDate = new Date(now);
-        startDate.setDate(now.getDate() - (days - 1));
-        startDate.setHours(0, 0, 0, 0);
+        // 调用新 API
+        const response = await reviewLogsAPI.getStats(days);
 
-        // 2. 查询 user_review_logs
-        const { data: logs, error } = await supabase
-            .from('user_review_logs')
-            .select('item_type, created_at')
-            .eq('user_id', user.id)
-            .gte('created_at', startDate.toISOString())
-            .order('created_at', { ascending: false });
-
-        if (error) {
-            console.error('[loadReviewStats] query error:', error);
+        if (!response.success) {
+            console.error('[loadReviewStats] API returned success:false');
             return getEmptyStats(days);
         }
 
-        // 3. 按本地日期分组
-        const dateMap = new Map(); // date string -> { total, vocab, sentence }
+        const logs = response.data || [];
 
-        for (const log of logs || []) {
+        // 按本地日期分组
+        const dateMap = new Map();
+
+        for (const log of logs) {
             const localDate = new Date(log.created_at);
             const dateKey = formatDateKey(localDate);
 
@@ -130,7 +120,8 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
             }
         }
 
-        // 4. 生成最近 days 天的数据（包括没有记录的天）
+        // 生成最近 days 天的数据
+        const now = new Date();
         const daysArray = [];
         for (let i = 0; i < days; i++) {
             const date = new Date(now);
@@ -148,7 +139,7 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
             });
         }
 
-        // 5. 计算汇总
+        // 计算汇总
         let totalCount = 0;
         let vocabCount = 0;
         let sentenceCount = 0;
@@ -159,7 +150,7 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
             sentenceCount += day.sentence;
         }
 
-        // 6. 计算连续打卡天数（从今天往前数）
+        // 计算连续打卡天数
         let currentStreak = 0;
         for (const day of daysArray) {
             if (day.total > 0) {
@@ -169,7 +160,7 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
             }
         }
 
-        const result = {
+        return {
             days: daysArray,
             summary: {
                 totalCount,
@@ -178,8 +169,6 @@ export async function loadReviewStats(user, { days = 7 } = {}) {
                 currentStreak,
             },
         };
-
-        return result;
     } catch (err) {
         console.error('[loadReviewStats] unexpected error:', err);
         return getEmptyStats(days);

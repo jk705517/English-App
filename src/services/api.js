@@ -108,3 +108,9 @@ export const reviewStatesAPI = {
             body: JSON.stringify(data),
         }),
 };
+
+// 复习日志 API
+export const reviewLogsAPI = {
+    getStats: (days = 7) => request(`/api/user/review-logs?days=${days}`),
+};
+

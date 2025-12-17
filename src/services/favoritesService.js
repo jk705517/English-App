@@ -1,5 +1,4 @@
-import { favoritesAPI } from './api';
-import { supabase } from './supabaseClient';
+import { favoritesAPI, videoAPI } from './api';
 
 // ============================================
 // 基础 API 封装函数
@@ -232,7 +231,7 @@ export const favoritesService = {
 
     /**
      * 加载用户收藏的所有句子（带详细信息）
-     * 需要从 Supabase 获取视频数据来提取句子内容
+     * 需要从 API 获取视频数据来提取句子内容
      * @param {Object} user - 用户对象
      * @returns {Promise<Array>}
      */
@@ -241,7 +240,6 @@ export const favoritesService = {
 
         try {
             const allFavorites = await getUserFavorites(user.id);
-            // 过滤出 item_type 为 'sentence' 的收藏
             const sentenceFavorites = allFavorites.filter(f => f.item_type === 'sentence');
 
             if (sentenceFavorites.length === 0) return [];
@@ -249,22 +247,20 @@ export const favoritesService = {
             // 获取所有相关视频的 ID
             const videoIds = [...new Set(sentenceFavorites.map(f => f.video_id))];
 
-            // 从 Supabase 获取视频数据
-            const { data: videos, error } = await supabase
-                .from('videos')
-                .select('id, title, episode, transcript')
-                .in('id', videoIds);
-
-            if (error) {
-                console.error('获取视频数据失败:', error);
-                return [];
+            // 使用 videoAPI 获取视频数据
+            const videoMap = {};
+            for (const videoId of videoIds) {
+                try {
+                    const response = await videoAPI.getById(videoId);
+                    if (response.success && response.data) {
+                        videoMap[videoId] = response.data;
+                    }
+                } catch (err) {
+                    console.error(`获取视频 ${videoId} 失败:`, err);
+                }
             }
 
-            // 创建 videoId -> video 的映射
-            const videoMap = {};
-            videos.forEach(v => { videoMap[v.id] = v; });
-
-            // 为每个收藏的句子查找对应的内容
+            // 为每个收藏的句子查找对应的内容（这部分逻辑保持不变）
             const enrichedSentences = sentenceFavorites.map(f => {
                 const video = videoMap[f.video_id];
                 if (!video || !video.transcript) {
@@ -279,14 +275,11 @@ export const favoritesService = {
                     };
                 }
 
-                // 查找句子：先按 id 匹配，如果是 fallback ID (如 "123-0")，则解析 index
                 let sentence = null;
                 const itemId = f.item_id;
 
-                // 尝试直接按 id 查找
                 sentence = video.transcript.find(s => s.id === itemId || String(s.id) === String(itemId));
 
-                // 如果没找到，尝试解析 fallback ID 格式 "videoId-index"
                 if (!sentence && typeof itemId === 'string' && itemId.includes('-')) {
                     const parts = itemId.split('-');
                     const index = parseInt(parts[parts.length - 1], 10);
@@ -295,7 +288,6 @@ export const favoritesService = {
                     }
                 }
 
-                // 如果还是没找到，尝试按数字索引
                 if (!sentence && typeof itemId === 'number' && video.transcript[itemId]) {
                     sentence = video.transcript[itemId];
                 }
@@ -309,7 +301,7 @@ export const favoritesService = {
                     episode: video.episode || 0,
                     title: video.title || ''
                 };
-            }).filter(s => s.en || s.cn); // 过滤掉找不到内容的
+            }).filter(s => s.en || s.cn);
 
             return enrichedSentences;
         } catch (error) {
@@ -320,7 +312,7 @@ export const favoritesService = {
 
     /**
      * 加载用户收藏的所有词汇（带详细信息）
-     * 需要从 Supabase 获取视频数据来提取词汇内容
+     * 需要从 API 获取视频数据来提取词汇内容
      * @param {Object} user - 用户对象
      * @returns {Promise<Array>}
      */
@@ -329,30 +321,26 @@ export const favoritesService = {
 
         try {
             const allFavorites = await getUserFavorites(user.id);
-            // 过滤出 item_type 为 'vocab' 的收藏
             const vocabFavorites = allFavorites.filter(f => f.item_type === 'vocab');
 
             if (vocabFavorites.length === 0) return [];
 
-            // 获取所有相关视频的 ID
             const videoIds = [...new Set(vocabFavorites.map(f => f.video_id))];
 
-            // 从 Supabase 获取视频数据
-            const { data: videos, error } = await supabase
-                .from('videos')
-                .select('id, title, episode, vocab')
-                .in('id', videoIds);
-
-            if (error) {
-                console.error('获取视频数据失败:', error);
-                return [];
+            // 使用 videoAPI 获取视频数据
+            const videoMap = {};
+            for (const videoId of videoIds) {
+                try {
+                    const response = await videoAPI.getById(videoId);
+                    if (response.success && response.data) {
+                        videoMap[videoId] = response.data;
+                    }
+                } catch (err) {
+                    console.error(`获取视频 ${videoId} 失败:`, err);
+                }
             }
 
-            // 创建 videoId -> video 的映射
-            const videoMap = {};
-            videos.forEach(v => { videoMap[v.id] = v; });
-
-            // 为每个收藏的词汇查找对应的内容
+            // 为每个收藏的词汇查找对应的内容（这部分逻辑保持不变）
             const enrichedVocabs = vocabFavorites.map(f => {
                 const video = videoMap[f.video_id];
                 if (!video || !video.vocab) {
@@ -368,11 +356,9 @@ export const favoritesService = {
                     };
                 }
 
-                // 查找词汇：先按 id 匹配，如果是 fallback ID (如 "123-vocab-0")，则解析 index
                 const itemId = f.item_id;
                 let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
 
-                // 如果没找到，尝试解析 fallback ID 格式 "videoId-vocab-index"
                 if (!vocabItem && typeof itemId === 'string' && itemId.includes('-vocab-')) {
                     const parts = itemId.split('-vocab-');
                     if (parts.length === 2) {
@@ -383,7 +369,6 @@ export const favoritesService = {
                     }
                 }
 
-                // 如果还没找到，尝试通用 fallback 格式 "videoId-index"（兼容旧格式）
                 if (!vocabItem && typeof itemId === 'string' && itemId.includes('-') && !itemId.includes('-vocab-')) {
                     const parts = itemId.split('-');
                     const index = parseInt(parts[parts.length - 1], 10);
@@ -392,7 +377,6 @@ export const favoritesService = {
                     }
                 }
 
-                // 如果还是没找到，尝试按数字索引
                 if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
                     vocabItem = video.vocab[itemId];
                 }
@@ -407,7 +391,7 @@ export const favoritesService = {
                     episode: video.episode || 0,
                     title: video.title || ''
                 };
-            }).filter(v => v.word); // 过滤掉找不到内容的
+            }).filter(v => v.word);
 
             return enrichedVocabs;
         } catch (error) {

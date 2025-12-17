@@ -1,5 +1,4 @@
-import { notebooksAPI } from './api';
-import { supabase } from './supabaseClient';
+import { notebooksAPI, videoAPI } from './api';
 
 // ============================================
 // 基础 API 封装函数
@@ -167,7 +166,6 @@ export const notebookService = {
     /**
      * 加载笔记本详情（包括句子和词汇列表）
      * API 返回格式：{ success: true, data: [{ id, notebook_id, item_type, item_id, video_id, created_at }] }
-     * 需要从 Supabase 获取视频数据来提取实际的句子/词汇内容
      * @param {Object} user - 用户对象
      * @param {string|number} notebookId - 笔记本ID
      * @returns {Promise<Object>}
@@ -206,19 +204,16 @@ export const notebookService = {
             const videoIds = [...new Set(rawItems.map(item => item.video_id).filter(Boolean))];
             console.log('📓 loadNotebookDetail - videoIds to fetch:', videoIds);
 
-            // 从 Supabase 获取视频数据
+            // 使用 videoAPI 获取视频数据
             let videoMap = {};
-            if (videoIds.length > 0) {
-                const { data: videos, error } = await supabase
-                    .from('videos')
-                    .select('id, title, episode, transcript, vocab')
-                    .in('id', videoIds);
-
-                if (error) {
-                    console.error('📓 loadNotebookDetail - Supabase error:', error);
-                } else {
-                    videos.forEach(v => { videoMap[v.id] = v; });
-                    console.log('📓 loadNotebookDetail - fetched videos:', videos.length);
+            for (const videoId of videoIds) {
+                try {
+                    const response = await videoAPI.getById(videoId);
+                    if (response.success && response.data) {
+                        videoMap[videoId] = response.data;
+                    }
+                } catch (err) {
+                    console.error(`获取视频 ${videoId} 失败:`, err);
                 }
             }
 
@@ -347,17 +342,17 @@ export const notebookService = {
                 };
             }
 
-            // 从 Supabase 获取视频数据
+            // 使用 videoAPI 获取视频数据
             const videoIds = [...new Set(vocabItems.map(item => item.video_id).filter(Boolean))];
             let videoMap = {};
-            if (videoIds.length > 0) {
-                const { data: videos, error } = await supabase
-                    .from('videos')
-                    .select('id, title, episode, vocab')
-                    .in('id', videoIds);
-
-                if (!error && videos) {
-                    videos.forEach(v => { videoMap[v.id] = v; });
+            for (const videoId of videoIds) {
+                try {
+                    const response = await videoAPI.getById(videoId);
+                    if (response.success && response.data) {
+                        videoMap[videoId] = response.data;
+                    }
+                } catch (err) {
+                    console.error(`获取视频 ${videoId} 失败:`, err);
                 }
             }
 
@@ -446,17 +441,17 @@ export const notebookService = {
                 };
             }
 
-            // 从 Supabase 获取视频数据
+            // 使用 videoAPI 获取视频数据
             const videoIds = [...new Set(sentenceItems.map(item => item.video_id).filter(Boolean))];
             let videoMap = {};
-            if (videoIds.length > 0) {
-                const { data: videos, error } = await supabase
-                    .from('videos')
-                    .select('id, title, episode, transcript')
-                    .in('id', videoIds);
-
-                if (!error && videos) {
-                    videos.forEach(v => { videoMap[v.id] = v; });
+            for (const videoId of videoIds) {
+                try {
+                    const response = await videoAPI.getById(videoId);
+                    if (response.success && response.data) {
+                        videoMap[videoId] = response.data;
+                    }
+                } catch (err) {
+                    console.error(`获取视频 ${videoId} 失败:`, err);
                 }
             }
 

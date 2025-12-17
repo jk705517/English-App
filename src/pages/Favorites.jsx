@@ -6,7 +6,7 @@ import { Heart, BookOpen, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
-import { supabase } from '../services/supabaseClient';
+import { videoAPI } from '../services/api';
 
 function Favorites() {
     const { user } = useAuth();
@@ -73,7 +73,7 @@ function Favorites() {
         }
     }, []);
 
-    // 从 Supabase/localStorage 读取收藏和已学习的视频 ID 列表
+    // 从 API 读取收藏和已学习的视频 ID 列表
     useEffect(() => {
         const loadData = async () => {
             try {
@@ -89,25 +89,21 @@ function Favorites() {
                 setFavoriteVideoIds(storedFavoriteIds);
                 setLearnedVideoIds(loadedLearnedIds);
 
-                // 如果有收藏的视频，从 Supabase 获取视频详情
+                // 如果有收藏的视频，使用 videoAPI 获取视频详情
                 if (storedFavoriteIds.length > 0) {
-                    const { data, error: fetchError } = await supabase
-                        .from('videos')
-                        .select('*')
-                        .in('id', storedFavoriteIds);
-
-                    if (fetchError) {
-                        console.error('Error fetching favorite videos:', fetchError);
-                        setError('加载收藏视频失败，请重试');
-                        setVideos([]);
-                    } else {
-                        // 按照 favoriteIds 的顺序排序视频（最近收藏的在前）
-                        const sortedVideos = storedFavoriteIds
-                            .map(id => data.find(video => video.id === id))
-                            .filter(Boolean); // 过滤掉可能不存在的视频
-
-                        setVideos(sortedVideos);
+                    const fetchedVideos = [];
+                    for (const videoId of storedFavoriteIds) {
+                        try {
+                            const response = await videoAPI.getById(videoId);
+                            if (response.success && response.data) {
+                                fetchedVideos.push(response.data);
+                            }
+                        } catch (err) {
+                            console.error(`获取视频 ${videoId} 失败:`, err);
+                        }
                     }
+                    // 视频已按 favoriteIds 顺序获取
+                    setVideos(fetchedVideos);
                 } else {
                     setVideos([]);
                 }
