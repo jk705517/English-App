@@ -32,8 +32,8 @@ export const AuthProvider = ({ children }) => {
         checkAuth();
     }, []);
 
-    const login = async (email, password) => {
-        const response = await authAPI.login(email, password);
+    const login = async (phone, password) => {
+        const response = await authAPI.login(phone, password);
         if (response.success) {
             setToken(response.data.token);
             setUser(response.data.user);
@@ -41,8 +41,8 @@ export const AuthProvider = ({ children }) => {
         return response;
     };
 
-    const register = async (email, password, nickname) => {
-        const response = await authAPI.register(email, password, nickname);
+    const register = async (phone, password, nickname) => {
+        const response = await authAPI.register(phone, password, nickname);
         if (response.success) {
             setToken(response.data.token);
             setUser(response.data.user);

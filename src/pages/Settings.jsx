@@ -23,10 +23,10 @@ function Settings() {
                     </div>
                     <div>
                         <h2 className="font-semibold text-gray-800 text-lg">
-                            {user ? (user.nickname || user.email) : '未登录'}
+                            {user ? (user.nickname || user.phone) : '未登录'}
                         </h2>
-                        {user && user.nickname && user.email && (
-                            <p className="text-sm text-gray-500">{user.email}</p>
+                        {user && user.nickname && user.phone && (
+                            <p className="text-sm text-gray-500">{user.phone}</p>
                         )}
                         {!user && (
                             <a href="https://www.biubiuenglish.com/login" className="text-sm text-indigo-600 hover:underline">

@@ -37,16 +37,16 @@ const request = async (endpoint, options = {}) => {
 
 // 认证 API
 export const authAPI = {
-    register: (email, password, nickname) =>
+    register: (phone, password, nickname) =>
         request('/api/auth/register', {
             method: 'POST',
-            body: JSON.stringify({ email, password, nickname }),
+            body: JSON.stringify({ phone, password, nickname }),
         }),
 
-    login: (email, password) =>
+    login: (phone, password) =>
         request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ email, password }),
+            body: JSON.stringify({ phone, password }),
         }),
 
     getMe: () => request('/api/auth/me'),

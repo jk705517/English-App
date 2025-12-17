@@ -3,7 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function Auth() {
-    const [email, setEmail] = useState('');
+    const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
     const [nickname, setNickname] = useState('');
     const [isRegister, setIsRegister] = useState(false);
@@ -21,9 +21,9 @@ export default function Auth() {
         try {
             let response;
             if (isRegister) {
-                response = await register(email, password, nickname);
+                response = await register(phone, password, nickname);
             } else {
-                response = await login(email, password);
+                response = await login(phone, password);
             }
 
             if (response.success) {
@@ -41,7 +41,7 @@ export default function Auth() {
     const handleLogout = () => {
         logout();
         setMessage('已退出登录');
-        setEmail('');
+        setPhone('');
         setPassword('');
         setNickname('');
     };
@@ -56,7 +56,7 @@ export default function Auth() {
                 {user ? (
                     <div className="text-center">
                         <p className="mb-2 text-green-600 font-medium">
-                            当前用户: {user.email}
+                            当前用户: {user.phone}
                         </p>
                         {user.nickname && (
                             <p className="mb-4 text-gray-600">
@@ -74,12 +74,13 @@ export default function Auth() {
                     <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                邮箱
+                                手机号
                             </label>
                             <input
-                                type="email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
+                                type="tel"
+                                value={phone}
+                                onChange={(e) => setPhone(e.target.value)}
+                                placeholder="请输入手机号"
                                 className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 required
                             />
