@@ -642,12 +642,13 @@ const VideoDetail = () => {
             console.warn('⚠️ handleToggleSentenceFavorite: sentenceId is missing! Please run migration script to add IDs to transcript data.');
             return;
         }
-        const shouldBeFavorite = !favoriteSentenceIds.includes(sentenceId);
+        // 使用字符串比较，确保类型一致
+        const shouldBeFavorite = !favoriteSentenceIds.some(fid => String(fid) === String(sentenceId));
         await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(id));
         setFavoriteSentenceIds((prev) =>
             shouldBeFavorite
                 ? [...prev, sentenceId]
-                : prev.filter(id => id !== sentenceId)
+                : prev.filter(fid => String(fid) !== String(sentenceId))
         );
     };
 
@@ -1645,7 +1646,7 @@ const VideoDetail = () => {
                                             playerRef={playerRef}
                                             renderClozeText={renderClozeText}
                                             onSetIsPlaying={setIsPlaying}
-                                            isFavorite={favoriteSentenceIds.includes(sentenceId)}
+                                            isFavorite={favoriteSentenceIds.some(fid => String(fid) === String(sentenceId))}
                                             onToggleFavorite={handleToggleSentenceFavorite}
                                             videoId={Number(id)}
                                         />

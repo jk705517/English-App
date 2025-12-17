@@ -104,7 +104,7 @@ const IntensiveSentenceList = ({
                     const isVisited = visitedSet ? visitedSet.has(index) : false;
                     // Generate stable sentence ID (use existing or fallback)
                     const sentenceId = getSentenceId(item, index);
-                    const isFavorite = favoriteSentenceIds.includes(sentenceId);
+                    const isFavorite = favoriteSentenceIds.some(fid => String(fid) === String(sentenceId));
                     // Enrich sentence object with stable id for IntensiveCard
                     const enrichedSentence = { ...item, id: sentenceId };
 
