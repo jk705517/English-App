@@ -85,11 +85,29 @@ export const notebookService = {
 
         try {
             const response = await notebooksAPI.getAll();
+            console.log('📚 loadNotebooks - API response:', response);
+
             if (!response.success) {
+                console.warn('📚 loadNotebooks - API returned success:false');
                 return { notebooks: [], summary: null };
             }
 
-            const notebooks = response.data || [];
+            const rawNotebooks = response.data || [];
+            console.log('📚 loadNotebooks - raw notebooks from API:', rawNotebooks);
+
+            // 规范化字段名（支持 snake_case 和 camelCase）
+            const notebooks = rawNotebooks.map(nb => ({
+                ...nb,
+                vocabCount: nb.vocabCount ?? nb.vocab_count ?? 0,
+                sentenceCount: nb.sentenceCount ?? nb.sentence_count ?? 0,
+                dueVocabCount: nb.dueVocabCount ?? nb.due_vocab_count ?? 0,
+                dueSentenceCount: nb.dueSentenceCount ?? nb.due_sentence_count ?? 0,
+                hasVocabReviewState: nb.hasVocabReviewState ?? nb.has_vocab_review_state ?? false,
+                hasSentenceReviewState: nb.hasSentenceReviewState ?? nb.has_sentence_review_state ?? false,
+            }));
+
+            console.log('📚 loadNotebooks - normalized notebooks:', notebooks);
+            console.log('📚 loadNotebooks - notebooks.length:', notebooks.length);
 
             // 计算汇总数据
             let totalVocabCount = 0;
@@ -99,7 +117,16 @@ export const notebookService = {
             let firstDueNotebookId = null;
             let firstDueNotebookTab = null;
 
-            notebooks.forEach(nb => {
+            notebooks.forEach((nb, i) => {
+                console.log(`📚 loadNotebooks - notebook[${i}]:`, {
+                    id: nb.id,
+                    name: nb.name,
+                    vocabCount: nb.vocabCount,
+                    sentenceCount: nb.sentenceCount,
+                    dueVocabCount: nb.dueVocabCount,
+                    dueSentenceCount: nb.dueSentenceCount,
+                });
+
                 totalVocabCount += nb.vocabCount || 0;
                 totalSentenceCount += nb.sentenceCount || 0;
                 totalDueVocabCount += nb.dueVocabCount || 0;
@@ -126,6 +153,8 @@ export const notebookService = {
                 firstDueNotebookId,
                 firstDueNotebookTab,
             };
+
+            console.log('📚 loadNotebooks - calculated summary:', summary);
 
             return { notebooks, summary };
         } catch (error) {
