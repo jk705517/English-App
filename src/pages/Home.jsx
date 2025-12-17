@@ -77,9 +77,6 @@ function Home() {
         <div className="max-w-7xl mx-auto fade-in">
             {/* 页面标题 */}
             <div className="mb-8">
-                <div className="mb-4 text-sm font-medium text-indigo-600">
-                    {user ? `当前用户：${user.email}` : '当前未登录'}
-                </div>
                 <h1 className="text-4xl font-bold text-gray-800 mb-2">
                     欢迎来到 BiuBiu English
                 </h1>

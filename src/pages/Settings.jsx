@@ -29,9 +29,9 @@ function Settings() {
                             <p className="text-sm text-gray-500">{user.email}</p>
                         )}
                         {!user && (
-                            <Link to="/auth" className="text-sm text-indigo-600 hover:underline">
+                            <a href="https://www.biubiuenglish.com/login" className="text-sm text-indigo-600 hover:underline">
                                 点击登录
-                            </Link>
+                            </a>
                         )}
                     </div>
                 </div>
