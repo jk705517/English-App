@@ -1,9 +1,42 @@
-import { Link } from 'react-router-dom';
-import { BarChart3, ChevronRight } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { BarChart3, ChevronRight, User, LogOut } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 function Settings() {
+    const { user, logout } = useAuth();
+    const navigate = useNavigate();
+
+    const handleLogout = () => {
+        if (window.confirm('确定要退出登录吗？')) {
+            logout();
+            navigate('/');
+        }
+    };
+
     return (
         <div className="max-w-3xl mx-auto">
+            {/* 用户信息区域 */}
+            <div className="mb-6 p-4 bg-white rounded-xl shadow-sm">
+                <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center">
+                        <User className="w-7 h-7 text-white" />
+                    </div>
+                    <div>
+                        <h2 className="font-semibold text-gray-800 text-lg">
+                            {user ? (user.nickname || user.email) : '未登录'}
+                        </h2>
+                        {user && user.nickname && user.email && (
+                            <p className="text-sm text-gray-500">{user.email}</p>
+                        )}
+                        {!user && (
+                            <Link to="/auth" className="text-sm text-indigo-600 hover:underline">
+                                点击登录
+                            </Link>
+                        )}
+                    </div>
+                </div>
+            </div>
+
             <div className="mb-8">
                 <h1 className="text-3xl font-bold text-gray-800 mb-2">
                     设置
@@ -45,6 +78,19 @@ function Settings() {
                     </div>
                 </div>
             </div>
+
+            {/* 退出登录按钮 - 仅登录状态显示 */}
+            {user && (
+                <div className="mt-8">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center justify-center gap-2 p-4 bg-white rounded-xl shadow-sm border border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 transition-colors"
+                    >
+                        <LogOut className="w-5 h-5" />
+                        <span className="font-medium">退出登录</span>
+                    </button>
+                </div>
+            )}
         </div>
     );
 }
