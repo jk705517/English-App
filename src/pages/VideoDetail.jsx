@@ -1435,96 +1435,102 @@ const VideoDetail = () => {
                     <div className="p-6 bg-white rounded-xl shadow-sm">
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
-                            {videoData.vocab?.map((item, index) => (
-                                <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
-                                    {/* 收藏按钮（右上角）*/}
-                                    <button
-                                        onClick={() => handleToggleVocabFavorite(item.id)}
-                                        className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.some(fid => String(fid) === String(item.id))
-                                            ? 'text-yellow-500 hover:bg-yellow-100'
-                                            : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
-                                            }`}
-                                        title={favoriteVocabIds.some(fid => String(fid) === String(item.id)) ? "取消收藏" : "收藏词汇"}
-                                    >
-                                        <svg className="w-4 h-4" fill={favoriteVocabIds.some(fid => String(fid) === String(item.id)) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                        </svg>
-                                    </button>
-                                    {/* 加入本子按钮 */}
-                                    <button
-                                        onClick={() => {
-                                            if (!user) {
-                                                alert('登录后才能使用本子功能');
-                                                return;
-                                            }
-                                            setNotebookDialogItem({
-                                                itemType: 'vocab',
-                                                itemId: item.id,
-                                                videoId: Number(id)
-                                            });
-                                            setNotebookDialogOpen(true);
-                                        }}
-                                        className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-indigo-500 hover:bg-indigo-50"
-                                        title="加入本子"
-                                    >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                        </svg>
-                                    </button>
-                                    <div className="flex items-end mb-2">
-                                        <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
-                                        <span className="text-sm text-gray-500">{item.type}</span>
-                                    </div>
+                            {videoData.vocab?.map((item, index) => {
+                                // Generate stable vocab ID (use existing or fallback)
+                                const vocabId = item.id !== undefined && item.id !== null
+                                    ? item.id
+                                    : `${id}-vocab-${index}`;
+                                return (
+                                    <div key={vocabId} data-vocab-id={vocabId} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                        {/* 收藏按钮（右上角）*/}
+                                        <button
+                                            onClick={() => handleToggleVocabFavorite(vocabId)}
+                                            className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.some(fid => String(fid) === String(vocabId))
+                                                ? 'text-yellow-500 hover:bg-yellow-100'
+                                                : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                                                }`}
+                                            title={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "取消收藏" : "收藏词汇"}
+                                        >
+                                            <svg className="w-4 h-4" fill={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                            </svg>
+                                        </button>
+                                        {/* 加入本子按钮 */}
+                                        <button
+                                            onClick={() => {
+                                                if (!user) {
+                                                    alert('登录后才能使用本子功能');
+                                                    return;
+                                                }
+                                                setNotebookDialogItem({
+                                                    itemType: 'vocab',
+                                                    itemId: vocabId,
+                                                    videoId: Number(id)
+                                                });
+                                                setNotebookDialogOpen(true);
+                                            }}
+                                            className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-indigo-500 hover:bg-indigo-50"
+                                            title="加入本子"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                            </svg>
+                                        </button>
+                                        <div className="flex items-end mb-2">
+                                            <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
+                                            <span className="text-sm text-gray-500">{item.type}</span>
+                                        </div>
 
-                                    <div className="flex flex-col gap-1 mb-2">
-                                        {item.ipa_us && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">US</span>
-                                                <span>/{item.ipa_us}/</span>
-                                                <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                        {item.ipa_uk && (
-                                            <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                <span className="text-gray-400 w-4">UK</span>
-                                                <span>/{item.ipa_uk}/</span>
-                                                <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
-                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                    </svg>
-                                                </button>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
-
-                                    {item.examples && item.examples.length > 0 && (
-                                        <div className="mb-3 space-y-2">
-                                            {item.examples.map((ex, i) => (
-                                                <div key={i} className="text-[15px]">
-                                                    <p className="text-gray-800 leading-snug">{ex.en}</p>
-                                                    <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
+                                        <div className="flex flex-col gap-1 mb-2">
+                                            {item.ipa_us && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">US</span>
+                                                    <span>/{item.ipa_us}/</span>
+                                                    <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
                                                 </div>
-                                            ))}
+                                            )}
+                                            {item.ipa_uk && (
+                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                    <span className="text-gray-400 w-4">UK</span>
+                                                    <span>/{item.ipa_uk}/</span>
+                                                    <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
+                                                        <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                        </svg>
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
-                                    )}
 
-                                    {item.collocations && item.collocations.length > 0 && (
-                                        <div className="flex flex-wrap gap-2">
-                                            {item.collocations.map((col, i) => (
-                                                <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-[13px] rounded border border-indigo-100">
-                                                    {col}
-                                                </span>
-                                            ))}
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                                        <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
+
+                                        {item.examples && item.examples.length > 0 && (
+                                            <div className="mb-3 space-y-2">
+                                                {item.examples.map((ex, i) => (
+                                                    <div key={i} className="text-[15px]">
+                                                        <p className="text-gray-800 leading-snug">{ex.en}</p>
+                                                        <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+
+                                        {item.collocations && item.collocations.length > 0 && (
+                                            <div className="flex flex-wrap gap-2">
+                                                {item.collocations.map((col, i) => (
+                                                    <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-[13px] rounded border border-indigo-100">
+                                                        {col}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })}
                         </div>
                     </div>
                 </div>
@@ -1672,75 +1678,81 @@ const VideoDetail = () => {
                         <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
                             <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
                             <div className="space-y-3">
-                                {videoData.vocab?.map((item, index) => (
-                                    <div key={item.id || index} data-vocab-id={item.id} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
-                                        {/* 收藏按钮（右上角）*/}
-                                        <button
-                                            onClick={() => handleToggleVocabFavorite(item.id)}
-                                            className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.some(fid => String(fid) === String(item.id))
-                                                ? 'text-yellow-500 hover:bg-yellow-100'
-                                                : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
-                                                }`}
-                                            title={favoriteVocabIds.some(fid => String(fid) === String(item.id)) ? "取消收藏" : "收藏词汇"}
-                                        >
-                                            <svg className="w-4 h-4" fill={favoriteVocabIds.some(fid => String(fid) === String(item.id)) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                            </svg>
-                                        </button>
-                                        <div className="flex items-end mb-1">
-                                            <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
-                                            <span className="text-sm text-gray-500">{item.type}</span>
-                                        </div>
+                                {videoData.vocab?.map((item, index) => {
+                                    // Generate stable vocab ID (use existing or fallback)
+                                    const vocabId = item.id !== undefined && item.id !== null
+                                        ? item.id
+                                        : `${id}-vocab-${index}`;
+                                    return (
+                                        <div key={vocabId} data-vocab-id={vocabId} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                            {/* 收藏按钮（右上角）*/}
+                                            <button
+                                                onClick={() => handleToggleVocabFavorite(vocabId)}
+                                                className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.some(fid => String(fid) === String(vocabId))
+                                                    ? 'text-yellow-500 hover:bg-yellow-100'
+                                                    : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                                                    }`}
+                                                title={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "取消收藏" : "收藏词汇"}
+                                            >
+                                                <svg className="w-4 h-4" fill={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                                </svg>
+                                            </button>
+                                            <div className="flex items-end mb-1">
+                                                <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
+                                                <span className="text-sm text-gray-500">{item.type}</span>
+                                            </div>
 
-                                        <div className="flex flex-col gap-1 mb-1.5">
-                                            {item.ipa_us && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                    <span className="text-gray-400 w-4">US</span>
-                                                    <span>/{item.ipa_us}/</span>
-                                                    <button onClick={() => speak(item.word, 'en-US')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
-                                            {item.ipa_uk && (
-                                                <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                    <span className="text-gray-400 w-4">UK</span>
-                                                    <span>/{item.ipa_uk}/</span>
-                                                    <button onClick={() => speak(item.word, 'en-GB')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
-                                                        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
-                                                        </svg>
-                                                    </button>
-                                                </div>
-                                            )}
-                                        </div>
-
-                                        <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
-
-                                        {item.examples && item.examples.length > 0 && (
-                                            <div className="mb-2 space-y-1">
-                                                {item.examples.slice(0, 1).map((ex, i) => (
-                                                    <div key={i} className="text-[15px]">
-                                                        <p className="text-gray-800 leading-snug">{ex.en}</p>
-                                                        <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
+                                            <div className="flex flex-col gap-1 mb-1.5">
+                                                {item.ipa_us && (
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                        <span className="text-gray-400 w-4">US</span>
+                                                        <span>/{item.ipa_us}/</span>
+                                                        <button onClick={() => speak(item.word, 'en-US')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                            </svg>
+                                                        </button>
                                                     </div>
-                                                ))}
+                                                )}
+                                                {item.ipa_uk && (
+                                                    <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
+                                                        <span className="text-gray-400 w-4">UK</span>
+                                                        <span>/{item.ipa_uk}/</span>
+                                                        <button onClick={() => speak(item.word, 'en-GB')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
+                                                            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                                            </svg>
+                                                        </button>
+                                                    </div>
+                                                )}
                                             </div>
-                                        )}
 
-                                        {item.collocations && item.collocations.length > 0 && (
-                                            <div className="flex flex-wrap gap-1">
-                                                {item.collocations.slice(0, 3).map((col, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-600 text-[13px] rounded border border-indigo-100">
-                                                        {col}
-                                                    </span>
-                                                ))}
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
+                                            <p className="text-gray-600 font-medium mb-2 text-sm">{item.meaning}</p>
+
+                                            {item.examples && item.examples.length > 0 && (
+                                                <div className="mb-2 space-y-1">
+                                                    {item.examples.slice(0, 1).map((ex, i) => (
+                                                        <div key={i} className="text-[15px]">
+                                                            <p className="text-gray-800 leading-snug">{ex.en}</p>
+                                                            <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {item.collocations && item.collocations.length > 0 && (
+                                                <div className="flex flex-wrap gap-1">
+                                                    {item.collocations.slice(0, 3).map((col, i) => (
+                                                        <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-600 text-[13px] rounded border border-indigo-100">
+                                                            {col}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })}
                             </div>
                         </div>
                     </div>
