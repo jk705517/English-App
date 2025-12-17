@@ -1,4 +1,5 @@
 import { notebooksAPI } from './api';
+import { supabase } from './supabaseClient';
 
 // ============================================
 // 基础 API 封装函数
@@ -165,6 +166,8 @@ export const notebookService = {
 
     /**
      * 加载笔记本详情（包括句子和词汇列表）
+     * API 返回格式：{ success: true, data: [{ id, notebook_id, item_type, item_id, video_id, created_at }] }
+     * 需要从 Supabase 获取视频数据来提取实际的句子/词汇内容
      * @param {Object} user - 用户对象
      * @param {string|number} notebookId - 笔记本ID
      * @returns {Promise<Object>}
@@ -174,16 +177,138 @@ export const notebookService = {
 
         try {
             const response = await notebooksAPI.getItems(notebookId);
+            console.log('📓 loadNotebookDetail - API response:', response);
+
             if (!response.success) {
+                console.warn('📓 loadNotebookDetail - API returned success:false');
                 return null;
             }
 
-            const items = response.data || {};
+            // API 返回的是一个扁平数组
+            const rawItems = Array.isArray(response.data) ? response.data : [];
+            console.log('📓 loadNotebookDetail - rawItems:', rawItems);
+
+            // 分离句子和词汇
+            const sentenceItems = rawItems.filter(item => item.item_type === 'sentence');
+            const vocabItems = rawItems.filter(item => item.item_type === 'vocab');
+            console.log('📓 loadNotebookDetail - sentenceItems:', sentenceItems.length, 'vocabItems:', vocabItems.length);
+
+            // 如果没有任何项目，直接返回
+            if (rawItems.length === 0) {
+                return {
+                    notebook: { id: notebookId, name: '', color: '#3B82F6' },
+                    sentences: [],
+                    vocabs: [],
+                };
+            }
+
+            // 收集所有需要获取的视频 ID
+            const videoIds = [...new Set(rawItems.map(item => item.video_id).filter(Boolean))];
+            console.log('📓 loadNotebookDetail - videoIds to fetch:', videoIds);
+
+            // 从 Supabase 获取视频数据
+            let videoMap = {};
+            if (videoIds.length > 0) {
+                const { data: videos, error } = await supabase
+                    .from('videos')
+                    .select('id, title, episode, transcript, vocab')
+                    .in('id', videoIds);
+
+                if (error) {
+                    console.error('📓 loadNotebookDetail - Supabase error:', error);
+                } else {
+                    videos.forEach(v => { videoMap[v.id] = v; });
+                    console.log('📓 loadNotebookDetail - fetched videos:', videos.length);
+                }
+            }
+
+            // 丰富句子数据
+            const enrichedSentences = sentenceItems.map(item => {
+                const video = videoMap[item.video_id];
+                if (!video || !video.transcript) {
+                    return {
+                        sentenceId: item.item_id,
+                        videoId: item.video_id,
+                        en: '',
+                        cn: '',
+                        episode: 0,
+                        title: '',
+                    };
+                }
+
+                // 查找句子：优先按 id 匹配，其次按索引
+                const itemId = item.item_id;
+                let sentence = null;
+
+                // 尝试按 id 匹配
+                sentence = video.transcript.find(s => s.id === itemId || String(s.id) === String(itemId));
+
+                // 如果没找到，尝试解析 fallback ID 格式 "videoId-index"
+                if (!sentence && typeof itemId === 'string' && itemId.includes('-')) {
+                    const parts = itemId.split('-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.transcript[index]) {
+                        sentence = video.transcript[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试按数字索引
+                if (!sentence && typeof itemId === 'number' && video.transcript[itemId]) {
+                    sentence = video.transcript[itemId];
+                }
+
+                return {
+                    sentenceId: item.item_id,
+                    videoId: item.video_id,
+                    en: sentence?.text || sentence?.en || '',
+                    cn: sentence?.cn || '',
+                    episode: video.episode || 0,
+                    title: video.title || '',
+                };
+            }).filter(s => s.en || s.cn); // 过滤掉找不到内容的
+
+            // 丰富词汇数据
+            const enrichedVocabs = vocabItems.map(item => {
+                const video = videoMap[item.video_id];
+                if (!video || !video.vocab) {
+                    return {
+                        vocabId: item.item_id,
+                        videoId: item.video_id,
+                        word: '',
+                        meaning: '',
+                        phonetic: '',
+                        episode: 0,
+                        title: '',
+                    };
+                }
+
+                // 查找词汇：按 id 匹配
+                const itemId = item.item_id;
+                let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
+
+                // 如果没找到，尝试按数字索引
+                if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
+                    vocabItem = video.vocab[itemId];
+                }
+
+                return {
+                    vocabId: item.item_id,
+                    videoId: item.video_id,
+                    word: vocabItem?.word || '',
+                    meaning: vocabItem?.meaning || '',
+                    phonetic: vocabItem?.ipa_us || vocabItem?.phonetic || '',
+                    episode: video.episode || 0,
+                    title: video.title || '',
+                };
+            }).filter(v => v.word); // 过滤掉找不到内容的
+
+            console.log('📓 loadNotebookDetail - enrichedSentences:', enrichedSentences.length);
+            console.log('📓 loadNotebookDetail - enrichedVocabs:', enrichedVocabs.length);
 
             return {
-                notebook: items.notebook || { id: notebookId, name: '', color: '#3B82F6' },
-                sentences: items.sentences || [],
-                vocabs: items.vocabs || [],
+                notebook: { id: notebookId, name: '', color: '#3B82F6' },
+                sentences: enrichedSentences,
+                vocabs: enrichedVocabs,
             };
         } catch (error) {
             console.error('加载笔记本详情失败:', error);
@@ -193,6 +318,7 @@ export const notebookService = {
 
     /**
      * 加载笔记本中的词汇复习数据
+     * API 返回格式：{ success: true, data: [{ id, notebook_id, item_type, item_id, video_id, created_at }] }
      * @param {Object} user - 用户对象
      * @param {string|number} notebookId - 笔记本ID
      * @returns {Promise<Object>}
@@ -206,16 +332,68 @@ export const notebookService = {
                 return null;
             }
 
-            const items = response.data || {};
-            const vocabs = items.vocabs || [];
+            // API 返回的是一个扁平数组
+            const rawItems = Array.isArray(response.data) ? response.data : [];
+            const vocabItems = rawItems.filter(item => item.item_type === 'vocab');
 
-            // 计算到期的词汇数量（基于 reviewState）
+            if (vocabItems.length === 0) {
+                return {
+                    notebook: { id: notebookId, name: '' },
+                    vocabs: [],
+                    totalVocabCount: 0,
+                    dueCount: 0,
+                };
+            }
+
+            // 从 Supabase 获取视频数据
+            const videoIds = [...new Set(vocabItems.map(item => item.video_id).filter(Boolean))];
+            let videoMap = {};
+            if (videoIds.length > 0) {
+                const { data: videos, error } = await supabase
+                    .from('videos')
+                    .select('id, title, episode, vocab')
+                    .in('id', videoIds);
+
+                if (!error && videos) {
+                    videos.forEach(v => { videoMap[v.id] = v; });
+                }
+            }
+
+            // 丰富词汇数据
+            const enrichedVocabs = vocabItems.map(item => {
+                const video = videoMap[item.video_id];
+                if (!video || !video.vocab) {
+                    return null;
+                }
+
+                const itemId = item.item_id;
+                let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
+
+                if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
+                    vocabItem = video.vocab[itemId];
+                }
+
+                if (!vocabItem) return null;
+
+                return {
+                    id: item.id, // notebook_item 的 id，用于复习状态追踪
+                    vocabId: item.item_id,
+                    videoId: item.video_id,
+                    word: vocabItem?.word || '',
+                    meaning: vocabItem?.meaning || '',
+                    phonetic: vocabItem?.ipa_us || vocabItem?.phonetic || '',
+                    episode: video.episode || 0,
+                    title: video.title || '',
+                    reviewState: item.review_state || null, // 如果 API 返回复习状态
+                };
+            }).filter(Boolean);
+
+            // 计算到期的词汇数量
             const now = new Date();
             let dueCount = 0;
 
-            vocabs.forEach(vocab => {
+            enrichedVocabs.forEach(vocab => {
                 if (!vocab.reviewState || !vocab.reviewState.next_review_at) {
-                    // 没有复习记录，视为需要复习
                     dueCount++;
                 } else {
                     const nextReview = new Date(vocab.reviewState.next_review_at);
@@ -226,9 +404,9 @@ export const notebookService = {
             });
 
             return {
-                notebook: items.notebook || { id: notebookId, name: '' },
-                vocabs,
-                totalVocabCount: vocabs.length,
+                notebook: { id: notebookId, name: '' },
+                vocabs: enrichedVocabs,
+                totalVocabCount: enrichedVocabs.length,
                 dueCount,
             };
         } catch (error) {
@@ -239,6 +417,7 @@ export const notebookService = {
 
     /**
      * 加载笔记本中的句子复习数据
+     * API 返回格式：{ success: true, data: [{ id, notebook_id, item_type, item_id, video_id, created_at }] }
      * @param {Object} user - 用户对象
      * @param {string|number} notebookId - 笔记本ID
      * @returns {Promise<Object>}
@@ -252,16 +431,80 @@ export const notebookService = {
                 return null;
             }
 
-            const items = response.data || {};
-            const sentences = items.sentences || [];
+            // API 返回的是一个扁平数组
+            const rawItems = Array.isArray(response.data) ? response.data : [];
+            const sentenceItems = rawItems.filter(item => item.item_type === 'sentence');
 
-            // 计算到期的句子数量（基于 reviewState）
+            if (sentenceItems.length === 0) {
+                return {
+                    notebook: { id: notebookId, name: '' },
+                    sentences: [],
+                    totalSentenceCount: 0,
+                    dueSentenceCount: 0,
+                };
+            }
+
+            // 从 Supabase 获取视频数据
+            const videoIds = [...new Set(sentenceItems.map(item => item.video_id).filter(Boolean))];
+            let videoMap = {};
+            if (videoIds.length > 0) {
+                const { data: videos, error } = await supabase
+                    .from('videos')
+                    .select('id, title, episode, transcript')
+                    .in('id', videoIds);
+
+                if (!error && videos) {
+                    videos.forEach(v => { videoMap[v.id] = v; });
+                }
+            }
+
+            // 丰富句子数据
+            const enrichedSentences = sentenceItems.map(item => {
+                const video = videoMap[item.video_id];
+                if (!video || !video.transcript) {
+                    return null;
+                }
+
+                const itemId = item.item_id;
+                let sentence = null;
+
+                // 尝试按 id 匹配
+                sentence = video.transcript.find(s => s.id === itemId || String(s.id) === String(itemId));
+
+                // 如果没找到，尝试解析 fallback ID 格式 "videoId-index"
+                if (!sentence && typeof itemId === 'string' && itemId.includes('-')) {
+                    const parts = itemId.split('-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.transcript[index]) {
+                        sentence = video.transcript[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试按数字索引
+                if (!sentence && typeof itemId === 'number' && video.transcript[itemId]) {
+                    sentence = video.transcript[itemId];
+                }
+
+                if (!sentence) return null;
+
+                return {
+                    id: item.id, // notebook_item 的 id，用于复习状态追踪
+                    sentenceId: item.item_id,
+                    videoId: item.video_id,
+                    en: sentence?.text || sentence?.en || '',
+                    cn: sentence?.cn || '',
+                    episode: video.episode || 0,
+                    title: video.title || '',
+                    reviewState: item.review_state || null, // 如果 API 返回复习状态
+                };
+            }).filter(Boolean);
+
+            // 计算到期的句子数量
             const now = new Date();
             let dueSentenceCount = 0;
 
-            sentences.forEach(sentence => {
+            enrichedSentences.forEach(sentence => {
                 if (!sentence.reviewState || !sentence.reviewState.next_review_at) {
-                    // 没有复习记录，视为需要复习
                     dueSentenceCount++;
                 } else {
                     const nextReview = new Date(sentence.reviewState.next_review_at);
@@ -272,9 +515,9 @@ export const notebookService = {
             });
 
             return {
-                notebook: items.notebook || { id: notebookId, name: '' },
-                sentences,
-                totalSentenceCount: sentences.length,
+                notebook: { id: notebookId, name: '' },
+                sentences: enrichedSentences,
+                totalSentenceCount: enrichedSentences.length,
                 dueSentenceCount,
             };
         } catch (error) {
