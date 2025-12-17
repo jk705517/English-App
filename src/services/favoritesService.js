@@ -368,11 +368,31 @@ export const favoritesService = {
                     };
                 }
 
-                // 查找词汇：按 id 匹配
+                // 查找词汇：先按 id 匹配，如果是 fallback ID (如 "123-vocab-0")，则解析 index
                 const itemId = f.item_id;
                 let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
 
-                // 如果没找到，尝试按数字索引
+                // 如果没找到，尝试解析 fallback ID 格式 "videoId-vocab-index"
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-vocab-')) {
+                    const parts = itemId.split('-vocab-');
+                    if (parts.length === 2) {
+                        const index = parseInt(parts[1], 10);
+                        if (!isNaN(index) && video.vocab[index]) {
+                            vocabItem = video.vocab[index];
+                        }
+                    }
+                }
+
+                // 如果还没找到，尝试通用 fallback 格式 "videoId-index"（兼容旧格式）
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-') && !itemId.includes('-vocab-')) {
+                    const parts = itemId.split('-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试按数字索引
                 if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
                     vocabItem = video.vocab[itemId];
                 }
