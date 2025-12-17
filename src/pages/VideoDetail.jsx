@@ -1628,6 +1628,10 @@ const VideoDetail = () => {
                         ) : (
                             videoData.transcript.map((item, index) => {
                                 const isActive = index === activeIndex;
+                                // Generate stable sentence ID (use existing or fallback)
+                                const sentenceId = item.id !== undefined && item.id !== null
+                                    ? item.id
+                                    : `${id}-${index}`;
                                 return (
                                     <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
                                         <SubtitleItem
@@ -1641,8 +1645,9 @@ const VideoDetail = () => {
                                             playerRef={playerRef}
                                             renderClozeText={renderClozeText}
                                             onSetIsPlaying={setIsPlaying}
-                                            isFavorite={favoriteSentenceIds.includes(item.id)}
+                                            isFavorite={favoriteSentenceIds.includes(sentenceId)}
                                             onToggleFavorite={handleToggleSentenceFavorite}
+                                            videoId={Number(id)}
                                         />
                                     </div>
                                 );

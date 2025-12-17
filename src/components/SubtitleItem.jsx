@@ -16,18 +16,25 @@ const SubtitleItem = memo(({
     onSetIsPlaying,
     // 收藏相关 props
     isFavorite = false,
-    onToggleFavorite
+    onToggleFavorite,
+    // Video ID for generating fallback sentence IDs
+    videoId
 }) => {
+    // Helper: generate stable ID for sentence
+    // Uses existing id if available, otherwise creates fallback from videoId-index
+    const getSentenceId = () => {
+        if (item.id !== undefined && item.id !== null) {
+            return item.id;
+        }
+        // Fallback: videoId-index (e.g., "123-0", "123-1")
+        return `${videoId}-${index}`;
+    };
+
     // 点击收藏按钮（阻止事件冒泡，避免触发 seek）
     const handleFavoriteClick = (e) => {
         e.stopPropagation();
         if (onToggleFavorite) {
-            // 使用 item.id，如果不存在则使用 index（通过回调传递）
-            const sentenceId = item.id;
-            if (sentenceId === undefined || sentenceId === null) {
-                console.warn('⚠️ SubtitleItem: item.id is missing! Please run migration script to add IDs to transcript data.');
-                return;
-            }
+            const sentenceId = getSentenceId();
             onToggleFavorite(sentenceId);
         }
     };
