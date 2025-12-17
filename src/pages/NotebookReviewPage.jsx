@@ -9,7 +9,7 @@ import SentenceReviewCard from '../components/SentenceReviewCard';
 
 
 /**
- * 记录复习结果：调用 reviewService 写入 Supabase
+ * 记录复习结果：调用 reviewService 更新复习状态
  * @param {object} item - 当前复习的词汇或句子对象
  * @param {boolean} isKnown - true=我会了, false=还不熟
  * @param {string} type - 'vocab' 或 'sentence'
@@ -20,7 +20,7 @@ function recordReviewResult(item, isKnown, type, notebookId, userId) {
     // 1. 仍然保留 console.log，方便本地调试
     console.log('review result', {
         type,
-        itemId: item?.id,
+        itemId: type === 'sentence' ? item?.sentenceId : (item?.vocabId ?? item?.id),
         isKnown,
         word: item?.word || item?.en?.substring(0, 30),
     });
@@ -28,23 +28,27 @@ function recordReviewResult(item, isKnown, type, notebookId, userId) {
     if (!item) return;
 
     // 2. 组装公共字段
+    // 注意：从 notebookService 丰富后的数据中，句子用 sentenceId，词汇用 vocabId
+    const itemId = type === 'sentence'
+        ? (item.sentenceId ?? item.id)
+        : (item.vocabId ?? item.id ?? item.word);
+
     const payload = {
         itemType: type === 'sentence' ? 'sentence' : 'vocab',
-        // 尽量用当前数据里最稳定的 id
-        itemId: item.id ?? item.subtitleId ?? item.word,
+        itemId,
         isKnown,
         videoId: item.videoId,
         notebookId,
         reviewMode: type === 'sentence' ? 'sentence_review' : 'vocab_review',
     };
 
-    // 3. 异步写入日志（不阻塞 UI）
+    console.log('[recordReviewResult] payload:', payload);
+
+    // 3. 异步写入日志（不阻塞 UI）- 现在由后端统一处理
     recordReviewLog(payload, userId);
 
     // 4. 更新记忆曲线状态（不阻塞 UI）
-    // if (payload.itemType === 'vocab') {
     updateReviewState(payload, userId);
-    // }
 }
 
 

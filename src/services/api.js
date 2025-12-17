@@ -98,3 +98,13 @@ export const notebooksAPI = {
     deleteItem: (notebookId, itemId) =>
         request(`/api/user/notebooks/${notebookId}/items/${itemId}`, { method: 'DELETE' }),
 };
+
+// 复习状态 API
+export const reviewStatesAPI = {
+    getAll: () => request('/api/user/review-states'),
+    update: (data) =>
+        request('/api/user/review-states', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+};
