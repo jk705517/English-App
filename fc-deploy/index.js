@@ -55,16 +55,16 @@ const authMiddleware = (req, res, next) => {
 // 注册
 app.post('/api/auth/register', async (req, res) => {
   try {
-    const { email, password, nickname } = req.body;
+    const { phone, password, nickname } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password required' });
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: '手机号和密码不能为空' });
     }
 
-    // 检查邮箱是否已存在
-    const existingUser = await pool.query('SELECT id FROM users WHERE email = $1', [email]);
+    // 检查手机号是否已存在
+    const existingUser = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ success: false, error: 'Email already exists' });
+      return res.status(400).json({ success: false, error: '手机号已存在' });
     }
 
     // 加密密码
@@ -72,15 +72,15 @@ app.post('/api/auth/register', async (req, res) => {
 
     // 创建用户
     const result = await pool.query(
-      'INSERT INTO users (email, password_hash, nickname) VALUES ($1, $2, $3) RETURNING id, email, nickname, created_at',
-      [email, passwordHash, nickname || null]
+      'INSERT INTO users (phone, password_hash, nickname) VALUES ($1, $2, $3) RETURNING id, phone, nickname, created_at',
+      [phone, passwordHash, nickname || null]
     );
 
     const user = result.rows[0];
 
     // 生成 JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, phone: user.phone },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -88,7 +88,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: { id: user.id, email: user.email, nickname: user.nickname },
+        user: { id: user.id, phone: user.phone, nickname: user.nickname },
         token
       }
     });
@@ -101,20 +101,20 @@ app.post('/api/auth/register', async (req, res) => {
 // 登录
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { phone, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ success: false, error: 'Email and password required' });
+    if (!phone || !password) {
+      return res.status(400).json({ success: false, error: '手机号和密码不能为空' });
     }
 
     // 查找用户
     const result = await pool.query(
-      'SELECT id, email, password_hash, nickname, is_active FROM users WHERE email = $1',
-      [email]
+      'SELECT id, phone, password_hash, nickname, is_active FROM users WHERE phone = $1',
+      [phone]
     );
 
     if (result.rows.length === 0) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return res.status(401).json({ success: false, error: '手机号或密码错误' });
     }
 
     const user = result.rows[0];
@@ -126,7 +126,7 @@ app.post('/api/auth/login', async (req, res) => {
     // 验证密码
     const validPassword = await bcrypt.compare(password, user.password_hash);
     if (!validPassword) {
-      return res.status(401).json({ success: false, error: 'Invalid email or password' });
+      return res.status(401).json({ success: false, error: '手机号或密码错误' });
     }
 
     // 更新最后登录时间
@@ -134,7 +134,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // 生成 JWT
     const token = jwt.sign(
-      { userId: user.id, email: user.email },
+      { userId: user.id, phone: user.phone },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
@@ -142,7 +142,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: { id: user.id, email: user.email, nickname: user.nickname },
+        user: { id: user.id, phone: user.phone, nickname: user.nickname },
         token
       }
     });
@@ -156,7 +156,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, email, nickname, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, phone, nickname, avatar_url, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 
