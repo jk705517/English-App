@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { authAPI, setToken, clearToken } from '../services/api';
 
 const AuthContext = createContext({});
 
@@ -10,32 +10,57 @@ export const AuthProvider = ({ children }) => {
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
-        // Check active session
-        const checkSession = async () => {
-            try {
-                const { data: { session } } = await supabase.auth.getSession();
-                setUser(session?.user ?? null);
-            } catch (error) {
-                console.error('Error checking session:', error);
-            } finally {
-                setLoading(false);
+        // 检查本地存储的 token，尝试获取用户信息
+        const checkAuth = async () => {
+            const token = localStorage.getItem('token');
+            if (token) {
+                try {
+                    const response = await authAPI.getMe();
+                    if (response.success) {
+                        setUser(response.data);
+                    } else {
+                        clearToken();
+                    }
+                } catch (error) {
+                    console.error('Auth check failed:', error);
+                    clearToken();
+                }
             }
+            setLoading(false);
         };
 
-        checkSession();
-
-        // Listen for auth changes
-        const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-            setLoading(false);
-        });
-
-        return () => subscription.unsubscribe();
+        checkAuth();
     }, []);
+
+    const login = async (email, password) => {
+        const response = await authAPI.login(email, password);
+        if (response.success) {
+            setToken(response.data.token);
+            setUser(response.data.user);
+        }
+        return response;
+    };
+
+    const register = async (email, password, nickname) => {
+        const response = await authAPI.register(email, password, nickname);
+        if (response.success) {
+            setToken(response.data.token);
+            setUser(response.data.user);
+        }
+        return response;
+    };
+
+    const logout = () => {
+        clearToken();
+        setUser(null);
+    };
 
     const value = {
         user,
         loading,
+        login,
+        register,
+        logout,
     };
 
     return (

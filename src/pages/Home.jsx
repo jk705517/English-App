@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { progressService } from '../services/progressService';
-import { favoritesService } from '../services/favoritesService';
+import { loadLearnedVideoIds } from '../services/progressService';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
@@ -48,7 +47,7 @@ function Home() {
 
             const [videosResult, learnedIds] = await Promise.all([
                 fetchVideos(),
-                progressService.loadLearnedVideoIds(user)
+                loadLearnedVideoIds(user)
             ]);
 
             if (!videosResult.error) {

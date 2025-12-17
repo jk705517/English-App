@@ -1,406 +1,278 @@
-import { supabase } from './supabaseClient';
-import { ITEM_TYPES } from '../utils/constants';
+import { favoritesAPI } from './api';
 
-const STORAGE_KEY_V1 = 'favoriteVideoIds';
-const STORAGE_KEY_V2 = 'biubiu_favorites_v2';
+// ============================================
+// 基础 API 封装函数
+// ============================================
 
-/**
- * Helper: Migrate v1 localStorage to v2 if needed
- * @returns {Array} The v2 favorites array
- */
-function getLocalFavoritesV2() {
+// 获取用户所有收藏
+export const getUserFavorites = async (userId) => {
     try {
-        // 1. Try to read v2
-        const v2Data = localStorage.getItem(STORAGE_KEY_V2);
-        if (v2Data) {
-            return JSON.parse(v2Data);
-        }
-
-        // 2. If v2 missing, check v1
-        const v1Data = localStorage.getItem(STORAGE_KEY_V1);
-        if (v1Data) {
-            const v1Ids = JSON.parse(v1Data);
-            if (Array.isArray(v1Ids)) {
-                // Migrate: convert [1, 2] to [{ itemType: 'video', itemId: 1 }, ...]
-                const v2List = v1Ids.map(id => ({
-                    itemType: ITEM_TYPES.VIDEO,
-                    itemId: Number(id)
-                }));
-                // Save to v2
-                localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(v2List));
-                return v2List;
-            }
-        }
-
-        return [];
+        const response = await favoritesAPI.getAll();
+        return response.success ? response.data : [];
     } catch (error) {
-        console.error('Error parsing favorites from localStorage:', error);
+        console.error('获取收藏失败:', error);
         return [];
     }
-}
+};
 
-/**
- * Generic: Load favorite items by type
- * @param {object|null} user 
- * @param {string} itemType 
- * @returns {Promise<Array>} Array of item IDs (e.g. [1, 2, 3])
- */
-async function loadFavoriteItems(user, itemType) {
-    // Always sync/load from local v2 first
-    let localItems = getLocalFavoritesV2();
-
-    // Filter for the specific itemType to return simple IDs
-    const localIds = localItems
-        .filter(item => item.itemType === itemType)
-        .map(item => item.itemId);
-
-    if (!user) {
-        return localIds;
-    }
-
-    // Logged-in: fetch from Supabase
+// 添加收藏
+export const addFavorite = async (userId, videoId, itemType, itemId) => {
     try {
-        const { data, error } = await supabase
-            .from('user_favorites')
-            .select('item_id')
-            .eq('user_id', user.id)
-            .eq('item_type', itemType);
-
-        if (error) {
-            console.error(`Error loading favorites for ${itemType}:`, error);
-            return localIds;
-        }
-
-        const remoteIds = data.map(row => row.item_id);
-
-        // Merge remote items into local v2 cache
-        // We need to be careful not to overwrite other itemTypes in localStorage
-        // Strategy: 
-        // 1. Keep other itemTypes from localItems
-        // 2. Replace current itemType items with remoteIds
-        const otherItems = localItems.filter(item => item.itemType !== itemType);
-        const newItems = remoteIds.map(id => ({
-            itemType: itemType,
-            itemId: id
-        }));
-
-        const merged = [...otherItems, ...newItems];
-        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(merged));
-
-        return remoteIds;
+        const response = await favoritesAPI.add(videoId, itemType, itemId);
+        return response.success ? response.data : null;
     } catch (error) {
-        console.error('Error in loadFavoriteItems:', error);
-        return localIds;
+        console.error('添加收藏失败:', error);
+        return null;
     }
-}
+};
 
-/**
- * Load favorite items by type AND video (for sentence/vocab to avoid cross-video bleeding)
- * @param {object|null} user 
- * @param {string} itemType 
- * @param {number} videoId - The video ID to filter by
- * @returns {Promise<Array>} Array of item IDs belonging to this video
- */
-async function loadFavoriteItemsByVideo(user, itemType, videoId) {
-    // Load from localStorage v2, filtering by both itemType and videoId
-    let localItems = getLocalFavoritesV2();
-    const localIds = localItems
-        .filter(item => item.itemType === itemType && item.videoId === videoId)
-        .map(item => item.itemId);
-
-    if (!user) {
-        return localIds;
-    }
-
-    // Logged-in: fetch from Supabase with video_id filter
+// 删除收藏
+export const deleteFavorite = async (favoriteId) => {
     try {
-        const { data, error } = await supabase
-            .from('user_favorites')
-            .select('item_id')
-            .eq('user_id', user.id)
-            .eq('item_type', itemType)
-            .eq('video_id', videoId);
-
-        if (error) {
-            console.error(`Error loading favorites for ${itemType} in video ${videoId}:`, error);
-            return localIds;
-        }
-
-        return data.map(row => row.item_id);
+        const response = await favoritesAPI.delete(favoriteId);
+        return response.success;
     } catch (error) {
-        console.error('Error in loadFavoriteItemsByVideo:', error);
-        return localIds;
+        console.error('删除收藏失败:', error);
+        return false;
     }
-}
+};
 
-/**
- * Generic: Set favorite status for an item
- * @param {object|null} user 
- * @param {string} itemType 
- * @param {number|string} itemId 
- * @param {boolean} shouldBeFavorite - The TARGET state: true = add to favorites, false = remove from favorites
- */
-async function toggleFavoriteItem(user, itemType, itemId, shouldBeFavorite, videoId = null) {
+// 检查某个内容是否已收藏
+export const checkIfFavorited = async (userId, videoId, itemType, itemId) => {
     try {
-        // 1. Optimistic update in localStorage (v2)
-        let localItems = getLocalFavoritesV2();
-
-        if (shouldBeFavorite) {
-            // Target: ADD to favorites
-            // For sentence/vocab, also include videoId in localStorage
-            const newItem = { itemType, itemId };
-            if (videoId && itemType !== ITEM_TYPES.VIDEO) {
-                newItem.videoId = videoId;
-            }
-            const exists = localItems.some(item =>
-                item.itemType === itemType && item.itemId === itemId &&
-                (itemType === ITEM_TYPES.VIDEO || item.videoId === videoId)
-            );
-            if (!exists) {
-                localItems.push(newItem);
-            }
-        } else {
-            // Target: REMOVE from favorites
-            localItems = localItems.filter(item =>
-                !(item.itemType === itemType && item.itemId === itemId &&
-                    (itemType === ITEM_TYPES.VIDEO || item.videoId === videoId))
-            );
-        }
-
-        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
-
-        // 2. Sync to Supabase if logged in
-        if (user) {
-            if (shouldBeFavorite) {
-                // Insert (add to favorites)
-                const payload = {
-                    user_id: user.id,
-                    item_type: itemType,
-                    item_id: itemId
-                };
-
-                // Set video_id for all item types
-                if (itemType === ITEM_TYPES.VIDEO) {
-                    payload.video_id = itemId;
-                } else if (videoId) {
-                    payload.video_id = videoId;
-                }
-
-                const { error } = await supabase
-                    .from('user_favorites')
-                    .insert(payload);
-
-                if (error) {
-                    console.error('Error adding favorite to Supabase:', error);
-                    console.error('Payload was:', payload);
-                }
-            } else {
-                // Delete (remove from favorites)
-                const { error } = await supabase
-                    .from('user_favorites')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('item_type', itemType)
-                    .eq('item_id', itemId);
-
-                if (error) console.error('Error removing favorite from Supabase:', error);
-            }
-        }
+        const allFavorites = await getUserFavorites(userId);
+        return allFavorites.some(
+            f => f.video_id === videoId && f.item_type === itemType && f.item_id === itemId
+        );
     } catch (error) {
-        console.error('Error in toggleFavoriteItem:', error);
+        console.error('检查收藏状态失败:', error);
+        return false;
     }
-}
+};
 
-/**
- * Load favorite video IDs (Legacy Wrapper)
- */
-export async function loadFavoriteVideoIds(user) {
-    return loadFavoriteItems(user, ITEM_TYPES.VIDEO);
-}
-
-/**
- * Toggle favorite video (Legacy Wrapper)
- */
-export async function toggleFavoriteVideo(user, videoId, isCurrentlyFavorite) {
-    return toggleFavoriteItem(user, ITEM_TYPES.VIDEO, videoId, isCurrentlyFavorite);
-}
-
-// === Sentence Favorites ===
-
-/**
- * Load favorite sentence IDs for a specific video
- * @param {object|null} user
- * @param {number} videoId - The video ID to filter by (required to avoid cross-video bleeding)
- * @returns {Promise<number[]>} Array of favorited sentence IDs for this video
- */
-export async function loadFavoriteSentenceIds(user, videoId) {
-    if (!videoId) {
-        console.warn('loadFavoriteSentenceIds: videoId is required to avoid cross-video state bleeding');
-        return [];
-    }
-    return loadFavoriteItemsByVideo(user, ITEM_TYPES.SENTENCE, videoId);
-}
-
-/**
- * Toggle sentence favorite status
- * @param {object|null} user
- * @param {number} sentenceId - The sentence's unique ID from transcript
- * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
- * @param {number|null} videoId - The video ID this sentence belongs to
- */
-export async function toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, videoId = null) {
-    return toggleFavoriteItem(user, ITEM_TYPES.SENTENCE, sentenceId, shouldBeFavorite, videoId);
-}
-
-// === Vocab Favorites ===
-
-/**
- * Load favorite vocab IDs for a specific video
- * @param {object|null} user
- * @param {number} videoId - The video ID to filter by (required to avoid cross-video bleeding)
- * @returns {Promise<number[]>} Array of favorited vocab IDs for this video
- */
-export async function loadFavoriteVocabIds(user, videoId) {
-    if (!videoId) {
-        console.warn('loadFavoriteVocabIds: videoId is required to avoid cross-video state bleeding');
-        return [];
-    }
-    return loadFavoriteItemsByVideo(user, ITEM_TYPES.VOCAB, videoId);
-}
-
-/**
- * Toggle vocab favorite status
- * @param {object|null} user
- * @param {number} vocabId - The vocab item's unique ID
- * @param {boolean} shouldBeFavorite - Target state: true = add, false = remove
- * @param {number|null} videoId - The video ID this vocab belongs to
- */
-export async function toggleFavoriteVocab(user, vocabId, shouldBeFavorite, videoId = null) {
-    return toggleFavoriteItem(user, ITEM_TYPES.VOCAB, vocabId, shouldBeFavorite, videoId);
-}
-
-// === Load Favorite Items with Details ===
-
-/**
- * Load favorite sentence items with video details
- * @param {object|null} user
- * @returns {Promise<Array>} Array of favorite sentences with video info
- */
-export async function loadFavoriteSentenceItems(user) {
-    if (!user) return [];
-
-    try {
-        // 1. Get favorite sentence records (including video_id)
-        const { data: favorites, error } = await supabase
-            .from('user_favorites')
-            .select('item_id, video_id')
-            .eq('user_id', user.id)
-            .eq('item_type', ITEM_TYPES.SENTENCE);
-
-        if (error || !favorites?.length) return [];
-
-        // 2. Get all related videos
-        const videoIds = [...new Set(favorites.map(f => f.video_id).filter(Boolean))];
-        if (videoIds.length === 0) return [];
-
-        const { data: videos } = await supabase
-            .from('videos')
-            .select('id, title, episode, transcript')
-            .in('id', videoIds);
-
-        // 3. Match sentence details
-        const result = [];
-        for (const fav of favorites) {
-            const video = videos?.find(v => v.id === fav.video_id);
-            if (!video?.transcript) continue;
-            const sentence = video.transcript.find(t => t.id === fav.item_id);
-            if (sentence) {
-                result.push({
-                    sentenceId: fav.item_id,
-                    videoId: fav.video_id,
-                    en: sentence.text || sentence.en,  // Handle both field names
-                    cn: sentence.cn,
-                    start: sentence.start,
-                    episode: video.episode,
-                    title: video.title
-                });
-            }
-        }
-        return result;
-    } catch (error) {
-        console.error('Error loading favorite sentences:', error);
-        return [];
-    }
-}
-
-/**
- * Load favorite vocab items with video details
- * @param {object|null} user
- * @returns {Promise<Array>} Array of favorite vocab items with video info
- */
-export async function loadFavoriteVocabItems(user) {
-    if (!user) return [];
-
-    try {
-        const { data: favorites, error } = await supabase
-            .from('user_favorites')
-            .select('item_id, video_id')
-            .eq('user_id', user.id)
-            .eq('item_type', ITEM_TYPES.VOCAB);
-
-        if (error || !favorites?.length) return [];
-
-        const videoIds = [...new Set(favorites.map(f => f.video_id).filter(Boolean))];
-        if (videoIds.length === 0) return [];
-
-        const { data: videos } = await supabase
-            .from('videos')
-            .select('id, title, episode, vocab')
-            .in('id', videoIds);
-
-        const result = [];
-        for (const fav of favorites) {
-            const video = videos?.find(v => v.id === fav.video_id);
-            if (!video?.vocab) continue;
-            const vocabItem = video.vocab.find(v => v.id === fav.item_id);
-            if (vocabItem) {
-                result.push({
-                    vocabId: fav.item_id,
-                    videoId: fav.video_id,
-                    word: vocabItem.word,
-                    phonetic: vocabItem.ipa_us || vocabItem.phonetic,
-                    meaning: vocabItem.meaning,
-                    episode: video.episode,
-                    title: video.title
-                });
-            }
-        }
-        return result;
-    } catch (error) {
-        console.error('Error loading favorite vocab:', error);
-        return [];
-    }
-}
-
-// Legacy wrapper for backward compatibility
-export async function toggleFavoriteVideoId(user, videoId, isFavorite) {
-    return toggleFavoriteItem(user, ITEM_TYPES.VIDEO, videoId, isFavorite);
-}
+// ============================================
+// 兼容层：与原有代码保持一致的 favoritesService 对象
+// ============================================
 
 export const favoritesService = {
-    // Video favorites
-    loadFavoriteVideoIds,
-    toggleFavoriteVideo,
-    toggleFavoriteVideoId,
-    // Sentence favorites
-    loadFavoriteSentenceIds,
-    loadFavoriteSentenceItems,
-    toggleFavoriteSentence,
-    // Vocab favorites
-    loadFavoriteVocabIds,
-    loadFavoriteVocabItems,
-    toggleFavoriteVocab,
-    // Generic methods
-    loadFavoriteItems,
-    toggleFavoriteItem
+    /**
+     * 获取用户收藏的视频 ID 列表
+     * @param {Object} user - 用户对象
+     * @returns {Promise<Array<number>>}
+     */
+    loadFavoriteVideoIds: async (user) => {
+        if (!user) return [];
+
+        try {
+            const allFavorites = await getUserFavorites(user.id);
+            // 过滤出 item_type 为 'video' 的收藏
+            const videoFavorites = allFavorites.filter(f => f.item_type === 'video');
+            return videoFavorites.map(f => f.video_id);
+        } catch (error) {
+            console.error('加载收藏视频ID失败:', error);
+            return [];
+        }
+    },
+
+    /**
+     * 获取用户在某个视频中收藏的句子 ID 列表
+     * @param {Object} user - 用户对象
+     * @param {number} videoId - 视频ID
+     * @returns {Promise<Array<number>>}
+     */
+    loadFavoriteSentenceIds: async (user, videoId) => {
+        if (!user) return [];
+
+        try {
+            const allFavorites = await getUserFavorites(user.id);
+            // 过滤出该视频中 item_type 为 'sentence' 的收藏
+            const sentenceFavorites = allFavorites.filter(
+                f => f.item_type === 'sentence' && f.video_id === videoId
+            );
+            return sentenceFavorites.map(f => f.item_id);
+        } catch (error) {
+            console.error('加载收藏句子ID失败:', error);
+            return [];
+        }
+    },
+
+    /**
+     * 获取用户在某个视频中收藏的词汇 ID 列表
+     * @param {Object} user - 用户对象
+     * @param {number} videoId - 视频ID
+     * @returns {Promise<Array<number>>}
+     */
+    loadFavoriteVocabIds: async (user, videoId) => {
+        if (!user) return [];
+
+        try {
+            const allFavorites = await getUserFavorites(user.id);
+            // 过滤出该视频中 item_type 为 'vocab' 的收藏
+            const vocabFavorites = allFavorites.filter(
+                f => f.item_type === 'vocab' && f.video_id === videoId
+            );
+            return vocabFavorites.map(f => f.item_id);
+        } catch (error) {
+            console.error('加载收藏词汇ID失败:', error);
+            return [];
+        }
+    },
+
+    /**
+     * 切换视频收藏状态
+     * @param {Object} user - 用户对象
+     * @param {number} videoId - 视频ID
+     * @param {boolean} shouldBeFavorite - 目标状态
+     * @returns {Promise<boolean>}
+     */
+    toggleFavoriteVideoId: async (user, videoId, shouldBeFavorite) => {
+        if (!user) return false;
+
+        try {
+            if (shouldBeFavorite) {
+                const result = await addFavorite(user.id, videoId, 'video', videoId);
+                return !!result;
+            } else {
+                // 需要先找到该收藏的 ID
+                const allFavorites = await getUserFavorites(user.id);
+                const favorite = allFavorites.find(
+                    f => f.item_type === 'video' && f.video_id === videoId
+                );
+                if (favorite) {
+                    return await deleteFavorite(favorite.id);
+                }
+                return true; // 已经不存在
+            }
+        } catch (error) {
+            console.error('切换视频收藏状态失败:', error);
+            return false;
+        }
+    },
+
+    /**
+     * 切换句子收藏状态
+     * @param {Object} user - 用户对象
+     * @param {number} sentenceId - 句子ID
+     * @param {boolean} shouldBeFavorite - 目标状态
+     * @param {number} videoId - 视频ID
+     * @returns {Promise<boolean>}
+     */
+    toggleFavoriteSentence: async (user, sentenceId, shouldBeFavorite, videoId) => {
+        if (!user) return false;
+
+        try {
+            if (shouldBeFavorite) {
+                const result = await addFavorite(user.id, videoId, 'sentence', sentenceId);
+                return !!result;
+            } else {
+                // 需要先找到该收藏的 ID
+                const allFavorites = await getUserFavorites(user.id);
+                const favorite = allFavorites.find(
+                    f => f.item_type === 'sentence' && f.item_id === sentenceId && f.video_id === videoId
+                );
+                if (favorite) {
+                    return await deleteFavorite(favorite.id);
+                }
+                return true; // 已经不存在
+            }
+        } catch (error) {
+            console.error('切换句子收藏状态失败:', error);
+            return false;
+        }
+    },
+
+    /**
+     * 切换词汇收藏状态
+     * @param {Object} user - 用户对象
+     * @param {number} vocabId - 词汇ID
+     * @param {boolean} shouldBeFavorite - 目标状态
+     * @param {number} videoId - 视频ID
+     * @returns {Promise<boolean>}
+     */
+    toggleFavoriteVocab: async (user, vocabId, shouldBeFavorite, videoId) => {
+        if (!user) return false;
+
+        try {
+            if (shouldBeFavorite) {
+                const result = await addFavorite(user.id, videoId, 'vocab', vocabId);
+                return !!result;
+            } else {
+                // 需要先找到该收藏的 ID
+                const allFavorites = await getUserFavorites(user.id);
+                const favorite = allFavorites.find(
+                    f => f.item_type === 'vocab' && f.item_id === vocabId && f.video_id === videoId
+                );
+                if (favorite) {
+                    return await deleteFavorite(favorite.id);
+                }
+                return true; // 已经不存在
+            }
+        } catch (error) {
+            console.error('切换词汇收藏状态失败:', error);
+            return false;
+        }
+    },
+
+    /**
+     * 加载用户收藏的所有句子（带详细信息）
+     * @param {Object} user - 用户对象
+     * @returns {Promise<Array>}
+     */
+    loadFavoriteSentenceItems: async (user) => {
+        if (!user) return [];
+
+        try {
+            const allFavorites = await getUserFavorites(user.id);
+            // 过滤出 item_type 为 'sentence' 的收藏
+            const sentenceFavorites = allFavorites.filter(f => f.item_type === 'sentence');
+
+            // 返回带有详细信息的句子列表
+            // 假设 API 返回的数据已经包含了句子的详细信息
+            return sentenceFavorites.map(f => ({
+                id: f.id,
+                sentenceId: f.item_id,
+                videoId: f.video_id,
+                en: f.sentence_en || f.en || '',
+                cn: f.sentence_cn || f.cn || '',
+                episode: f.episode || 0,
+                title: f.video_title || f.title || '',
+                ...f.sentence_data, // 如果有额外的句子数据
+            }));
+        } catch (error) {
+            console.error('加载收藏句子详情失败:', error);
+            return [];
+        }
+    },
+
+    /**
+     * 加载用户收藏的所有词汇（带详细信息）
+     * @param {Object} user - 用户对象
+     * @returns {Promise<Array>}
+     */
+    loadFavoriteVocabItems: async (user) => {
+        if (!user) return [];
+
+        try {
+            const allFavorites = await getUserFavorites(user.id);
+            // 过滤出 item_type 为 'vocab' 的收藏
+            const vocabFavorites = allFavorites.filter(f => f.item_type === 'vocab');
+
+            // 返回带有详细信息的词汇列表
+            // 假设 API 返回的数据已经包含了词汇的详细信息
+            return vocabFavorites.map(f => ({
+                id: f.id,
+                vocabId: f.item_id,
+                videoId: f.video_id,
+                word: f.word || '',
+                meaning: f.meaning || '',
+                phonetic: f.phonetic || '',
+                episode: f.episode || 0,
+                title: f.video_title || f.title || '',
+                ...f.vocab_data, // 如果有额外的词汇数据
+            }));
+        } catch (error) {
+            console.error('加载收藏词汇详情失败:', error);
+            return [];
+        }
+    },
 };

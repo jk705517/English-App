@@ -1,174 +1,137 @@
-import { supabase } from './supabaseClient';
-import { ITEM_TYPES } from '../utils/constants';
+import { progressAPI } from './api';
 
-const STORAGE_KEY_V1 = 'learnedVideoIds';
-const STORAGE_KEY_V2 = 'biubiu_progress_v2';
+// ============================================
+// 基础 API 封装函数
+// ============================================
 
-/**
- * Helper: Migrate v1 localStorage to v2 if needed
- */
-function getLocalProgressV2() {
+// 获取用户所有学习进度
+export const getUserProgress = async (userId) => {
     try {
-        const v2Data = localStorage.getItem(STORAGE_KEY_V2);
-        if (v2Data) {
-            return JSON.parse(v2Data);
-        }
-
-        const v1Data = localStorage.getItem(STORAGE_KEY_V1);
-        if (v1Data) {
-            const v1Ids = JSON.parse(v1Data);
-            if (Array.isArray(v1Ids)) {
-                const v2List = v1Ids.map(id => ({
-                    itemType: ITEM_TYPES.VIDEO,
-                    itemId: Number(id)
-                }));
-                localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(v2List));
-                return v2List;
-            }
-        }
-        return [];
+        const response = await progressAPI.getAll();
+        return response.success ? response.data : [];
     } catch (error) {
-        console.error('Error parsing progress from localStorage:', error);
+        console.error('获取学习进度失败:', error);
         return [];
     }
-}
+};
 
-/**
- * Generic: Load learned items by type
- */
-async function loadLearnedItems(user, itemType) {
-    let localItems = getLocalProgressV2();
-    const localIds = localItems
-        .filter(item => item.itemType === itemType)
-        .map(item => item.itemId);
-
-    if (!user) return localIds;
-
+// 添加学习进度
+export const addProgress = async (userId, videoId, itemType, itemId) => {
     try {
-        const { data, error } = await supabase
-            .from('user_progress')
-            .select('item_id')
-            .eq('user_id', user.id)
-            .eq('item_type', itemType);
-
-        if (error) {
-            console.error(`Error fetching user progress for ${itemType}:`, error);
-            return localIds;
-        }
-
-        const remoteIds = data.map(item => item.item_id);
-
-        // Sync to local v2
-        const otherItems = localItems.filter(item => item.itemType !== itemType);
-        const newItems = remoteIds.map(id => ({
-            itemType: itemType,
-            itemId: id
-        }));
-        localStorage.setItem(STORAGE_KEY_V2, JSON.stringify([...otherItems, ...newItems]));
-
-        return remoteIds;
-    } catch (err) {
-        console.error('Unexpected error loading progress:', err);
-        return localIds;
+        const response = await progressAPI.add(videoId, itemType, itemId);
+        return response.success ? response.data : null;
+    } catch (error) {
+        console.error('添加学习进度失败:', error);
+        return null;
     }
-}
+};
 
-/**
- * Generic: Set learned status for an item
- * @param {object|null} user 
- * @param {string} itemType 
- * @param {number|string} itemId 
- * @param {boolean} shouldBeLearned - The TARGET state: true = mark as learned, false = mark as not learned
- */
-async function toggleLearnedItem(user, itemType, itemId, shouldBeLearned) {
-    let localItems = getLocalProgressV2();
+// 删除学习进度
+export const deleteProgress = async (progressId) => {
+    try {
+        const response = await progressAPI.delete(progressId);
+        return response.success;
+    } catch (error) {
+        console.error('删除学习进度失败:', error);
+        return false;
+    }
+};
 
-    if (shouldBeLearned) {
-        // Target: ADD to learned
-        const exists = localItems.some(item =>
-            item.itemType === itemType && item.itemId === itemId
+// 检查某个内容是否已学习
+export const checkIfLearned = async (userId, videoId, itemType, itemId) => {
+    try {
+        const allProgress = await getUserProgress(userId);
+        return allProgress.some(
+            p => p.video_id === videoId && p.item_type === itemType && p.item_id === itemId
         );
-        if (!exists) {
-            localItems.push({ itemType, itemId });
-        }
-    } else {
-        // Target: REMOVE from learned
-        localItems = localItems.filter(item =>
-            !(item.itemType === itemType && item.itemId === itemId)
-        );
+    } catch (error) {
+        console.error('检查学习状态失败:', error);
+        return false;
     }
+};
 
-    localStorage.setItem(STORAGE_KEY_V2, JSON.stringify(localItems));
-
-    if (user) {
-        try {
-            if (shouldBeLearned) {
-                // Add to Supabase
-                const payload = {
-                    user_id: user.id,
-                    item_type: itemType,
-                    item_id: itemId,
-                    learned_at: new Date().toISOString()
-                };
-
-                // Legacy compatibility: if it's a video, we MUST provide video_id
-                if (itemType === ITEM_TYPES.VIDEO) {
-                    payload.video_id = itemId;
-                }
-
-                const { error } = await supabase
-                    .from('user_progress')
-                    .insert(payload);
-
-                if (error) {
-                    console.error('Error inserting progress:', error);
-                    console.error('Payload was:', payload);
-                }
-            } else {
-                // Remove from Supabase
-                const { error } = await supabase
-                    .from('user_progress')
-                    .delete()
-                    .eq('user_id', user.id)
-                    .eq('item_type', itemType)
-                    .eq('item_id', itemId);
-
-                if (error) console.error('Error deleting progress:', error);
-            }
-        } catch (err) {
-            console.error('Unexpected error syncing progress:', err);
-        }
+// 获取用户已学习的视频ID列表（直接导出函数）
+export const loadLearnedVideoIds = async (user) => {
+    if (!user) return [];
+    try {
+        const allProgress = await getUserProgress(user.id);
+        // 过滤出 item_type 为 'video' 的进度
+        const videoProgress = allProgress.filter(p => p.item_type === 'video');
+        // 提取所有唯一的 video_id
+        const videoIds = [...new Set(videoProgress.map(p => p.video_id))];
+        return videoIds;
+    } catch (error) {
+        console.error('获取已学习视频ID失败:', error);
+        return [];
     }
-}
+};
+
+// ============================================
+// 兼容层：与原有代码保持一致的 progressService 对象
+// ============================================
 
 export const progressService = {
     /**
-     * Load learned video IDs (Legacy Wrapper)
+     * 获取用户已学习的视频 ID 列表
+     * @param {Object} user - 用户对象
+     * @returns {Promise<Array<number>>}
      */
-    async loadLearnedVideoIds(user) {
-        return loadLearnedItems(user, ITEM_TYPES.VIDEO);
+    loadLearnedVideoIds: async (user) => {
+        return loadLearnedVideoIds(user);
     },
 
     /**
-     * Toggle learned status for a video (Legacy Wrapper)
+     * 切换视频学习状态
+     * @param {Object} user - 用户对象
+     * @param {number} videoId - 视频ID
+     * @param {boolean} shouldBeLearned - 目标状态
+     * @returns {Promise<boolean>}
      */
-    async toggleLearnedVideo(user, videoId, isCurrentlyLearned) {
-        // Note: The original function returned the updated list of IDs. 
-        // We should maintain that behavior if possible, or at least return the new list.
-        // The original implementation returned `learnedIds`.
+    toggleLearnedVideoId: async (user, videoId, shouldBeLearned) => {
+        if (!user) return false;
 
-        await toggleLearnedItem(user, ITEM_TYPES.VIDEO, videoId, isCurrentlyLearned);
-
-        // Return the updated list to match original signature's return value behavior
-        return loadLearnedItems(null, ITEM_TYPES.VIDEO); // Read from local cache
+        try {
+            if (shouldBeLearned) {
+                const result = await addProgress(user.id, videoId, 'video', videoId);
+                return !!result;
+            } else {
+                // 需要先找到该进度的 ID
+                const allProgress = await getUserProgress(user.id);
+                const progress = allProgress.find(
+                    p => p.item_type === 'video' && p.video_id === videoId
+                );
+                if (progress) {
+                    return await deleteProgress(progress.id);
+                }
+                return true; // 已经不存在
+            }
+        } catch (error) {
+            console.error('切换视频学习状态失败:', error);
+            return false;
+        }
     },
 
-    // Legacy wrapper for backward compatibility
-    async toggleLearnedVideoId(user, videoId, isLearned) {
-        return toggleLearnedItem(user, ITEM_TYPES.VIDEO, videoId, isLearned);
+    /**
+     * 添加学习进度
+     * @param {Object} user - 用户对象
+     * @param {number} videoId - 视频ID
+     * @param {string} itemType - 类型
+     * @param {number} itemId - 条目ID
+     * @returns {Promise<Object>}
+     */
+    addProgress: async (user, videoId, itemType, itemId) => {
+        if (!user) return null;
+        return addProgress(user.id, videoId, itemType, itemId);
     },
 
-    // Expose generic methods
-    loadLearnedItems,
-    toggleLearnedItem
+    /**
+     * 删除学习进度
+     * @param {Object} user - 用户对象
+     * @param {number} progressId - 进度ID
+     * @returns {Promise<boolean>}
+     */
+    deleteProgress: async (user, progressId) => {
+        if (!user) return false;
+        return deleteProgress(progressId);
+    },
 };

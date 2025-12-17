@@ -1,85 +1,80 @@
-import { useState, useEffect } from 'react';
-import { supabase } from '../services/supabaseClient';
+import { useState } from 'react';
+import { useAuth } from '../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function Auth() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const [user, setUser] = useState(null);
+    const [nickname, setNickname] = useState('');
+    const [isRegister, setIsRegister] = useState(false);
     const [message, setMessage] = useState('');
     const [loading, setLoading] = useState(false);
 
-    useEffect(() => {
-        // Check active session
-        supabase.auth.getSession().then(({ data: { session } }) => {
-            setUser(session?.user ?? null);
-        });
+    const { user, login, register, logout } = useAuth();
+    const navigate = useNavigate();
 
-        // Listen for auth changes
-        const {
-            data: { subscription },
-        } = supabase.auth.onAuthStateChange((_event, session) => {
-            setUser(session?.user ?? null);
-        });
-
-        return () => subscription.unsubscribe();
-    }, []);
-
-    const handleLogin = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setMessage('');
 
-        const { data, error } = await supabase.auth.signInWithPassword({
-            email,
-            password,
-        });
+        try {
+            let response;
+            if (isRegister) {
+                response = await register(email, password, nickname);
+            } else {
+                response = await login(email, password);
+            }
 
-        if (error) {
-            setMessage(`Error: ${error.message}`);
-            console.error('Login error:', error);
-        } else {
-            setMessage('登录成功');
-            console.log('User logged in:', data.user);
+            if (response.success) {
+                setMessage(isRegister ? '注册成功' : '登录成功');
+                setTimeout(() => navigate('/'), 1000);
+            } else {
+                setMessage(`错误: ${response.error}`);
+            }
+        } catch (error) {
+            setMessage(`错误: ${error.message}`);
         }
         setLoading(false);
     };
 
-    const handleLogout = async () => {
-        setLoading(true);
-        const { error } = await supabase.auth.signOut();
-        if (error) {
-            setMessage(`Logout Error: ${error.message}`);
-        } else {
-            setMessage('已退出登录');
-            setEmail('');
-            setPassword('');
-        }
-        setLoading(false);
+    const handleLogout = () => {
+        logout();
+        setMessage('已退出登录');
+        setEmail('');
+        setPassword('');
+        setNickname('');
     };
 
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-gray-100 p-4">
             <div className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-                <h1 className="text-2xl font-bold mb-6 text-center">Supabase Auth</h1>
+                <h1 className="text-2xl font-bold mb-6 text-center">
+                    {user ? '用户中心' : (isRegister ? '注册' : '登录')}
+                </h1>
 
                 {user ? (
                     <div className="text-center">
-                        <p className="mb-4 text-green-600 font-medium">
+                        <p className="mb-2 text-green-600 font-medium">
                             当前用户: {user.email}
                         </p>
+                        {user.nickname && (
+                            <p className="mb-4 text-gray-600">
+                                昵称: {user.nickname}
+                            </p>
+                        )}
                         <button
                             onClick={handleLogout}
-                            disabled={loading}
-                            className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 disabled:opacity-50 transition-colors"
+                            className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors"
                         >
-                            {loading ? 'Processing...' : '退出登录'}
+                            退出登录
                         </button>
                     </div>
                 ) : (
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form onSubmit={handleSubmit} className="space-y-4">
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Email
+                                邮箱
                             </label>
                             <input
                                 type="email"
@@ -91,7 +86,7 @@ export default function Auth() {
                         </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-1">
-                                Password
+                                密码
                             </label>
                             <input
                                 type="password"
@@ -101,18 +96,44 @@ export default function Auth() {
                                 required
                             />
                         </div>
+                        {isRegister && (
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-1">
+                                    昵称（可选）
+                                </label>
+                                <input
+                                    type="text"
+                                    value={nickname}
+                                    onChange={(e) => setNickname(e.target.value)}
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                />
+                            </div>
+                        )}
                         <button
                             type="submit"
                             disabled={loading}
                             className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
                         >
-                            {loading ? 'Logging in...' : '登录'}
+                            {loading ? '处理中...' : (isRegister ? '注册' : '登录')}
                         </button>
+                        <p className="text-center text-sm text-gray-600">
+                            {isRegister ? '已有账号？' : '没有账号？'}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setIsRegister(!isRegister);
+                                    setMessage('');
+                                }}
+                                className="text-indigo-600 hover:underline ml-1"
+                            >
+                                {isRegister ? '去登录' : '去注册'}
+                            </button>
+                        </p>
                     </form>
                 )}
 
                 {message && (
-                    <div className={`mt-4 p-3 rounded text-center ${message.includes('Error') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
+                    <div className={`mt-4 p-3 rounded text-center ${message.includes('错误') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
                         {message}
                     </div>
                 )}
