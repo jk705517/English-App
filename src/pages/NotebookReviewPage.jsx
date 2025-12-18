@@ -272,12 +272,14 @@ function NotebookReviewPage() {
         setCanReveal(false);
     };
 
-    // 返回本子详情页 - 清理存储
+    // 返回本子详情页 - 清理存储并携带本子 ID
     const handleBack = () => {
         if (storageKey) {
             sessionStorage.removeItem(storageKey);
         }
-        navigate('/notebooks');
+        // 携带 notebookId、tab 和 refresh 参数，使 Notebooks 页面能恢复选中状态并刷新数据
+        // refresh 参数是时间戳，用于触发强制刷新
+        navigate(`/notebooks?notebookId=${notebookId}&tab=${type}&refresh=${Date.now()}`);
     };
 
     // 去原视频

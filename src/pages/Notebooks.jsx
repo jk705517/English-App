@@ -181,20 +181,34 @@ function Notebooks() {
         }
     }, []);
 
-    // 监听 URL 参数变化（处理浏览器后退）
+    // 监听 URL 参数变化（处理浏览器后退和从复习页返回）
     useEffect(() => {
         // 只在本子列表已加载完成后处理
         if (loading || notebooks.length === 0) return;
 
         const currentUrlNotebookId = searchParams.get('notebookId');
         const currentUrlTab = searchParams.get('tab');
+        const refreshParam = searchParams.get('refresh');
 
         // 如果 URL 中有 notebookId，检查是否需要恢复选中状态
         if (currentUrlNotebookId) {
             // 使用 String() 统一类型进行比较（URL 参数是字符串，ID 可能是数字）
-            const needsRestore = !selectedNotebook || String(selectedNotebook.id) !== String(currentUrlNotebookId);
+            const isSameNotebook = selectedNotebook && String(selectedNotebook.id) === String(currentUrlNotebookId);
 
-            if (needsRestore) {
+            // 如果有 refresh 参数，强制刷新数据（从复习页返回时）
+            if (refreshParam && isSameNotebook) {
+                console.log('[Notebooks] Refresh triggered from review page, reloading stats for notebook:', currentUrlNotebookId);
+                // 重新加载统计数据
+                loadVocabStats(currentUrlNotebookId);
+                loadSentenceStats(currentUrlNotebookId);
+                // 清除 refresh 参数，避免重复刷新
+                const newParams = new URLSearchParams(searchParams);
+                newParams.delete('refresh');
+                setSearchParams(newParams, { replace: true });
+                return;
+            }
+
+            if (!isSameNotebook) {
                 const targetNotebook = notebooks.find(nb => String(nb.id) === String(currentUrlNotebookId));
                 if (targetNotebook) {
                     console.log('[Notebooks] Restoring notebook from URL:', currentUrlNotebookId, 'found:', targetNotebook.name);
