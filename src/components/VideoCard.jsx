@@ -1,6 +1,15 @@
 import { Clock, User, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
+// 把数字转换成星星
+const renderLevel = (level) => {
+    const num = parseInt(level);
+    if (!isNaN(num) && num >= 1 && num <= 5) {
+        return '★'.repeat(num);
+    }
+    return level || '';
+};
+
 function VideoCard({ video }) {
     return (
         <Link
@@ -49,7 +58,7 @@ function VideoCard({ video }) {
                         <span>{video.author}</span>
                     </div>
                     <div className="text-yellow-500 tracking-widest text-xs">
-                        {video.level}
+                        {renderLevel(video.level)}
                     </div>
                 </div>
 
