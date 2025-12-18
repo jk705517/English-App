@@ -88,6 +88,11 @@ export const notebooksAPI = {
             method: 'POST',
             body: JSON.stringify({ name, color }),
         }),
+    update: (id, name) =>
+        request(`/api/user/notebooks/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify({ name }),
+        }),
     delete: (id) => request(`/api/user/notebooks/${id}`, { method: 'DELETE' }),
     getItems: (id) => request(`/api/user/notebooks/${id}/items`),
     addItem: (notebookId, item_type, item_id, video_id) =>

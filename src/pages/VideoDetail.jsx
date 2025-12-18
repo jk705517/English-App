@@ -53,6 +53,9 @@ const VideoDetail = () => {
     const sentenceIdFromQuery = searchParams.get('sentenceId');
     const vocabIdFromQuery = searchParams.get('vocabId');
     const modeFromQuery = searchParams.get('mode');
+    // New params for notebook navigation (index-based)
+    const typeFromQuery = searchParams.get('type'); // 'sentence' | 'vocab'
+    const indexFromQuery = searchParams.get('index');
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
     const transcriptRefs = useRef([]);
@@ -232,7 +235,49 @@ const VideoDetail = () => {
     useEffect(() => {
         if (!videoData) return;
 
-        // Handle sentence navigation
+        // New: Handle index-based navigation from Notebooks page
+        if (typeFromQuery && indexFromQuery !== null) {
+            const idx = parseInt(indexFromQuery, 10);
+            if (!isNaN(idx)) {
+                if (typeFromQuery === 'sentence' && videoData.transcript?.[idx]) {
+                    // Navigate to sentence by index
+                    setActiveIndex(idx);
+                    setTimeout(() => {
+                        if (transcriptRefs.current[idx]) {
+                            transcriptRefs.current[idx].scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                        }
+                        // Seek video to sentence start time
+                        const sentence = videoData.transcript[idx];
+                        if (sentence && playerRef.current) {
+                            playerRef.current.currentTime = sentence.start;
+                        }
+                    }, 300);
+                    return; // Don't process other params
+                } else if (typeFromQuery === 'vocab' && videoData.vocab?.[idx]) {
+                    // Navigate to vocab by index
+                    setTimeout(() => {
+                        const vocabElement = document.querySelector(`[data-vocab-index="${idx}"]`);
+                        if (vocabElement) {
+                            vocabElement.scrollIntoView({
+                                behavior: 'smooth',
+                                block: 'center'
+                            });
+                            // Add highlight effect
+                            vocabElement.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                            setTimeout(() => {
+                                vocabElement.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                            }, 3000);
+                        }
+                    }, 500);
+                    return; // Don't process other params
+                }
+            }
+        }
+
+        // Handle sentence navigation (legacy - ID-based from Favorites)
         if (sentenceIdFromQuery) {
             const sentenceId = Number(sentenceIdFromQuery);
             const idx = videoData.transcript?.findIndex(s => s.id === sentenceId);
@@ -256,7 +301,7 @@ const VideoDetail = () => {
             }
         }
 
-        // Handle vocab navigation
+        // Handle vocab navigation (legacy - ID-based from Favorites)
         if (vocabIdFromQuery) {
             const vocabId = Number(vocabIdFromQuery);
             // Scroll to vocab card after a short delay
@@ -275,7 +320,7 @@ const VideoDetail = () => {
                 }
             }, 500);
         }
-    }, [videoData, sentenceIdFromQuery, vocabIdFromQuery]);
+    }, [videoData, sentenceIdFromQuery, vocabIdFromQuery, typeFromQuery, indexFromQuery]);
 
     // Fetch all videos for navigation
     useEffect(() => {
@@ -1442,7 +1487,7 @@ const VideoDetail = () => {
                                     ? item.id
                                     : `${id}-vocab-${index}`;
                                 return (
-                                    <div key={vocabId} data-vocab-id={vocabId} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                    <div key={vocabId} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
                                         {/* 收藏按钮（右上角）*/}
                                         <button
                                             onClick={() => handleToggleVocabFavorite(vocabId)}
@@ -1685,7 +1730,7 @@ const VideoDetail = () => {
                                         ? item.id
                                         : `${id}-vocab-${index}`;
                                     return (
-                                        <div key={vocabId} data-vocab-id={vocabId} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                        <div key={vocabId} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
                                             {/* 收藏按钮（右上角）*/}
                                             <button
                                                 onClick={() => handleToggleVocabFavorite(vocabId)}

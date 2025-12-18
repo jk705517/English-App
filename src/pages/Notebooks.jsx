@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Plus, MessageSquare, ChevronRight, Edit2, X, Play, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { notebookService } from '../services/notebookService';
+import { notebooksAPI } from '../services/api';
 import Modal from '../components/Modal';
 import DropdownMenu from '../components/DropdownMenu';
 import BottomSheet from '../components/BottomSheet';
@@ -63,6 +64,14 @@ function Notebooks() {
         type: null, // 'notebook' | 'sentence' | 'vocab'
         data: null
     });
+
+    // 重命名本子 Modal
+    const [renameModal, setRenameModal] = useState({
+        isOpen: false,
+        notebook: null,
+        newName: ''
+    });
+    const [renaming, setRenaming] = useState(false);
 
     // 移动端检测
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
@@ -436,6 +445,32 @@ function Notebooks() {
         }
     };
 
+    // 重命名本子
+    const handleRenameNotebook = async () => {
+        if (!renameModal.notebook || !renameModal.newName.trim()) return;
+
+        setRenaming(true);
+        try {
+            const response = await notebooksAPI.update(renameModal.notebook.id, renameModal.newName.trim());
+            if (response.success) {
+                // 更新本地状态
+                setNotebooks(notebooks.map(nb =>
+                    nb.id === renameModal.notebook.id
+                        ? { ...nb, name: renameModal.newName.trim() }
+                        : nb
+                ));
+                // 如果是当前选中的本子，也更新 selectedNotebook
+                if (selectedNotebook?.id === renameModal.notebook.id) {
+                    setSelectedNotebook({ ...selectedNotebook, name: renameModal.newName.trim() });
+                }
+                setRenameModal({ isOpen: false, notebook: null, newName: '' });
+            }
+        } catch (err) {
+            console.error('重命名本子失败:', err);
+        }
+        setRenaming(false);
+    };
+
     // 移除单条句子
     const handleRemoveSentence = async (sentenceId) => {
 
@@ -611,7 +646,7 @@ function Notebooks() {
                                             }
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-1 shrink-0 ml-2">
+                                    <div className="flex items-center shrink-0 ml-2">
                                         {!isMobile && (
                                             <DropdownMenu
                                                 trigger={
@@ -624,6 +659,16 @@ function Notebooks() {
                                                 }
                                                 items={[
                                                     {
+                                                        icon: Edit2,
+                                                        label: '重命名',
+                                                        onClick: () => setRenameModal({
+                                                            isOpen: true,
+                                                            notebook: notebook,
+                                                            newName: notebook.name
+                                                        })
+                                                    },
+                                                    {
+                                                        icon: Trash2,
                                                         label: '删除本子',
                                                         danger: true,
                                                         onClick: () => setDeleteConfirm({ isOpen: true, type: 'notebook', data: notebook })
@@ -631,8 +676,6 @@ function Notebooks() {
                                                 ]}
                                             />
                                         )}
-                                        <ChevronRight className={`w-5 h-5 ${selectedNotebook?.id === notebook.id ? 'text-white' : 'text-gray-400'
-                                            }`} />
                                     </div>
                                 </LongPressWrapper>
                             ))}
@@ -762,7 +805,14 @@ function Notebooks() {
                                                                 />
                                                             )}
                                                             <button
-                                                                onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                                onClick={() => {
+                                                                    // 从 sentenceId 解析 index（格式可能是 "13-4" 或纯数字）
+                                                                    const sid = sentence.sentenceId;
+                                                                    let index = typeof sid === 'string' && sid.includes('-')
+                                                                        ? parseInt(sid.split('-').pop(), 10)
+                                                                        : parseInt(sid, 10);
+                                                                    navigate(`/video/${sentence.videoId}?mode=intensive&type=sentence&index=${index}`);
+                                                                }}
                                                                 className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
                                                             >
                                                                 去学习
@@ -854,7 +904,19 @@ function Notebooks() {
                                                                 />
                                                             )}
                                                             <button
-                                                                onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                                onClick={() => {
+                                                                    // 从 vocabId 解析 index（格式可能是 "13-vocab-8" 或 "13-8" 或纯数字）
+                                                                    const vid = vocab.vocabId;
+                                                                    let index;
+                                                                    if (typeof vid === 'string' && vid.includes('-vocab-')) {
+                                                                        index = parseInt(vid.split('-vocab-').pop(), 10);
+                                                                    } else if (typeof vid === 'string' && vid.includes('-')) {
+                                                                        index = parseInt(vid.split('-').pop(), 10);
+                                                                    } else {
+                                                                        index = parseInt(vid, 10);
+                                                                    }
+                                                                    navigate(`/video/${vocab.videoId}?mode=intensive&type=vocab&index=${index}`);
+                                                                }}
                                                                 className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
                                                             >
                                                                 去学习
@@ -929,6 +991,44 @@ function Notebooks() {
                     </div>
                 </div>
             )}
+
+            {/* 重命名本子 Modal */}
+            <Modal
+                isOpen={renameModal.isOpen}
+                onClose={() => setRenameModal({ isOpen: false, notebook: null, newName: '' })}
+                title="重命名本子"
+                footer={
+                    <>
+                        <button
+                            onClick={() => setRenameModal({ isOpen: false, notebook: null, newName: '' })}
+                            className="px-4 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 font-medium transition-colors"
+                        >
+                            取消
+                        </button>
+                        <button
+                            onClick={handleRenameNotebook}
+                            disabled={renaming || !renameModal.newName.trim()}
+                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50"
+                        >
+                            {renaming ? '保存中...' : '确定'}
+                        </button>
+                    </>
+                }
+            >
+                <input
+                    type="text"
+                    value={renameModal.newName}
+                    onChange={e => setRenameModal(prev => ({ ...prev, newName: e.target.value }))}
+                    placeholder="请输入新名称"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    autoFocus
+                    onKeyDown={e => {
+                        if (e.key === 'Enter' && renameModal.newName.trim()) {
+                            handleRenameNotebook();
+                        }
+                    }}
+                />
+            </Modal>
 
             {/* 删除确认 Modal */}
             <Modal

@@ -435,6 +435,39 @@ app.post('/api/user/notebooks', authMiddleware, async (req, res) => {
   }
 });
 
+// 更新笔记本（重命名）
+app.put('/api/user/notebooks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const notebookId = req.params.id;
+    const { name } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, error: '笔记本名称不能为空' });
+    }
+
+    // 检查笔记本是否属于该用户
+    const existing = await pool.query(
+      'SELECT id FROM user_notebooks WHERE id = $1 AND user_id = $2',
+      [notebookId, userId]
+    );
+
+    if (existing.rows.length === 0) {
+      return res.status(404).json({ success: false, error: '笔记本不存在' });
+    }
+
+    const result = await pool.query(
+      'UPDATE user_notebooks SET name = $1 WHERE id = $2 AND user_id = $3 RETURNING *',
+      [name, notebookId, userId]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('更新笔记本失败:', error);
+    res.status(500).json({ success: false, error: '更新笔记本失败' });
+  }
+});
+
 // 删除笔记本
 app.delete('/api/user/notebooks/:id', authMiddleware, async (req, res) => {
   try {
