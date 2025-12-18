@@ -62,11 +62,16 @@ function VideoCard({ video }) {
                     </div>
                 </div>
 
-                {/* 分类标签 */}
-                <div className="mt-3">
+                {/* 分类标签和口音标签 */}
+                <div className="mt-3 flex flex-wrap gap-2">
                     <span className="inline-block bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-medium">
                         {video.category}
                     </span>
+                    {video.accent && (
+                        <span className="inline-block bg-purple-100 text-purple-700 text-xs px-3 py-1 rounded-full font-medium">
+                            {video.accent}
+                        </span>
+                    )}
                 </div>
             </div>
         </Link>
