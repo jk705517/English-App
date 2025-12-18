@@ -67,7 +67,7 @@ export const favoritesService = {
             const allFavorites = await getUserFavorites(user.id);
             // 过滤出 item_type 为 'video' 的收藏
             const videoFavorites = allFavorites.filter(f => f.item_type === 'video');
-            return videoFavorites.map(f => f.video_id);
+            return videoFavorites.map(f => Number(f.video_id));
         } catch (error) {
             console.error('加载收藏视频ID失败:', error);
             return [];
@@ -152,7 +152,7 @@ export const favoritesService = {
                 // 需要先找到该收藏的 ID
                 const allFavorites = await getUserFavorites(user.id);
                 const favorite = allFavorites.find(
-                    f => f.item_type === 'video' && f.video_id === videoId
+                    f => f.item_type === 'video' && Number(f.video_id) === Number(videoId)
                 );
                 if (favorite) {
                     return await deleteFavorite(favorite.id);

@@ -57,8 +57,8 @@ export const loadLearnedVideoIds = async (user) => {
         const allProgress = await getUserProgress(user.id);
         // 过滤出 item_type 为 'video' 的进度
         const videoProgress = allProgress.filter(p => p.item_type === 'video');
-        // 提取所有唯一的 video_id
-        const videoIds = [...new Set(videoProgress.map(p => p.video_id))];
+        // 提取所有唯一的 video_id，并确保转为数字
+        const videoIds = [...new Set(videoProgress.map(p => Number(p.video_id)))];
         return videoIds;
     } catch (error) {
         console.error('获取已学习视频ID失败:', error);
@@ -98,7 +98,7 @@ export const progressService = {
                 // 需要先找到该进度的 ID
                 const allProgress = await getUserProgress(user.id);
                 const progress = allProgress.find(
-                    p => p.item_type === 'video' && p.video_id === videoId
+                    p => p.item_type === 'video' && Number(p.video_id) === Number(videoId)
                 );
                 if (progress) {
                     return await deleteProgress(progress.id);
