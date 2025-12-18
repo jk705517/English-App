@@ -27,7 +27,9 @@ const DropdownMenu = ({ trigger, items, align = 'right' }) => {
             ref={menuRef}
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
+            onMouseUp={(e) => e.stopPropagation()}
             onTouchStart={(e) => e.stopPropagation()}
+            onTouchEnd={(e) => e.stopPropagation()}
         >
             <div onClick={() => setIsOpen(!isOpen)}>
                 {trigger || (
