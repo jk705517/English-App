@@ -1,4 +1,4 @@
-import { notebooksAPI, videoAPI } from './api';
+import { notebooksAPI, videoAPI, reviewStatesAPI } from './api';
 
 // ============================================
 // 基础 API 封装函数
@@ -350,14 +350,32 @@ export const notebookService = {
         if (!user || !notebookId) return null;
 
         try {
-            const response = await notebooksAPI.getItems(notebookId);
-            if (!response.success) {
+            // 同时获取本子内容和复习状态
+            const [itemsResponse, reviewStatesResponse] = await Promise.all([
+                notebooksAPI.getItems(notebookId),
+                reviewStatesAPI.getAll()
+            ]);
+
+            if (!itemsResponse.success) {
                 return null;
             }
 
             // API 返回的是一个扁平数组
-            const rawItems = Array.isArray(response.data) ? response.data : [];
+            const rawItems = Array.isArray(itemsResponse.data) ? itemsResponse.data : [];
             const vocabItems = rawItems.filter(item => item.item_type === 'vocab');
+
+            // 构建复习状态映射表（使用 item_type + item_id 作为 key）
+            const reviewStatesMap = new Map();
+            if (reviewStatesResponse.success && Array.isArray(reviewStatesResponse.data)) {
+                reviewStatesResponse.data.forEach(state => {
+                    if (state.item_type === 'vocab') {
+                        // 使用 item_id 作为 key（支持多种格式匹配）
+                        const key = String(state.item_id);
+                        reviewStatesMap.set(key, state);
+                    }
+                });
+            }
+            console.log('[loadNotebookVocabsForReview] reviewStatesMap size:', reviewStatesMap.size);
 
             if (vocabItems.length === 0) {
                 return {
@@ -425,6 +443,9 @@ export const notebookService = {
 
                 if (!vocabItem) return null;
 
+                // 从复习状态映射表中查找对应的复习状态
+                const reviewState = reviewStatesMap.get(String(itemId)) || null;
+
                 return {
                     id: item.id, // notebook_item 的 id，用于复习状态追踪
                     vocabId: item.item_id,
@@ -434,9 +455,12 @@ export const notebookService = {
                     phonetic: vocabItem?.ipa_us || vocabItem?.phonetic || '',
                     episode: video.episode || 0,
                     title: video.title || '',
-                    reviewState: item.review_state || null, // 如果 API 返回复习状态
+                    reviewState: reviewState, // 从复习状态 API 获取
                 };
             }).filter(Boolean);
+
+            console.log('[loadNotebookVocabsForReview] enrichedVocabs with reviewState:',
+                enrichedVocabs.filter(v => v.reviewState != null).length, '/', enrichedVocabs.length);
 
             // 计算到期的词汇数量
             const now = new Date();
@@ -476,14 +500,32 @@ export const notebookService = {
         if (!user || !notebookId) return null;
 
         try {
-            const response = await notebooksAPI.getItems(notebookId);
-            if (!response.success) {
+            // 同时获取本子内容和复习状态
+            const [itemsResponse, reviewStatesResponse] = await Promise.all([
+                notebooksAPI.getItems(notebookId),
+                reviewStatesAPI.getAll()
+            ]);
+
+            if (!itemsResponse.success) {
                 return null;
             }
 
             // API 返回的是一个扁平数组
-            const rawItems = Array.isArray(response.data) ? response.data : [];
+            const rawItems = Array.isArray(itemsResponse.data) ? itemsResponse.data : [];
             const sentenceItems = rawItems.filter(item => item.item_type === 'sentence');
+
+            // 构建复习状态映射表（使用 item_type + item_id 作为 key）
+            const reviewStatesMap = new Map();
+            if (reviewStatesResponse.success && Array.isArray(reviewStatesResponse.data)) {
+                reviewStatesResponse.data.forEach(state => {
+                    if (state.item_type === 'sentence') {
+                        // 使用 item_id 作为 key（支持多种格式匹配）
+                        const key = String(state.item_id);
+                        reviewStatesMap.set(key, state);
+                    }
+                });
+            }
+            console.log('[loadNotebookSentencesForReview] reviewStatesMap size:', reviewStatesMap.size);
 
             if (sentenceItems.length === 0) {
                 return {
@@ -537,6 +579,9 @@ export const notebookService = {
 
                 if (!sentence) return null;
 
+                // 从复习状态映射表中查找对应的复习状态
+                const reviewState = reviewStatesMap.get(String(itemId)) || null;
+
                 return {
                     id: item.id, // notebook_item 的 id，用于复习状态追踪
                     sentenceId: item.item_id,
@@ -545,9 +590,12 @@ export const notebookService = {
                     cn: sentence?.cn || '',
                     episode: video.episode || 0,
                     title: video.title || '',
-                    reviewState: item.review_state || null, // 如果 API 返回复习状态
+                    reviewState: reviewState, // 从复习状态 API 获取
                 };
             }).filter(Boolean);
+
+            console.log('[loadNotebookSentencesForReview] enrichedSentences with reviewState:',
+                enrichedSentences.filter(s => s.reviewState != null).length, '/', enrichedSentences.length);
 
             // 计算到期的句子数量
             const now = new Date();
