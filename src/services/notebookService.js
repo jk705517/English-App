@@ -282,9 +282,35 @@ export const notebookService = {
                 const itemId = item.item_id;
                 let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
 
-                // 如果没找到，尝试按数字索引
+                // 如果没找到，尝试解析 fallback ID 格式 "videoId-vocab-index"
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-vocab-')) {
+                    const parts = itemId.split('-vocab-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试解析通用 fallback ID 格式 "videoId-index"
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-')) {
+                    const parts = itemId.split('-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试按数字索引
                 if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
                     vocabItem = video.vocab[itemId];
+                }
+
+                // 如果 itemId 是纯数字字符串，尝试按索引访问
+                if (!vocabItem && typeof itemId === 'string') {
+                    const index = parseInt(itemId, 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
                 }
 
                 return {
@@ -366,8 +392,35 @@ export const notebookService = {
                 const itemId = item.item_id;
                 let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
 
+                // 如果没找到，尝试解析 fallback ID 格式 "videoId-vocab-index"
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-vocab-')) {
+                    const parts = itemId.split('-vocab-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试解析通用 fallback ID 格式 "videoId-index"
+                if (!vocabItem && typeof itemId === 'string' && itemId.includes('-')) {
+                    const parts = itemId.split('-');
+                    const index = parseInt(parts[parts.length - 1], 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
+                }
+
+                // 如果还是没找到，尝试按数字索引
                 if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
                     vocabItem = video.vocab[itemId];
+                }
+
+                // 如果 itemId 是纯数字字符串，尝试按索引访问
+                if (!vocabItem && typeof itemId === 'string') {
+                    const index = parseInt(itemId, 10);
+                    if (!isNaN(index) && video.vocab[index]) {
+                        vocabItem = video.vocab[index];
+                    }
                 }
 
                 if (!vocabItem) return null;
