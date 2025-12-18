@@ -176,7 +176,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 // 视频列表
 app.get('/api/videos', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, episode, title, transcript, vocab, cover, video_url FROM videos ORDER BY episode DESC');
+    const result = await pool.query('SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration FROM videos ORDER BY episode DESC');
     res.json({
       success: true,
       data: result.rows,
@@ -198,7 +198,7 @@ app.get('/api/videos/:id', async (req, res) => {
     }
 
     const result = await pool.query(
-      'SELECT id, episode, title, transcript, vocab, cover, video_url FROM videos WHERE id = $1',
+      'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration FROM videos WHERE id = $1',
       [id]
     );
 
