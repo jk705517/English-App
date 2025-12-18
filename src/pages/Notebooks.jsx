@@ -333,8 +333,9 @@ function Notebooks() {
     const handleSelectNotebook = async (notebook, shouldUpdateUrl = true) => {
         setSelectedNotebook(notebook);
         setDetailLoading(true);
-        setVocabStats({ dueCount: 0, totalVocabCount: 0 }); // 重置统计
-        setSentenceStats({ dueCount: 0, totalSentenceCount: 0 }); // 重置统计
+        setVocabStats({ dueCount: 0, totalVocabCount: 0, hasReviewState: false }); // 重置统计
+        setSentenceStats({ dueCount: 0, totalSentenceCount: 0, hasReviewState: false }); // 重置统计
+        console.log('[handleSelectNotebook] Reset stats for notebook:', notebook.id);
 
         // 更新 URL 参数（如果需要）
         if (shouldUpdateUrl) {
@@ -364,11 +365,13 @@ function Notebooks() {
                     hasReviewState,
                     vocabsWithReviewState: data.vocabs?.filter(v => v.reviewState != null).length || 0,
                 });
-                setVocabStats({
+                const newStats = {
                     dueCount: data.dueCount || 0,
                     totalVocabCount: data.totalVocabCount || 0,
                     hasReviewState,
-                });
+                };
+                console.log('[VocabStats] Setting vocabStats to:', newStats);
+                setVocabStats(newStats);
             }
         } catch (err) {
             console.error('Error loading vocab stats:', err);
@@ -799,6 +802,7 @@ function Notebooks() {
                                         </div>
                                     )}
                                     {/* 开始词汇复习按钮 */}
+                                    {console.log('[VocabButton Render]', { hasReviewState: vocabStats.hasReviewState, dueCount: vocabStats.dueCount })}
                                     <div className="mb-4">
                                         <button
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=vocab`)}
