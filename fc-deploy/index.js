@@ -213,6 +213,417 @@ app.get('/api/videos/:id', async (req, res) => {
   }
 });
 
+// ============ 用户进度 API ============
+
+// 获取用户进度
+app.get('/api/user/progress', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id } = req.query;
+
+    let query = 'SELECT id, video_id, item_type, item_id, learned_at, created_at FROM user_progress WHERE user_id = $1';
+    let params = [userId];
+
+    if (video_id) {
+      query += ' AND video_id = $2';
+      params.push(video_id);
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('获取进度失败:', error);
+    res.status(500).json({ success: false, error: '获取进度失败' });
+  }
+});
+
+// 保存用户进度
+app.post('/api/user/progress', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, item_type, item_id } = req.body;
+
+    if (!video_id || !item_type || item_id === undefined) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    // 检查是否已存在
+    const existing = await pool.query(
+      'SELECT id FROM user_progress WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
+      [userId, video_id, item_type, item_id]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, data: existing.rows[0], message: '进度已存在' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_progress (user_id, video_id, item_type, item_id, learned_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
+      [userId, video_id, item_type, item_id]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('保存进度失败:', error);
+    res.status(500).json({ success: false, error: '保存进度失败' });
+  }
+});
+
+// 删除用户进度
+app.delete('/api/user/progress', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, item_type, item_id } = req.query;
+
+    if (!video_id || !item_type || item_id === undefined) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    await pool.query(
+      'DELETE FROM user_progress WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
+      [userId, video_id, item_type, item_id]
+    );
+
+    res.json({ success: true, message: '删除成功' });
+  } catch (error) {
+    console.error('删除进度失败:', error);
+    res.status(500).json({ success: false, error: '删除进度失败' });
+  }
+});
+
+// ============ 用户收藏 API ============
+
+// 获取用户收藏
+app.get('/api/user/favorites', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, item_type } = req.query;
+
+    let query = 'SELECT id, video_id, item_type, item_id, created_at FROM user_favorites WHERE user_id = $1';
+    let params = [userId];
+    let paramIndex = 2;
+
+    if (video_id) {
+      query += ` AND video_id = $${paramIndex}`;
+      params.push(video_id);
+      paramIndex++;
+    }
+
+    if (item_type) {
+      query += ` AND item_type = $${paramIndex}`;
+      params.push(item_type);
+      paramIndex++;
+    }
+
+    query += ' ORDER BY created_at DESC';
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('获取收藏失败:', error);
+    res.status(500).json({ success: false, error: '获取收藏失败' });
+  }
+});
+
+// 添加收藏
+app.post('/api/user/favorites', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, item_type, item_id } = req.body;
+
+    if (!video_id || !item_type || item_id === undefined) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    // 检查是否已收藏
+    const existing = await pool.query(
+      'SELECT id FROM user_favorites WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
+      [userId, video_id, item_type, String(item_id)]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, data: existing.rows[0], message: '已收藏' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_favorites (user_id, video_id, item_type, item_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [userId, video_id, item_type, String(item_id)]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('添加收藏失败:', error);
+    res.status(500).json({ success: false, error: '添加收藏失败' });
+  }
+});
+
+// 删除收藏
+app.delete('/api/user/favorites', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, item_type, item_id } = req.query;
+
+    if (!video_id || !item_type || item_id === undefined) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    await pool.query(
+      'DELETE FROM user_favorites WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
+      [userId, video_id, item_type, String(item_id)]
+    );
+
+    res.json({ success: true, message: '取消收藏成功' });
+  } catch (error) {
+    console.error('删除收藏失败:', error);
+    res.status(500).json({ success: false, error: '删除收藏失败' });
+  }
+});
+
+// ============ 笔记本 API ============
+
+// 获取用户笔记本列表
+app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+
+    const result = await pool.query(
+      'SELECT id, name, color, created_at FROM user_notebooks WHERE user_id = $1 ORDER BY created_at DESC',
+      [userId]
+    );
+
+    // 获取每个笔记本的内容数量
+    const notebooks = await Promise.all(result.rows.map(async (notebook) => {
+      const countResult = await pool.query(
+        'SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1',
+        [notebook.id]
+      );
+      return {
+        ...notebook,
+        item_count: parseInt(countResult.rows[0].count)
+      };
+    }));
+
+    res.json({ success: true, data: notebooks });
+  } catch (error) {
+    console.error('获取笔记本失败:', error);
+    res.status(500).json({ success: false, error: '获取笔记本失败' });
+  }
+});
+
+// 创建笔记本
+app.post('/api/user/notebooks', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { name, color } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, error: '笔记本名称不能为空' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_notebooks (user_id, name, color) VALUES ($1, $2, $3) RETURNING *',
+      [userId, name, color || '#3B82F6']
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('创建笔记本失败:', error);
+    res.status(500).json({ success: false, error: '创建笔记本失败' });
+  }
+});
+
+// 删除笔记本
+app.delete('/api/user/notebooks/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const notebookId = req.params.id;
+
+    // 先删除笔记本中的所有内容
+    await pool.query('DELETE FROM user_notebook_items WHERE notebook_id = $1 AND user_id = $2', [notebookId, userId]);
+
+    // 删除笔记本
+    await pool.query('DELETE FROM user_notebooks WHERE id = $1 AND user_id = $2', [notebookId, userId]);
+
+    res.json({ success: true, message: '删除成功' });
+  } catch (error) {
+    console.error('删除笔记本失败:', error);
+    res.status(500).json({ success: false, error: '删除笔记本失败' });
+  }
+});
+
+// 获取笔记本内容
+app.get('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const notebookId = req.params.id;
+
+    const result = await pool.query(
+      'SELECT id, item_type, item_id, video_id, created_at FROM user_notebook_items WHERE notebook_id = $1 AND user_id = $2 ORDER BY created_at DESC',
+      [notebookId, userId]
+    );
+
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('获取笔记本内容失败:', error);
+    res.status(500).json({ success: false, error: '获取笔记本内容失败' });
+  }
+});
+
+// 添加内容到笔记本
+app.post('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const notebookId = req.params.id;
+    const { item_type, item_id, video_id } = req.body;
+
+    if (!item_type || item_id === undefined || !video_id) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    // 检查笔记本是否属于该用户
+    const notebook = await pool.query(
+      'SELECT id FROM user_notebooks WHERE id = $1 AND user_id = $2',
+      [notebookId, userId]
+    );
+
+    if (notebook.rows.length === 0) {
+      return res.status(404).json({ success: false, error: '笔记本不存在' });
+    }
+
+    // 检查是否已添加
+    const existing = await pool.query(
+      'SELECT id FROM user_notebook_items WHERE notebook_id = $1 AND item_type = $2 AND item_id = $3 AND video_id = $4',
+      [notebookId, item_type, item_id, video_id]
+    );
+
+    if (existing.rows.length > 0) {
+      return res.json({ success: true, data: existing.rows[0], message: '已添加到笔记本' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_notebook_items (user_id, notebook_id, item_type, item_id, video_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [userId, notebookId, item_type, item_id, video_id]
+    );
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('添加到笔记本失败:', error);
+    res.status(500).json({ success: false, error: '添加到笔记本失败' });
+  }
+});
+
+// 从笔记本删除内容
+app.delete('/api/user/notebooks/:id/items/:itemId', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { id: notebookId, itemId } = req.params;
+
+    await pool.query(
+      'DELETE FROM user_notebook_items WHERE id = $1 AND notebook_id = $2 AND user_id = $3',
+      [itemId, notebookId, userId]
+    );
+
+    res.json({ success: true, message: '删除成功' });
+  } catch (error) {
+    console.error('从笔记本删除失败:', error);
+    res.status(500).json({ success: false, error: '从笔记本删除失败' });
+  }
+});
+
+// ============ 复习状态 API ============
+
+// 获取复习状态
+app.get('/api/user/review-states', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { notebook_id, video_id } = req.query;
+
+    let query = 'SELECT * FROM user_review_states WHERE user_id = $1';
+    let params = [userId];
+    let paramIndex = 2;
+
+    if (notebook_id) {
+      query += ` AND notebook_id = $${paramIndex}`;
+      params.push(notebook_id);
+      paramIndex++;
+    }
+
+    if (video_id) {
+      query += ` AND video_id = $${paramIndex}`;
+      params.push(video_id);
+      paramIndex++;
+    }
+
+    const result = await pool.query(query, params);
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('获取复习状态失败:', error);
+    res.status(500).json({ success: false, error: '获取复习状态失败' });
+  }
+});
+
+// 保存/更新复习状态
+app.post('/api/user/review-states', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const {
+      item_type,
+      item_id,
+      video_id,
+      notebook_id,
+      review_count,
+      familiarity_level,
+      success_streak,
+      last_result_known,
+      next_review_at
+    } = req.body;
+
+    if (!item_type || item_id === undefined) {
+      return res.status(400).json({ success: false, error: '缺少必要参数' });
+    }
+
+    // 检查是否已存在
+    const existing = await pool.query(
+      'SELECT id FROM user_review_states WHERE user_id = $1 AND item_type = $2 AND item_id = $3 AND (notebook_id = $4 OR ($4 IS NULL AND notebook_id IS NULL))',
+      [userId, item_type, String(item_id), notebook_id || null]
+    );
+
+    let result;
+    if (existing.rows.length > 0) {
+      // 更新
+      result = await pool.query(
+        `UPDATE user_review_states SET 
+          review_count = COALESCE($1, review_count),
+          familiarity_level = COALESCE($2, familiarity_level),
+          success_streak = COALESCE($3, success_streak),
+          last_result_known = COALESCE($4, last_result_known),
+          last_review_at = NOW(),
+          next_review_at = COALESCE($5, next_review_at),
+          updated_at = NOW()
+        WHERE id = $6 RETURNING *`,
+        [review_count, familiarity_level, success_streak, last_result_known, next_review_at, existing.rows[0].id]
+      );
+    } else {
+      // 插入
+      result = await pool.query(
+        `INSERT INTO user_review_states 
+          (user_id, item_type, item_id, video_id, notebook_id, review_count, familiarity_level, success_streak, last_result_known, last_review_at, next_review_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10) RETURNING *`,
+        [userId, item_type, String(item_id), video_id || null, notebook_id || null, review_count || 1, familiarity_level || 0, success_streak || 0, last_result_known, next_review_at || null]
+      );
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('保存复习状态失败:', error);
+    res.status(500).json({ success: false, error: '保存复习状态失败' });
+  }
+});
+
+// ============ 复习日志 API ============
+
 // 获取复习日志统计
 app.get('/api/user/review-logs', authMiddleware, async (req, res) => {
   try {
