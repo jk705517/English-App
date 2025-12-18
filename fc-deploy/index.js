@@ -271,19 +271,15 @@ app.post('/api/user/progress', authMiddleware, async (req, res) => {
   }
 });
 
-// 删除用户进度
-app.delete('/api/user/progress', authMiddleware, async (req, res) => {
+// 删除用户进度 - 通过记录 ID
+app.delete('/api/user/progress/:id', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { video_id, item_type, item_id } = req.query;
-
-    if (!video_id || !item_type || item_id === undefined) {
-      return res.status(400).json({ success: false, error: '缺少必要参数' });
-    }
+    const progressId = req.params.id;
 
     await pool.query(
-      'DELETE FROM user_progress WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
-      [userId, video_id, item_type, item_id]
+      'DELETE FROM user_progress WHERE id = $1 AND user_id = $2',
+      [progressId, userId]
     );
 
     res.json({ success: true, message: '删除成功' });
@@ -359,19 +355,15 @@ app.post('/api/user/favorites', authMiddleware, async (req, res) => {
   }
 });
 
-// 删除收藏
-app.delete('/api/user/favorites', authMiddleware, async (req, res) => {
+// 删除收藏 - 通过记录 ID
+app.delete('/api/user/favorites/:id', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
-    const { video_id, item_type, item_id } = req.query;
-
-    if (!video_id || !item_type || item_id === undefined) {
-      return res.status(400).json({ success: false, error: '缺少必要参数' });
-    }
+    const favoriteId = req.params.id;
 
     await pool.query(
-      'DELETE FROM user_favorites WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
-      [userId, video_id, item_type, String(item_id)]
+      'DELETE FROM user_favorites WHERE id = $1 AND user_id = $2',
+      [favoriteId, userId]
     );
 
     res.json({ success: true, message: '取消收藏成功' });
@@ -383,7 +375,7 @@ app.delete('/api/user/favorites', authMiddleware, async (req, res) => {
 
 // ============ 笔记本 API ============
 
-// 获取用户笔记本列表
+// 获取用户笔记本列表（带统计信息）
 app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -393,15 +385,24 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
       [userId]
     );
 
-    // 获取每个笔记本的内容数量
+    // 获取每个笔记本的统计信息
     const notebooks = await Promise.all(result.rows.map(async (notebook) => {
-      const countResult = await pool.query(
-        'SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1',
+      // 获取词汇数量
+      const vocabResult = await pool.query(
+        "SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'vocab'",
         [notebook.id]
       );
+      // 获取句子数量
+      const sentenceResult = await pool.query(
+        "SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'sentence'",
+        [notebook.id]
+      );
+
       return {
         ...notebook,
-        item_count: parseInt(countResult.rows[0].count)
+        item_count: parseInt(vocabResult.rows[0].count) + parseInt(sentenceResult.rows[0].count),
+        vocab_count: parseInt(vocabResult.rows[0].count),
+        sentence_count: parseInt(sentenceResult.rows[0].count)
       };
     }));
 
@@ -478,6 +479,8 @@ app.post('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
     const notebookId = req.params.id;
     const { item_type, item_id, video_id } = req.body;
 
+    console.log('添加到笔记本请求:', { userId, notebookId, item_type, item_id, video_id });
+
     if (!item_type || item_id === undefined || !video_id) {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
@@ -492,10 +495,13 @@ app.post('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
       return res.status(404).json({ success: false, error: '笔记本不存在' });
     }
 
+    // 统一转换为字符串进行比较
+    const itemIdStr = String(item_id);
+
     // 检查是否已添加
     const existing = await pool.query(
       'SELECT id FROM user_notebook_items WHERE notebook_id = $1 AND item_type = $2 AND item_id = $3 AND video_id = $4',
-      [notebookId, item_type, item_id, video_id]
+      [notebookId, item_type, itemIdStr, video_id]
     );
 
     if (existing.rows.length > 0) {
@@ -504,13 +510,14 @@ app.post('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
 
     const result = await pool.query(
       'INSERT INTO user_notebook_items (user_id, notebook_id, item_type, item_id, video_id) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [userId, notebookId, item_type, item_id, video_id]
+      [userId, notebookId, item_type, itemIdStr, video_id]
     );
 
+    console.log('添加成功:', result.rows[0]);
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('添加到笔记本失败:', error);
-    res.status(500).json({ success: false, error: '添加到笔记本失败' });
+    res.status(500).json({ success: false, error: '添加到笔记本失败: ' + error.message });
   }
 });
 
