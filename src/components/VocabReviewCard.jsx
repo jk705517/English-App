@@ -206,22 +206,8 @@ const VocabReviewCard = ({
                         </div>
                     )}
 
-                    {/* 底部按钮区域 */}
-                    <div className="flex gap-2 mt-4 pt-4 border-t">
-                        {/* v1.3: 查看所在句子 - 可切换 */}
-                        <button
-                            type="button"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                if (onToggleSentences) {
-                                    onToggleSentences();
-                                }
-                            }}
-                            className="flex-1 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
-                        >
-                            {sentencesVisible ? '收起所在句子' : '查看所在句子'}
-                        </button>
-                        {/* 去原视频 - v1.1: 已打通跳转 */}
+                    {/* 底部按钮区域 - 只保留"去原视频" */}
+                    <div className="mt-4 pt-4 border-t">
                         <button
                             type="button"
                             onClick={(e) => {
@@ -230,9 +216,9 @@ const VocabReviewCard = ({
                                     onGoToVideo();
                                 }
                             }}
-                            className="flex-1 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                            className="w-full py-2 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
                         >
-                            去原视频
+                            去原视频看词汇
                         </button>
                     </div>
                 </div>

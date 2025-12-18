@@ -408,7 +408,15 @@ export const notebookService = {
                 }
 
                 const itemId = item.item_id;
-                let vocabItem = video.vocab.find(v => v.id === itemId || String(v.id) === String(itemId));
+                let vocabItem = null;
+                let vocabIndex = -1; // 记录词汇在数组中的索引
+
+                // 先尝试通过 id 匹配
+                const foundIdx = video.vocab.findIndex(v => v.id === itemId || String(v.id) === String(itemId));
+                if (foundIdx >= 0) {
+                    vocabItem = video.vocab[foundIdx];
+                    vocabIndex = foundIdx;
+                }
 
                 // 如果没找到，尝试解析 fallback ID 格式 "videoId-vocab-index"
                 if (!vocabItem && typeof itemId === 'string' && itemId.includes('-vocab-')) {
@@ -416,6 +424,7 @@ export const notebookService = {
                     const index = parseInt(parts[parts.length - 1], 10);
                     if (!isNaN(index) && video.vocab[index]) {
                         vocabItem = video.vocab[index];
+                        vocabIndex = index;
                     }
                 }
 
@@ -425,12 +434,14 @@ export const notebookService = {
                     const index = parseInt(parts[parts.length - 1], 10);
                     if (!isNaN(index) && video.vocab[index]) {
                         vocabItem = video.vocab[index];
+                        vocabIndex = index;
                     }
                 }
 
                 // 如果还是没找到，尝试按数字索引
                 if (!vocabItem && typeof itemId === 'number' && video.vocab[itemId]) {
                     vocabItem = video.vocab[itemId];
+                    vocabIndex = itemId;
                 }
 
                 // 如果 itemId 是纯数字字符串，尝试按索引访问
@@ -438,6 +449,7 @@ export const notebookService = {
                     const index = parseInt(itemId, 10);
                     if (!isNaN(index) && video.vocab[index]) {
                         vocabItem = video.vocab[index];
+                        vocabIndex = index;
                     }
                 }
 
@@ -450,9 +462,16 @@ export const notebookService = {
                     id: item.id, // notebook_item 的 id，用于复习状态追踪
                     vocabId: item.item_id,
                     videoId: item.video_id,
+                    vocabIndex: vocabIndex, // 词汇在视频 vocab 数组中的索引
+                    // 完整词汇字段
                     word: vocabItem?.word || '',
+                    type: vocabItem?.type || vocabItem?.pos || '',
+                    ipa_us: vocabItem?.ipa_us || '',
+                    ipa_uk: vocabItem?.ipa_uk || '',
                     meaning: vocabItem?.meaning || '',
-                    phonetic: vocabItem?.ipa_us || vocabItem?.phonetic || '',
+                    examples: vocabItem?.examples || [],
+                    collocations: vocabItem?.collocations || [],
+                    // 视频信息
                     episode: video.episode || 0,
                     title: video.title || '',
                     reviewState: reviewState, // 从复习状态 API 获取
@@ -559,9 +578,14 @@ export const notebookService = {
 
                 const itemId = item.item_id;
                 let sentence = null;
+                let sentenceIndex = -1; // 记录句子在数组中的索引
 
                 // 尝试按 id 匹配
-                sentence = video.transcript.find(s => s.id === itemId || String(s.id) === String(itemId));
+                const foundIdx = video.transcript.findIndex(s => s.id === itemId || String(s.id) === String(itemId));
+                if (foundIdx >= 0) {
+                    sentence = video.transcript[foundIdx];
+                    sentenceIndex = foundIdx;
+                }
 
                 // 如果没找到，尝试解析 fallback ID 格式 "videoId-index"
                 if (!sentence && typeof itemId === 'string' && itemId.includes('-')) {
@@ -569,12 +593,14 @@ export const notebookService = {
                     const index = parseInt(parts[parts.length - 1], 10);
                     if (!isNaN(index) && video.transcript[index]) {
                         sentence = video.transcript[index];
+                        sentenceIndex = index;
                     }
                 }
 
                 // 如果还是没找到，尝试按数字索引
                 if (!sentence && typeof itemId === 'number' && video.transcript[itemId]) {
                     sentence = video.transcript[itemId];
+                    sentenceIndex = itemId;
                 }
 
                 if (!sentence) return null;
@@ -586,6 +612,7 @@ export const notebookService = {
                     id: item.id, // notebook_item 的 id，用于复习状态追踪
                     sentenceId: item.item_id,
                     videoId: item.video_id,
+                    sentenceIndex: sentenceIndex, // 句子在视频 transcript 数组中的索引
                     en: sentence?.text || sentence?.en || '',
                     cn: sentence?.cn || '',
                     episode: video.episode || 0,

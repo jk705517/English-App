@@ -285,11 +285,21 @@ function NotebookReviewPage() {
     // 去原视频
     const handleGoToVideo = useCallback((item) => {
         if (type === 'sentence') {
-            // 句子模式：跳转到视频并定位到该句子
-            navigate(`/video/${item.videoId}?mode=intensive&sentenceId=${item.id}`);
+            // 句子模式：使用 index 定位到该句子
+            const idx = item.sentenceIndex ?? item.index;
+            if (idx !== undefined && idx !== null) {
+                navigate(`/video/${item.videoId}?mode=intensive&type=sentence&index=${idx}`);
+            } else {
+                navigate(`/video/${item.videoId}?mode=intensive`);
+            }
         } else {
-            // 词汇模式：跳转到视频并定位到该词汇
-            navigate(`/video/${item.videoId}?mode=intensive&vocabId=${item.id}`);
+            // 词汇模式：使用 vocabIndex 定位到词汇区域
+            const idx = item.vocabIndex;
+            if (idx !== undefined && idx !== null && idx >= 0) {
+                navigate(`/video/${item.videoId}?mode=intensive&type=vocab&index=${idx}`);
+            } else {
+                navigate(`/video/${item.videoId}?mode=intensive`);
+            }
         }
     }, [navigate, type]);
 
