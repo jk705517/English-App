@@ -615,6 +615,8 @@ export const notebookService = {
                     sentenceIndex: sentenceIndex, // 句子在视频 transcript 数组中的索引
                     en: sentence?.text || sentence?.en || '',
                     cn: sentence?.cn || '',
+                    // 完整分析数据
+                    analysis: sentence?.analysis || null,
                     episode: video.episode || 0,
                     title: video.title || '',
                     reviewState: reviewState, // 从复习状态 API 获取
