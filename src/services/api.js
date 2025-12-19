@@ -54,7 +54,18 @@ export const authAPI = {
 
 // 视频 API
 export const videoAPI = {
-    getAll: () => request('/api/videos'),
+    getAll: (filters = {}) => {
+        const params = new URLSearchParams();
+        if (filters.category && filters.category !== '全部') params.append('category', filters.category);
+        if (filters.level) params.append('level', filters.level);
+        if (filters.accent && filters.accent !== '全部') params.append('accent', filters.accent);
+        if (filters.gender && filters.gender !== '全部') params.append('gender', filters.gender);
+        if (filters.sort) params.append('sort', filters.sort);
+
+        const queryString = params.toString();
+        const url = queryString ? `/api/videos?${queryString}` : '/api/videos';
+        return request(url);
+    },
     getById: (id) => request(`/api/videos/${id}`),
 };
 

@@ -173,10 +173,35 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 
 // ============ 视频相关 API ============
 
-// 视频列表
+// 视频列表（支持筛选）
 app.get('/api/videos', async (req, res) => {
   try {
-    const result = await pool.query('SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent FROM videos ORDER BY episode DESC');
+    const { category, level, accent, gender, sort } = req.query;
+
+    let sql = 'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender FROM videos WHERE 1=1';
+    const params = [];
+
+    if (category && category !== '全部') {
+      params.push(category);
+      sql += ` AND category = $${params.length}`;
+    }
+    if (level) {
+      params.push(level);
+      sql += ` AND level = $${params.length}`;
+    }
+    if (accent && accent !== '全部') {
+      params.push(accent);
+      sql += ` AND accent = $${params.length}`;
+    }
+    if (gender && gender !== '全部') {
+      params.push(gender);
+      sql += ` AND gender = $${params.length}`;
+    }
+
+    // 排序：默认倒序（新的在前）
+    sql += ` ORDER BY episode ${sort === 'asc' ? 'ASC' : 'DESC'}`;
+
+    const result = await pool.query(sql, params);
     res.json({
       success: true,
       data: result.rows,

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { loadLearnedVideoIds } from '../services/progressService';
+import { videoAPI } from '../services/api';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
@@ -8,70 +9,82 @@ function Home() {
     const { user } = useAuth();
     const [videos, setVideos] = useState([]);
     const [learnedVideoIds, setLearnedVideoIds] = useState([]);
-    const [selectedCategory, setSelectedCategory] = useState('全部');
+
+    // 筛选状态
+    const [filters, setFilters] = useState({
+        category: '全部',
+        level: '',
+        accent: '全部',
+        gender: '全部',
+        sort: 'desc'
+    });
 
     // 分类列表
     const categories = ['全部', '日常', '职场', '旅行', '时尚', '美食', '科技', '成长'];
 
-    // 并行获取视频数据和已学习状态
+    // 获取视频数据
     useEffect(() => {
-        const loadData = async () => {
-            // 获取视频列表的函数（从新 Vercel API）
-            const fetchVideos = async () => {
-                try {
-                    console.log('🚀 Fetching videos from API...');
-                    const response = await fetch('https://api.biubiuenglish.com/api/videos');
-                    console.log('📡 API response status:', response.status, response.ok);
+        const fetchVideos = async () => {
+            try {
+                console.log('🚀 Fetching videos with filters:', filters);
+                const result = await videoAPI.getAll(filters);
+                console.log('📦 API result:', result);
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-
-                    const result = await response.json();
-                    console.log('📦 Parsed API result:', result);
-                    console.log('📦 result.success:', result.success);
-                    console.log('📦 result.data:', result.data);
-                    console.log('📦 result.data length:', result.data?.length);
-
-                    // 新 API 返回格式: { success: true, data: [...], count: 10 }
-                    if (result.success) {
-                        return { data: result.data, error: null };
-                    } else {
-                        return { data: null, error: result.error || 'Unknown error' };
-                    }
-                } catch (error) {
-                    console.error('❌ Fetch error:', error);
-                    return { data: null, error: error.message };
+                if (result.success) {
+                    // 根据 sort 参数排序
+                    const sortedVideos = (result.data || []).sort((a, b) =>
+                        filters.sort === 'asc' ? a.episode - b.episode : b.episode - a.episode
+                    );
+                    setVideos(sortedVideos);
+                } else {
+                    console.error('Error fetching videos:', result.error);
                 }
-            };
-
-            const [videosResult, learnedIds] = await Promise.all([
-                fetchVideos(),
-                loadLearnedVideoIds(user)
-            ]);
-
-            if (!videosResult.error) {
-                // API 返回数据后按 episode 降序排列
-                const sortedVideos = (videosResult.data || []).sort((a, b) => b.episode - a.episode);
-                setVideos(sortedVideos);
-            } else {
-                console.error('Error fetching videos:', videosResult.error);
+            } catch (error) {
+                console.error('❌ Fetch error:', error);
             }
-            setLearnedVideoIds(learnedIds);
         };
 
-        loadData();
+        fetchVideos();
+    }, [filters]);
+
+    // 获取已学习状态（仅在用户变化时）
+    useEffect(() => {
+        const loadLearned = async () => {
+            const learnedIds = await loadLearnedVideoIds(user);
+            setLearnedVideoIds(learnedIds);
+        };
+        loadLearned();
     }, [user]);
 
-    // 筛选视频
-    const filteredVideos = selectedCategory === '全部'
-        ? videos
-        : videos.filter(video => video.category === selectedCategory);
+    // 处理筛选变化
+    const handleFilterChange = (key, value) => {
+        setFilters(prev => ({ ...prev, [key]: value }));
+    };
+
+    // 重置筛选
+    const handleReset = () => {
+        setFilters({
+            category: '全部',
+            level: '',
+            accent: '全部',
+            gender: '全部',
+            sort: 'desc'
+        });
+    };
+
+    // 检查是否有非默认筛选条件
+    const hasActiveFilters = filters.level !== '' ||
+        filters.accent !== '全部' ||
+        filters.gender !== '全部' ||
+        filters.sort !== 'desc';
 
     // 计算统计数据
     const totalVideos = videos.length;
     const learnedVideos = learnedVideoIds.length;
     const unlearnedVideos = totalVideos - learnedVideos;
+
+    // 下拉框通用样式
+    const selectClassName = "text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer";
 
     return (
         <div className="max-w-7xl mx-auto fade-in">
@@ -108,7 +121,7 @@ function Home() {
                 </div>
 
                 <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify之间">
+                    <div className="flex items-center justify-between">
                         <div>
                             <p className="text-orange-100 text-sm mb-1">未学习</p>
                             <p className="text-4xl font-bold">{unlearnedVideos}</p>
@@ -119,13 +132,13 @@ function Home() {
             </div>
 
             {/* 分类筛选 */}
-            <div className="mb-6">
+            <div className="mb-3">
                 <div className="flex flex-wrap gap-3">
                     {categories.map((category) => (
                         <button
                             key={category}
-                            onClick={() => setSelectedCategory(category)}
-                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${selectedCategory === category
+                            onClick={() => handleFilterChange('category', category)}
+                            className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${filters.category === category
                                 ? 'bg-indigo-600 text-white shadow-md'
                                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                                 }`}
@@ -136,6 +149,80 @@ function Home() {
                 </div>
             </div>
 
+            {/* 筛选栏 */}
+            <div className="mb-6 flex flex-wrap items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg px-4 py-3">
+                {/* 排序 */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">排序:</span>
+                    <select
+                        value={filters.sort}
+                        onChange={(e) => handleFilterChange('sort', e.target.value)}
+                        className={selectClassName}
+                    >
+                        <option value="desc">倒序</option>
+                        <option value="asc">正序</option>
+                    </select>
+                </div>
+
+                {/* 难度 */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">难度:</span>
+                    <select
+                        value={filters.level}
+                        onChange={(e) => handleFilterChange('level', e.target.value)}
+                        className={selectClassName}
+                    >
+                        <option value="">全部</option>
+                        <option value="1">⭐</option>
+                        <option value="2">⭐⭐</option>
+                        <option value="3">⭐⭐⭐</option>
+                        <option value="4">⭐⭐⭐⭐</option>
+                        <option value="5">⭐⭐⭐⭐⭐</option>
+                    </select>
+                </div>
+
+                {/* 口音 */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">口音:</span>
+                    <select
+                        value={filters.accent}
+                        onChange={(e) => handleFilterChange('accent', e.target.value)}
+                        className={selectClassName}
+                    >
+                        <option value="全部">全部</option>
+                        <option value="美音">美音</option>
+                        <option value="英音">英音</option>
+                        <option value="澳音">澳音</option>
+                        <option value="其他">其他</option>
+                    </select>
+                </div>
+
+                {/* 性别 */}
+                <div className="flex items-center gap-2">
+                    <span className="text-sm text-gray-600">性别:</span>
+                    <select
+                        value={filters.gender}
+                        onChange={(e) => handleFilterChange('gender', e.target.value)}
+                        className={selectClassName}
+                    >
+                        <option value="全部">全部</option>
+                        <option value="男">男</option>
+                        <option value="女">女</option>
+                        <option value="混合">混合</option>
+                    </select>
+                </div>
+
+                {/* 重置按钮 */}
+                {hasActiveFilters && (
+                    <button
+                        onClick={handleReset}
+                        className="text-sm text-blue-600 hover:text-blue-700 font-medium ml-2"
+                    >
+                        重置
+                    </button>
+                )}
+            </div>
+
             {/* 视频列表标题 */}
             <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">视频列表</h2>
@@ -143,7 +230,7 @@ function Home() {
 
             {/* 视频卡片网格 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredVideos.map((video) => (
+                {videos.map((video) => (
                     <VideoCard
                         key={video.id}
                         video={{
