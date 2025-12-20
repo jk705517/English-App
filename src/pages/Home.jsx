@@ -11,6 +11,9 @@ function Home() {
     const [videos, setVideos] = useState([]);
     const [learnedVideoIds, setLearnedVideoIds] = useState([]);
 
+    // 学习状态筛选
+    const [studyFilter, setStudyFilter] = useState('all'); // 'all' | 'learned' | 'unlearned'
+
     // 筛选状态
     const [filters, setFilters] = useState({
         category: '全部',
@@ -103,6 +106,14 @@ function Home() {
     const learnedVideos = learnedVideoIds.length;
     const unlearnedVideos = totalVideos - learnedVideos;
 
+    // 应用学习状态筛选
+    let filteredVideos = videos;
+    if (studyFilter === 'learned') {
+        filteredVideos = filteredVideos.filter(v => learnedVideoIds.includes(String(v.id)));
+    } else if (studyFilter === 'unlearned') {
+        filteredVideos = filteredVideos.filter(v => !learnedVideoIds.includes(String(v.id)));
+    }
+
     // 下拉框通用样式
     const selectClassName = "text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer";
 
@@ -118,38 +129,59 @@ function Home() {
                 </p>
             </div>
 
-            {/* 统计卡片 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-                <div className="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-indigo-100 text-sm mb-1">总期数</p>
-                            <p className="text-4xl font-bold">{totalVideos}</p>
-                        </div>
-                        <BookOpen className="w-12 h-12 text-indigo-200" />
-                    </div>
+            {/* 统计条 - 紧凑一行显示 */}
+            <div className="flex bg-white rounded-xl shadow-sm mb-4" style={{ padding: '12px 0' }}>
+                {/* 总期数 */}
+                <div
+                    onClick={() => setStudyFilter('all')}
+                    className={`flex-1 flex items-center justify-center gap-2 cursor-pointer transition-colors ${studyFilter === 'all' ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                        }`}
+                    style={{ borderRight: '1px solid #e5e7eb' }}
+                >
+                    <BookOpen className="w-5 h-5 text-indigo-500" />
+                    <span className="text-gray-600">总期数</span>
+                    <span className="font-bold text-indigo-500">{totalVideos}</span>
                 </div>
 
-                <div className="bg-gradient-to-br from-green-500 to-green-600 rounded-xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-green-100 text-sm mb-1">已学习</p>
-                            <p className="text-4xl font-bold">{learnedVideos}</p>
-                        </div>
-                        <CheckCircle className="w-12 h-12 text-green-200" />
-                    </div>
+                {/* 已学习 */}
+                <div
+                    onClick={() => setStudyFilter('learned')}
+                    className={`flex-1 flex items-center justify-center gap-2 cursor-pointer transition-colors ${studyFilter === 'learned' ? 'bg-green-50' : 'hover:bg-gray-50'
+                        }`}
+                    style={{ borderRight: '1px solid #e5e7eb' }}
+                >
+                    <CheckCircle className="w-5 h-5 text-green-500" />
+                    <span className="text-gray-600">已学习</span>
+                    <span className="font-bold text-green-500">{learnedVideos}</span>
                 </div>
 
-                <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-xl p-6 text-white shadow-lg">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-orange-100 text-sm mb-1">未学习</p>
-                            <p className="text-4xl font-bold">{unlearnedVideos}</p>
-                        </div>
-                        <Circle className="w-12 h-12 text-orange-200" />
-                    </div>
+                {/* 未学习 */}
+                <div
+                    onClick={() => setStudyFilter('unlearned')}
+                    className={`flex-1 flex items-center justify-center gap-2 cursor-pointer transition-colors ${studyFilter === 'unlearned' ? 'bg-orange-50' : 'hover:bg-gray-50'
+                        }`}
+                >
+                    <Circle className="w-5 h-5 text-orange-500" />
+                    <span className="text-gray-600">未学习</span>
+                    <span className="font-bold text-orange-500">{unlearnedVideos}</span>
                 </div>
             </div>
+
+            {/* 学习状态筛选提示条 */}
+            {studyFilter !== 'all' && (
+                <div className="flex items-center justify-between bg-blue-50 text-blue-700 px-4 py-2 rounded-lg mb-4">
+                    <span>
+                        当前显示：{studyFilter === 'learned' ? '已学习' : '未学习'}的视频
+                        ({studyFilter === 'learned' ? learnedVideos : unlearnedVideos}个)
+                    </span>
+                    <button
+                        onClick={() => setStudyFilter('all')}
+                        className="text-blue-500 hover:text-blue-700"
+                    >
+                        清除
+                    </button>
+                </div>
+            )}
 
             {/* 分类筛选 */}
             <div className="mb-3">
@@ -263,12 +295,12 @@ function Home() {
 
             {/* 视频卡片网格 */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {videos.map((video) => (
+                {filteredVideos.map((video) => (
                     <VideoCard
                         key={video.id}
                         video={{
                             ...video,
-                            isLearned: learnedVideoIds.includes(video.id),
+                            isLearned: learnedVideoIds.includes(String(video.id)),
                         }}
                         onAuthorClick={handleAuthorClick}
                     />
