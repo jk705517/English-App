@@ -50,6 +50,32 @@ const authMiddleware = (req, res, next) => {
   }
 };
 
+// ============ 间隔重复算法 ============
+
+/**
+ * 根据熟练度计算下次复习间隔（天数）
+ * 使用简化版 SM-2 算法
+ */
+function getIntervalDays(familiarityLevel) {
+  const intervals = [1, 3, 7, 14, 30, 60];
+  const level = Math.min(familiarityLevel, intervals.length - 1);
+  return intervals[level];
+}
+
+/**
+ * 计算下次复习时间
+ * @param {number} familiarityLevel - 当前熟练度
+ * @returns {Date} 下次复习时间
+ */
+function calculateNextReviewAt(familiarityLevel) {
+  const intervalDays = getIntervalDays(familiarityLevel);
+  const nextReview = new Date();
+  nextReview.setDate(nextReview.getDate() + intervalDays);
+  // 设置为当天的 0 点（方便比较"今日待复习"）
+  nextReview.setHours(0, 0, 0, 0);
+  return nextReview;
+}
+
 // ============ 认证相关 API ============
 
 // 注册
@@ -216,6 +242,27 @@ app.get('/api/videos', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
+
+// 获取单个视频详情
+app.get('/api/videos/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await pool.query(
+      'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender FROM videos WHERE id = $1',
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Video not found' });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('Database error:', error);
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // ============ 用户进度 API ============
 
 // 获取用户进度
@@ -378,7 +425,7 @@ app.delete('/api/user/favorites/:id', authMiddleware, async (req, res) => {
 
 // ============ 笔记本 API ============
 
-// 获取用户笔记本列表（带统计信息）
+// 获取用户笔记本列表（带统计信息，包括待复习数量）
 app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -388,7 +435,7 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
       [userId]
     );
 
-    // 获取每个笔记本的统计信息
+    // 获取每个笔记本的统计信息（包括待复习数量）
     const notebooks = await Promise.all(result.rows.map(async (notebook) => {
       // 获取词汇数量
       const vocabResult = await pool.query(
@@ -401,11 +448,99 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
         [notebook.id]
       );
 
+      const vocabCount = parseInt(vocabResult.rows[0].count);
+      const sentenceCount = parseInt(sentenceResult.rows[0].count);
+
+      // ========== 计算待复习数量 ==========
+      // 获取本子里所有词汇的 item_id
+      const vocabItemsResult = await pool.query(
+        "SELECT item_id FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'vocab'",
+        [notebook.id]
+      );
+      const vocabItemIds = vocabItemsResult.rows.map(r => r.item_id);
+
+      // 获取本子里所有句子的 item_id
+      const sentenceItemsResult = await pool.query(
+        "SELECT item_id FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'sentence'",
+        [notebook.id]
+      );
+      const sentenceItemIds = sentenceItemsResult.rows.map(r => r.item_id);
+
+      // 获取这些词汇/句子的复习状态
+      let dueVocabCount = 0;
+      let dueSentenceCount = 0;
+      const now = new Date();
+      // 设置为今天的结束时间，这样"今天到期"的都会被包含
+      const todayEnd = new Date();
+      todayEnd.setHours(23, 59, 59, 999);
+
+      if (vocabItemIds.length > 0) {
+        // 查询这些词汇的复习状态
+        const vocabStatesResult = await pool.query(
+          `SELECT item_id, next_review_at FROM user_review_states 
+           WHERE user_id = $1 AND item_type = 'vocab' AND item_id = ANY($2)`,
+          [userId, vocabItemIds]
+        );
+
+        // 构建已有复习状态的词汇映射
+        const vocabStatesMap = new Map();
+        vocabStatesResult.rows.forEach(r => {
+          vocabStatesMap.set(r.item_id, r.next_review_at);
+        });
+
+        // 计算待复习数量
+        vocabItemIds.forEach(itemId => {
+          const nextReviewAt = vocabStatesMap.get(itemId);
+          if (!nextReviewAt) {
+            // 没有复习状态 = 新词，需要学习
+            dueVocabCount++;
+          } else {
+            const nextReview = new Date(nextReviewAt);
+            if (nextReview <= todayEnd) {
+              // 到期了，需要复习
+              dueVocabCount++;
+            }
+          }
+        });
+      }
+
+      if (sentenceItemIds.length > 0) {
+        // 查询这些句子的复习状态
+        const sentenceStatesResult = await pool.query(
+          `SELECT item_id, next_review_at FROM user_review_states 
+           WHERE user_id = $1 AND item_type = 'sentence' AND item_id = ANY($2)`,
+          [userId, sentenceItemIds]
+        );
+
+        // 构建已有复习状态的句子映射
+        const sentenceStatesMap = new Map();
+        sentenceStatesResult.rows.forEach(r => {
+          sentenceStatesMap.set(r.item_id, r.next_review_at);
+        });
+
+        // 计算待复习数量
+        sentenceItemIds.forEach(itemId => {
+          const nextReviewAt = sentenceStatesMap.get(itemId);
+          if (!nextReviewAt) {
+            // 没有复习状态 = 新句子，需要学习
+            dueSentenceCount++;
+          } else {
+            const nextReview = new Date(nextReviewAt);
+            if (nextReview <= todayEnd) {
+              // 到期了，需要复习
+              dueSentenceCount++;
+            }
+          }
+        });
+      }
+
       return {
         ...notebook,
-        item_count: parseInt(vocabResult.rows[0].count) + parseInt(sentenceResult.rows[0].count),
-        vocab_count: parseInt(vocabResult.rows[0].count),
-        sentence_count: parseInt(sentenceResult.rows[0].count)
+        item_count: vocabCount + sentenceCount,
+        vocab_count: vocabCount,
+        sentence_count: sentenceCount,
+        due_vocab_count: dueVocabCount,
+        due_sentence_count: dueSentenceCount,
       };
     }));
 
@@ -607,7 +742,7 @@ app.get('/api/user/review-states', authMiddleware, async (req, res) => {
   }
 });
 
-// 保存/更新复习状态
+// 保存/更新复习状态（实现间隔重复算法）
 app.post('/api/user/review-states', authMiddleware, async (req, res) => {
   try {
     const userId = req.user.userId;
@@ -616,46 +751,96 @@ app.post('/api/user/review-states', authMiddleware, async (req, res) => {
       item_id,
       video_id,
       notebook_id,
-      review_count,
-      familiarity_level,
-      success_streak,
-      last_result_known,
-      next_review_at
+      last_result_known,  // true = 我会了, false = 还不熟
     } = req.body;
 
     if (!item_type || item_id === undefined) {
       return res.status(400).json({ success: false, error: '缺少必要参数' });
     }
 
-    // 检查是否已存在
+    const itemIdStr = String(item_id);
+    const isKnown = !!last_result_known;
+
+    // 检查是否已存在复习状态
     const existing = await pool.query(
-      'SELECT id FROM user_review_states WHERE user_id = $1 AND item_type = $2 AND item_id = $3 AND (notebook_id = $4 OR ($4 IS NULL AND notebook_id IS NULL))',
-      [userId, item_type, String(item_id), notebook_id || null]
+      'SELECT id, review_count, familiarity_level, success_streak FROM user_review_states WHERE user_id = $1 AND item_type = $2 AND item_id = $3',
+      [userId, item_type, itemIdStr]
     );
 
     let result;
     if (existing.rows.length > 0) {
-      // 更新
+      // ========== 更新已有记录 ==========
+      const current = existing.rows[0];
+      const oldLevel = current.familiarity_level || 0;
+      const oldStreak = current.success_streak || 0;
+      const oldCount = current.review_count || 0;
+
+      // 根据复习结果计算新的状态
+      let newLevel, newStreak;
+      if (isKnown) {
+        // 答对：熟练度 +1，连续成功 +1
+        newLevel = Math.min(oldLevel + 1, 10);  // 最高 10 级
+        newStreak = oldStreak + 1;
+      } else {
+        // 答错：熟练度重置为 0，连续成功重置为 0
+        newLevel = 0;
+        newStreak = 0;
+      }
+
+      // 计算下次复习时间
+      const nextReviewAt = calculateNextReviewAt(newLevel);
+
+      console.log('[review-states] Update:', {
+        item_id: itemIdStr,
+        isKnown,
+        oldLevel,
+        newLevel,
+        nextReviewAt: nextReviewAt.toISOString()
+      });
+
       result = await pool.query(
         `UPDATE user_review_states SET 
-          review_count = COALESCE($1, review_count),
-          familiarity_level = COALESCE($2, familiarity_level),
-          success_streak = COALESCE($3, success_streak),
-          last_result_known = COALESCE($4, last_result_known),
+          review_count = $1,
+          familiarity_level = $2,
+          success_streak = $3,
+          last_result_known = $4,
           last_review_at = NOW(),
-          next_review_at = COALESCE($5, next_review_at),
+          next_review_at = $5,
           updated_at = NOW()
         WHERE id = $6 RETURNING *`,
-        [review_count, familiarity_level, success_streak, last_result_known, next_review_at, existing.rows[0].id]
+        [oldCount + 1, newLevel, newStreak, isKnown, nextReviewAt.toISOString(), current.id]
       );
     } else {
-      // 插入
+      // ========== 插入新记录（第一次学习）==========
+      // 第一次学习，熟练度从 0 开始
+      const newLevel = isKnown ? 1 : 0;
+      const newStreak = isKnown ? 1 : 0;
+      const nextReviewAt = calculateNextReviewAt(newLevel);
+
+      console.log('[review-states] Insert:', {
+        item_id: itemIdStr,
+        isKnown,
+        newLevel,
+        nextReviewAt: nextReviewAt.toISOString()
+      });
+
       result = await pool.query(
         `INSERT INTO user_review_states 
           (user_id, item_type, item_id, video_id, notebook_id, review_count, familiarity_level, success_streak, last_result_known, last_review_at, next_review_at)
         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), $10) RETURNING *`,
-        [userId, item_type, String(item_id), video_id || null, notebook_id || null, review_count || 1, familiarity_level || 0, success_streak || 0, last_result_known, next_review_at || null]
+        [userId, item_type, itemIdStr, video_id || null, notebook_id || null, 1, newLevel, newStreak, isKnown, nextReviewAt.toISOString()]
       );
+    }
+
+    // 同时记录复习日志（用于统计）
+    try {
+      await pool.query(
+        'INSERT INTO user_review_logs (user_id, item_type, item_id, result_known) VALUES ($1, $2, $3, $4)',
+        [userId, item_type, itemIdStr, isKnown]
+      );
+    } catch (logError) {
+      // 日志记录失败不影响主流程
+      console.error('记录复习日志失败:', logError);
     }
 
     res.json({ success: true, data: result.rows[0] });
