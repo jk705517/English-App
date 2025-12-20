@@ -176,7 +176,7 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 // 视频列表（支持筛选）
 app.get('/api/videos', async (req, res) => {
   try {
-    const { category, level, accent, gender, sort } = req.query;
+    const { category, level, accent, gender, author, sort } = req.query;
 
     let sql = 'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender FROM videos WHERE 1=1';
     const params = [];
@@ -197,6 +197,10 @@ app.get('/api/videos', async (req, res) => {
       params.push(gender);
       sql += ` AND gender = $${params.length}`;
     }
+    if (author) {
+      params.push(author);
+      sql += ` AND author = $${params.length}`;
+    }
 
     // 排序：默认倒序（新的在前）
     sql += ` ORDER BY episode ${sort === 'asc' ? 'ASC' : 'DESC'}`;
@@ -212,32 +216,6 @@ app.get('/api/videos', async (req, res) => {
     res.status(500).json({ success: false, error: error.message });
   }
 });
-
-// 单个视频详情
-app.get('/api/videos/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-
-    if (!id || isNaN(id)) {
-      return res.status(400).json({ success: false, error: 'Invalid video ID' });
-    }
-
-    const result = await pool.query(
-      'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent FROM videos WHERE id = $1',
-      [id]
-    );
-
-    if (result.rows.length === 0) {
-      return res.status(404).json({ success: false, error: 'Video not found' });
-    }
-
-    res.json({ success: true, data: result.rows[0] });
-  } catch (error) {
-    console.error('Database error:', error);
-    res.status(500).json({ success: false, error: error.message });
-  }
-});
-
 // ============ 用户进度 API ============
 
 // 获取用户进度
