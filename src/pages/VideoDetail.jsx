@@ -1581,6 +1581,33 @@ const VideoDetail = () => {
                                                 ))}
                                             </div>
                                         )}
+
+                                        {/* 外部词典链接 */}
+                                        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-indigo-100">
+                                            <a
+                                                href={`https://dict.youdao.com/result?word=${encodeURIComponent(item.word)}&lang=en`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-green-600 transition-colors"
+                                            >
+                                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z" />
+                                                </svg>
+                                                有道词典
+                                            </a>
+                                            <span className="text-gray-300">|</span>
+                                            <a
+                                                href={`https://www.google.com/search?q=${encodeURIComponent(item.word)}+meaning`}
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                                            >
+                                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
+                                                    <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
+                                                </svg>
+                                                Google
+                                            </a>
+                                        </div>
                                     </div>
                                 );
                             })}
