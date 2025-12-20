@@ -10,7 +10,7 @@ const renderLevel = (level) => {
     return level || '';
 };
 
-function VideoCard({ video }) {
+function VideoCard({ video, onAuthorClick }) {
     return (
         <Link
             to={`/video/${video.id}`}
@@ -55,7 +55,16 @@ function VideoCard({ video }) {
                 <div className="flex items-center justify-between text-sm text-gray-500">
                     <div className="flex items-center gap-1">
                         <User className="w-4 h-4" />
-                        <span>{video.author}</span>
+                        <span
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                onAuthorClick && onAuthorClick(video.author);
+                            }}
+                            className="cursor-pointer hover:text-purple-600 hover:underline transition-colors"
+                        >
+                            {video.author}
+                        </span>
                     </div>
                     <div className="text-yellow-500 tracking-widest text-xs">
                         {renderLevel(video.level)}

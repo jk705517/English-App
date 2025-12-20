@@ -60,6 +60,7 @@ export const videoAPI = {
         if (filters.level) params.append('level', filters.level);
         if (filters.accent && filters.accent !== '全部') params.append('accent', filters.accent);
         if (filters.gender && filters.gender !== '全部') params.append('gender', filters.gender);
+        if (filters.author) params.append('author', filters.author);
         if (filters.sort) params.append('sort', filters.sort);
 
         const queryString = params.toString();

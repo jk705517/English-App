@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { loadLearnedVideoIds } from '../services/progressService';
 import { videoAPI } from '../services/api';
@@ -16,6 +17,7 @@ function Home() {
         level: '',
         accent: '全部',
         gender: '全部',
+        author: '',
         sort: 'desc'
     });
 
@@ -56,6 +58,17 @@ function Home() {
         loadLearned();
     }, [user]);
 
+    // 读取 URL 参数，初始化博主筛选
+    const [searchParams, setSearchParams] = useSearchParams();
+    useEffect(() => {
+        const authorFromUrl = searchParams.get('author');
+        if (authorFromUrl) {
+            setFilters(prev => ({ ...prev, author: authorFromUrl }));
+            // 清除 URL 参数，保持 URL 干净
+            setSearchParams({}, { replace: true });
+        }
+    }, []); // 仅在组件首次加载时执行
+
     // 处理筛选变化
     const handleFilterChange = (key, value) => {
         setFilters(prev => ({ ...prev, [key]: value }));
@@ -68,14 +81,21 @@ function Home() {
             level: '',
             accent: '全部',
             gender: '全部',
+            author: '',
             sort: 'desc'
         });
+    };
+
+    // 点击博主筛选
+    const handleAuthorClick = (authorName) => {
+        setFilters(prev => ({ ...prev, author: authorName }));
     };
 
     // 检查是否有非默认筛选条件
     const hasActiveFilters = filters.level !== '' ||
         filters.accent !== '全部' ||
         filters.gender !== '全部' ||
+        filters.author !== '' ||
         filters.sort !== 'desc';
 
     // 计算统计数据
@@ -223,6 +243,19 @@ function Home() {
                 )}
             </div>
 
+            {/* 博主筛选提示条 */}
+            {filters.author && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-lg mb-4">
+                    <span className="text-purple-600">📺 当前博主：{filters.author}</span>
+                    <button
+                        onClick={() => setFilters(prev => ({ ...prev, author: '' }))}
+                        className="text-gray-500 hover:text-gray-700 ml-2"
+                    >
+                        ✕ 清除
+                    </button>
+                </div>
+            )}
+
             {/* 视频列表标题 */}
             <div className="mb-6">
                 <h2 className="text-2xl font-bold text-gray-800">视频列表</h2>
@@ -237,6 +270,7 @@ function Home() {
                             ...video,
                             isLearned: learnedVideoIds.includes(video.id),
                         }}
+                        onAuthorClick={handleAuthorClick}
                     />
                 ))}
             </div>

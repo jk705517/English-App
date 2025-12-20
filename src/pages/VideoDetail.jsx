@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link, useLocation } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
 import { videoAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -46,6 +46,7 @@ const SubtitleTabs = ({ mode, setMode, className = "" }) => (
 const VideoDetail = () => {
     const { id } = useParams();
     const location = useLocation();
+    const navigate = useNavigate();
     const { user } = useAuth();
 
     // Parse query params for sentence/vocab navigation from Favorites page
@@ -1043,7 +1044,13 @@ const VideoDetail = () => {
 
                         {/* 元数据 */}
                         <div className="flex flex-wrap items-center gap-2 md:gap-4 text-xs md:text-sm text-gray-600 mb-4 md:mb-6">
-                            <span className="flex items-center">
+                            <span
+                                onClick={(e) => {
+                                    e.stopPropagation();
+                                    navigate(`/?author=${encodeURIComponent(videoData.author)}`);
+                                }}
+                                className="flex items-center cursor-pointer hover:text-purple-600 hover:underline transition-colors"
+                            >
                                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" clipRule="evenodd" />
                                 </svg>
