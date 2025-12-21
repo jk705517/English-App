@@ -53,7 +53,7 @@ function Notebooks() {
     // 删除确认 Modal
     const [deleteConfirm, setDeleteConfirm] = useState({
         isOpen: false,
-        type: null, // 'notebook' | 'sentence' | 'vocab'
+        type: null,
         data: null
     });
 
@@ -61,7 +61,7 @@ function Notebooks() {
     const [bottomSheet, setBottomSheet] = useState({
         isOpen: false,
         title: '',
-        type: null, // 'notebook' | 'sentence' | 'vocab'
+        type: null,
         data: null
     });
 
@@ -97,12 +97,11 @@ function Notebooks() {
         const longPressProps = useLongPress({
             onLongPress: () => {
                 if (!isMobile) return;
-                // 震动反馈 (如果支持)
                 if (navigator.vibrate) navigator.vibrate(50);
 
                 let title = '';
                 if (type === 'notebook') title = data.name;
-                else if (type === 'sentence') title = data.en; // 或者截断
+                else if (type === 'sentence') title = data.en;
                 else if (type === 'vocab') title = data.word;
 
                 setBottomSheet({
@@ -126,7 +125,7 @@ function Notebooks() {
         );
     };
 
-    // 更新 URL 参数（同步状态到 URL）
+    // 更新 URL 参数
     const updateUrlParams = (notebookId, tab) => {
         const params = {};
         if (notebookId) params.notebookId = notebookId;
@@ -134,15 +133,11 @@ function Notebooks() {
         setSearchParams(params, { replace: true });
     };
 
-    // Tab 切换处理：更新状态并同步 URL
+    // Tab 切换处理
     const handleTabChange = (tabKey) => {
-        // 保存当前滚动位置
         sessionStorage.setItem(`notebooks_scroll_${activeTab}`, window.scrollY.toString());
-
         setActiveTab(tabKey);
         updateUrlParams(selectedNotebook?.id, tabKey);
-
-        // 恢复目标 Tab 的滚动位置
         setTimeout(() => {
             const savedScroll = sessionStorage.getItem(`notebooks_scroll_${tabKey}`);
             if (savedScroll) {
@@ -166,17 +161,14 @@ function Notebooks() {
         console.log('[NotebooksPage] summary', summary);
         setLoading(false);
 
-        // 如果 URL 中有 notebookId，自动选中该本子
         if (pendingNotebookIdRef.current && loadedNotebooks.length > 0) {
-            // 使用 String() 统一类型进行比较
             const targetNotebook = loadedNotebooks.find(nb => String(nb.id) === String(pendingNotebookIdRef.current));
             if (targetNotebook) {
-                // 使用 setTimeout 确保状态更新后再选中
                 setTimeout(() => {
-                    handleSelectNotebook(targetNotebook, false); // false = 不更新 URL（因为已经在 URL 里了）
+                    handleSelectNotebook(targetNotebook, false);
                 }, 0);
             }
-            pendingNotebookIdRef.current = null; // 清除，避免重复触发
+            pendingNotebookIdRef.current = null;
         }
     };
 
@@ -190,27 +182,21 @@ function Notebooks() {
         }
     }, []);
 
-    // 监听 URL 参数变化（处理浏览器后退和从复习页返回）
+    // 监听 URL 参数变化
     useEffect(() => {
-        // 只在本子列表已加载完成后处理
         if (loading || notebooks.length === 0) return;
 
         const currentUrlNotebookId = searchParams.get('notebookId');
         const currentUrlTab = searchParams.get('tab');
         const refreshParam = searchParams.get('refresh');
 
-        // 如果 URL 中有 notebookId，检查是否需要恢复选中状态
         if (currentUrlNotebookId) {
-            // 使用 String() 统一类型进行比较（URL 参数是字符串，ID 可能是数字）
             const isSameNotebook = selectedNotebook && String(selectedNotebook.id) === String(currentUrlNotebookId);
 
-            // 如果有 refresh 参数，强制刷新数据（从复习页返回时）
             if (refreshParam && isSameNotebook) {
                 console.log('[Notebooks] Refresh triggered from review page, reloading stats for notebook:', currentUrlNotebookId);
-                // 重新加载统计数据
                 loadVocabStats(currentUrlNotebookId);
                 loadSentenceStats(currentUrlNotebookId);
-                // 清除 refresh 参数，避免重复刷新
                 const newParams = new URLSearchParams(searchParams);
                 newParams.delete('refresh');
                 setSearchParams(newParams, { replace: true });
@@ -221,21 +207,20 @@ function Notebooks() {
                 const targetNotebook = notebooks.find(nb => String(nb.id) === String(currentUrlNotebookId));
                 if (targetNotebook) {
                     console.log('[Notebooks] Restoring notebook from URL:', currentUrlNotebookId, 'found:', targetNotebook.name);
-                    handleSelectNotebook(targetNotebook, false); // false = 不更新 URL
+                    handleSelectNotebook(targetNotebook, false);
                 } else {
                     console.warn('[Notebooks] Notebook not found for ID:', currentUrlNotebookId);
                 }
             }
         }
 
-        // 如果 URL 中的 tab 与当前 activeTab 不同，同步 tab 状态
         if (currentUrlTab && validTabs.includes(currentUrlTab) && activeTab !== currentUrlTab) {
             console.log('[Notebooks] Restoring tab from URL:', currentUrlTab);
             setActiveTab(currentUrlTab);
         }
     }, [searchParams, notebooks, loading]);
 
-    // 选中本子并切换 Tab（用于今日汇总的快捷跳转）
+    // 选中本子并切换 Tab
     const handleJumpToNotebook = (notebookId, tab) => {
         const notebook = notebooks.find(nb => nb.id === notebookId);
         if (notebook) {
@@ -264,7 +249,6 @@ function Notebooks() {
         const totalDue = totalDueVocabCount + totalDueSentenceCount;
         const totalItems = totalVocabCount + totalSentenceCount;
 
-        // 没有任何本子或条目
         if (totalNotebooks === 0 || totalItems === 0) {
             return (
                 <div className="flex flex-col gap-1">
@@ -276,7 +260,6 @@ function Notebooks() {
             );
         }
 
-        // 有到期的任务
         if (totalDue > 0 && firstDueNotebookId) {
             const firstNotebook = notebooks.find(nb => nb.id === firstDueNotebookId);
             const firstName = firstNotebook?.name || '某个本子';
@@ -290,7 +273,7 @@ function Notebooks() {
                             （分布在 <span className="font-semibold">{totalNotebooks}</span> 个本子里）
                         </div>
                         <div className="text-gray-500">
-                            建议从《{firstName}》开始（优先跑有到期任务的 Tab）。
+                            建议从《{firstName}》开始复习。
                         </div>
                     </div>
                     <button
@@ -304,7 +287,6 @@ function Notebooks() {
             );
         }
 
-        // 没有到期任务，但本子里有内容
         return (
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                 <div className="space-y-1">
@@ -321,7 +303,6 @@ function Notebooks() {
                         type="button"
                         className="mt-2 inline-flex items-center justify-center rounded-md border border-gray-300 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50 md:mt-0"
                         onClick={() => {
-                            // 简单策略：跳到第一个有内容的本子（优先词汇）
                             const target = notebooks.find(
                                 nb => (nb.vocabCount || 0) + (nb.sentenceCount || 0) > 0
                             );
@@ -338,15 +319,36 @@ function Notebooks() {
         );
     };
 
+    // 渲染本子副标题
+    const renderNotebookSubtitle = (notebook) => {
+        const totalCount = (notebook.vocabCount || 0) + (notebook.sentenceCount || 0);
+        const dueCount = (notebook.dueVocabCount || 0) + (notebook.dueSentenceCount || 0);
+
+        if (totalCount === 0) {
+            return '暂无内容';
+        }
+
+        if (dueCount > 0) {
+            const parts = [];
+            if (notebook.dueVocabCount > 0) parts.push(`${notebook.dueVocabCount} 词`);
+            if (notebook.dueSentenceCount > 0) parts.push(`${notebook.dueSentenceCount} 句`);
+            return `今日待复习：${parts.join(' · ')}`;
+        }
+
+        const contentParts = [];
+        if (notebook.vocabCount > 0) contentParts.push(`${notebook.vocabCount} 词`);
+        if (notebook.sentenceCount > 0) contentParts.push(`${notebook.sentenceCount} 句`);
+        return `${contentParts.join(' · ')}（今日已完成）`;
+    };
+
     // 加载本子详情
     const handleSelectNotebook = async (notebook, shouldUpdateUrl = true) => {
         setSelectedNotebook(notebook);
         setDetailLoading(true);
-        setVocabStats({ dueCount: 0, totalVocabCount: 0, hasReviewState: false }); // 重置统计
-        setSentenceStats({ dueCount: 0, totalSentenceCount: 0, hasReviewState: false }); // 重置统计
+        setVocabStats({ dueCount: 0, totalVocabCount: 0, hasReviewState: false });
+        setSentenceStats({ dueCount: 0, totalSentenceCount: 0, hasReviewState: false });
         console.log('[handleSelectNotebook] Reset stats for notebook:', notebook.id);
 
-        // 更新 URL 参数（如果需要）
         if (shouldUpdateUrl) {
             updateUrlParams(notebook.id, activeTab);
         }
@@ -355,7 +357,6 @@ function Notebooks() {
         setNotebookDetail(detail);
         setDetailLoading(false);
 
-        // 异步加载复习统计（不阻塞详情加载）
         loadVocabStats(notebook.id);
         loadSentenceStats(notebook.id);
     };
@@ -365,7 +366,6 @@ function Notebooks() {
         try {
             const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
             if (data) {
-                // 检查是否有任何词汇已经有复习记录
                 const hasReviewState = data.vocabs?.some(v => v.reviewState != null) || false;
                 console.log('[VocabStats]', {
                     notebookId,
@@ -388,13 +388,11 @@ function Notebooks() {
         setVocabStatsLoading(false);
     };
 
-    // 加载句子复习统计
     const loadSentenceStats = async (notebookId) => {
         setSentenceStatsLoading(true);
         try {
             const data = await notebookService.loadNotebookSentencesForReview(user, notebookId);
             if (data) {
-                // 检查是否有任何句子已经有复习记录
                 const hasReviewState = data.sentences?.some(s => s.reviewState != null) || false;
                 const stats = {
                     dueCount: data.dueSentenceCount || 0,
@@ -416,7 +414,6 @@ function Notebooks() {
         setSentenceStatsLoading(false);
     };
 
-    // 创建新本子
     const handleCreateNotebook = async () => {
         if (!newNotebookName.trim()) return;
 
@@ -433,7 +430,6 @@ function Notebooks() {
         setCreating(false);
     };
 
-    // 删除本子
     const handleDeleteNotebook = async (notebookId) => {
         const success = await notebookService.deleteNotebook(user, notebookId);
         if (success) {
@@ -445,7 +441,6 @@ function Notebooks() {
         }
     };
 
-    // 重命名本子
     const handleRenameNotebook = async () => {
         if (!renameModal.notebook || !renameModal.newName.trim()) return;
 
@@ -453,13 +448,11 @@ function Notebooks() {
         try {
             const response = await notebooksAPI.update(renameModal.notebook.id, renameModal.newName.trim());
             if (response.success) {
-                // 更新本地状态
                 setNotebooks(notebooks.map(nb =>
                     nb.id === renameModal.notebook.id
                         ? { ...nb, name: renameModal.newName.trim() }
                         : nb
                 ));
-                // 如果是当前选中的本子，也更新 selectedNotebook
                 if (selectedNotebook?.id === renameModal.notebook.id) {
                     setSelectedNotebook({ ...selectedNotebook, name: renameModal.newName.trim() });
                 }
@@ -471,9 +464,7 @@ function Notebooks() {
         setRenaming(false);
     };
 
-    // 移除单条句子
     const handleRemoveSentence = async (sentenceId) => {
-
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
             itemType: 'sentence',
@@ -481,18 +472,15 @@ function Notebooks() {
         });
 
         if (success) {
-            // 更新本子详情中的句子列表
             setNotebookDetail(prev => ({
                 ...prev,
                 sentences: prev.sentences.filter(s => s.sentenceId !== sentenceId)
             }));
-            // 更新左侧本子列表的计数
             setNotebooks(prev => prev.map(nb =>
                 nb.id === selectedNotebook.id
                     ? { ...nb, sentenceCount: nb.sentenceCount - 1 }
                     : nb
             ));
-            // 同步更新 selectedNotebook
             setSelectedNotebook(prev => ({
                 ...prev,
                 sentenceCount: prev.sentenceCount - 1
@@ -500,9 +488,7 @@ function Notebooks() {
         }
     };
 
-    // 移除单条词汇
     const handleRemoveVocab = async (vocabId) => {
-
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
             itemType: 'vocab',
@@ -510,18 +496,15 @@ function Notebooks() {
         });
 
         if (success) {
-            // 更新本子详情中的词汇列表
             setNotebookDetail(prev => ({
                 ...prev,
                 vocabs: prev.vocabs.filter(v => v.vocabId !== vocabId)
             }));
-            // 更新左侧本子列表的计数
             setNotebooks(prev => prev.map(nb =>
                 nb.id === selectedNotebook.id
                     ? { ...nb, vocabCount: nb.vocabCount - 1 }
                     : nb
             ));
-            // 同步更新 selectedNotebook
             setSelectedNotebook(prev => ({
                 ...prev,
                 vocabCount: prev.vocabCount - 1
@@ -529,7 +512,6 @@ function Notebooks() {
         }
     };
 
-    // 执行删除
     const executeDelete = async () => {
         const { type, data } = deleteConfirm;
         if (!type || !data) return;
@@ -544,7 +526,6 @@ function Notebooks() {
         setDeleteConfirm({ isOpen: false, type: null, data: null });
     };
 
-    // 未登录提示
     if (!user) {
         return (
             <div className="max-w-7xl mx-auto">
@@ -571,7 +552,6 @@ function Notebooks() {
 
     return (
         <div className="max-w-7xl mx-auto fade-in">
-            {/* 页面标题 */}
             <div className="mb-6">
                 <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
                     <BookOpen className="w-10 h-10 text-indigo-600" />
@@ -582,18 +562,14 @@ function Notebooks() {
                 </p>
             </div>
 
-            {/* 今日复习总览 */}
             {summary && (
                 <div className="mb-6 rounded-lg border border-gray-200 bg-white p-4 text-sm shadow-sm">
                     {renderTodaySummary(summary, notebooks)}
                 </div>
             )}
 
-            {/* 主内容区：左右布局 */}
             <div className="flex flex-col md:flex-row gap-6">
-                {/* 左侧：本子列表 */}
                 <div className="w-full md:w-80 shrink-0">
-                    {/* 新建本子按钮 */}
                     <button
                         onClick={() => setShowCreateModal(true)}
                         className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
@@ -602,7 +578,6 @@ function Notebooks() {
                         新建本子
                     </button>
 
-                    {/* 本子列表 */}
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
                             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
@@ -617,6 +592,7 @@ function Notebooks() {
                         <div className="space-y-2">
                             {notebooks.map(notebook => (
                                 <LongPressWrapper
+                                    key={notebook.id}
                                     data={notebook}
                                     type="notebook"
                                     onClick={() => handleSelectNotebook(notebook)}
@@ -635,15 +611,8 @@ function Notebooks() {
                                             )}
                                             <span className="font-medium truncate">{notebook.name}</span>
                                         </div>
-                                        <div className={`text-sm mt-1 ${selectedNotebook?.id === notebook.id ? 'text-indigo-200' : 'text-gray-400'
-                                            }`}>
-                                            {notebook.sentenceCount} 句子 · {
-                                                notebook.vocabCount === 0
-                                                    ? '暂无词汇'
-                                                    : notebook.dueVocabCount > 0
-                                                        ? `今日待复习：${notebook.dueVocabCount} 词`
-                                                        : '今日无待复习词'
-                                            }
+                                        <div className={`text-sm mt-1 ${selectedNotebook?.id === notebook.id ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                            {renderNotebookSubtitle(notebook)}
                                         </div>
                                     </div>
                                     <div className="flex items-center shrink-0 ml-2">
@@ -682,7 +651,7 @@ function Notebooks() {
                         </div>
                     )}
                 </div>
-                {/* 右侧：本子详情 */}
+
                 <div className="flex-1 min-w-0" ref={detailRef}>
                     {!selectedNotebook ? (
                         <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm">
@@ -695,7 +664,6 @@ function Notebooks() {
                         </div>
                     ) : notebookDetail ? (
                         <div className="bg-white rounded-xl shadow-sm p-6">
-                            {/* 本子标题 */}
                             <div className="flex items-center gap-3 mb-6">
                                 {notebookDetail.notebook.color && (
                                     <div
@@ -708,7 +676,6 @@ function Notebooks() {
                                 </h2>
                             </div>
 
-                            {/* Tab 切换 */}
                             <div className="flex gap-2 mb-6">
                                 <button
                                     onClick={() => handleTabChange('sentence')}
@@ -732,27 +699,21 @@ function Notebooks() {
                                 </button>
                             </div>
 
-                            {/* 句子列表 */}
                             {activeTab === 'sentence' && (
                                 <>
-                                    {/* 句子复习统计提示 */}
                                     {notebookDetail.sentences.length > 0 && (
                                         <div className="text-sm text-gray-500 mb-2">
                                             {sentenceStatsLoading ? (
                                                 <span>加载中...</span>
                                             ) : !sentenceStats.hasReviewState ? (
-                                                // Case 2: 第一轮学习
                                                 <div>📚 这个本子里有 {notebookDetail.sentences.length} 个句子还没学过，开始第一轮学习吧~</div>
                                             ) : sentenceStats.dueCount > 0 ? (
-                                                // Case 3: 有到期任务
                                                 <>今日待复习：<span className="font-medium text-indigo-600">{sentenceStats.dueCount}</span> / 共 {sentenceStats.totalSentenceCount} 个句子</>
                                             ) : (
-                                                // Case 4: 无到期任务（随便练一练）
                                                 <div>🎉 今天没有待复习的句子（共 {sentenceStats.totalSentenceCount} 个）</div>
                                             )}
                                         </div>
                                     )}
-                                    {/* 开始句子复习按钮 */}
                                     <div className="mb-4">
                                         <button
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=sentence`)}
@@ -806,7 +767,6 @@ function Notebooks() {
                                                             )}
                                                             <button
                                                                 onClick={() => {
-                                                                    // 从 sentenceId 解析 index（格式可能是 "13-4" 或纯数字）
                                                                     const sid = sentence.sentenceId;
                                                                     let index = typeof sid === 'string' && sid.includes('-')
                                                                         ? parseInt(sid.split('-').pop(), 10)
@@ -831,28 +791,21 @@ function Notebooks() {
                                 </>
                             )}
 
-                            {/* 词汇列表 */}
                             {activeTab === 'vocab' && (
                                 <>
-                                    {/* 词汇复习统计提示 */}
                                     {notebookDetail.vocabs.length > 0 && (
                                         <div className="text-sm text-gray-500 mb-2">
                                             {vocabStatsLoading ? (
                                                 <span>加载中...</span>
                                             ) : !vocabStats.hasReviewState ? (
-                                                // Case 2: 第一轮学习
                                                 <div>📚 这个本子里有 {notebookDetail.vocabs.length} 个词还没学过，开始第一轮学习吧~</div>
                                             ) : vocabStats.dueCount > 0 ? (
-                                                // Case 3: 有到期任务
                                                 <>今日待复习：<span className="font-medium text-indigo-600">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
                                             ) : (
-                                                // Case 4: 无到期任务（随便练一练）
                                                 <div>🎉 今天没有待复习的词（共 {vocabStats.totalVocabCount} 个）</div>
                                             )}
                                         </div>
                                     )}
-                                    {/* 开始词汇复习按钮 */}
-                                    {console.log('[VocabButton Render]', { hasReviewState: vocabStats.hasReviewState, dueCount: vocabStats.dueCount })}
                                     <div className="mb-4">
                                         <button
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=vocab`)}
@@ -905,7 +858,6 @@ function Notebooks() {
                                                             )}
                                                             <button
                                                                 onClick={() => {
-                                                                    // 从 vocabId 解析 index（格式可能是 "13-vocab-8" 或 "13-8" 或纯数字）
                                                                     const vid = vocab.vocabId;
                                                                     let index;
                                                                     if (typeof vid === 'string' && vid.includes('-vocab-')) {
@@ -945,7 +897,6 @@ function Notebooks() {
                 </div>
             </div>
 
-            {/* 新建本子 Modal */}
             {showCreateModal && (
                 <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-xl p-6 w-full max-w-md shadow-xl">
@@ -992,7 +943,6 @@ function Notebooks() {
                 </div>
             )}
 
-            {/* 重命名本子 Modal */}
             <Modal
                 isOpen={renameModal.isOpen}
                 onClose={() => setRenameModal({ isOpen: false, notebook: null, newName: '' })}
@@ -1030,7 +980,6 @@ function Notebooks() {
                 />
             </Modal>
 
-            {/* 删除确认 Modal */}
             <Modal
                 isOpen={deleteConfirm.isOpen}
                 onClose={() => setDeleteConfirm({ ...deleteConfirm, isOpen: false })}
@@ -1063,7 +1012,6 @@ function Notebooks() {
                 </p>
             </Modal>
 
-            {/* 底部操作栏 (Mobile) */}
             <BottomSheet
                 isOpen={bottomSheet.isOpen}
                 onClose={() => setBottomSheet(prev => ({ ...prev, isOpen: false }))}
@@ -1075,7 +1023,6 @@ function Notebooks() {
                         danger: true,
                         icon: Trash2,
                         onClick: () => {
-                            // 关闭 BottomSheet，打开确认 Modal
                             setBottomSheet(prev => ({ ...prev, isOpen: false }));
                             setDeleteConfirm({
                                 isOpen: true,
