@@ -835,7 +835,7 @@ app.post('/api/user/review-states', authMiddleware, async (req, res) => {
     // 同时记录复习日志（用于统计）
     try {
       await pool.query(
-        'INSERT INTO user_review_logs (user_id, item_type, item_id, result_known) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO user_review_logs (user_id, item_type, item_id, is_known) VALUES ($1, $2, $3, $4)',
         [userId, item_type, itemIdStr, isKnown]
       );
     } catch (logError) {
