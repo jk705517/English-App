@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { loadLearnedVideoIds } from '../services/progressService';
-import { videoAPI } from '../services/api';
+import { videoAPI, progressAPI } from '../services/api';
 import VideoCard from '../components/VideoCard';
 import { BookOpen, CheckCircle, Circle } from 'lucide-react';
 
 function Home() {
     const { user } = useAuth();
+    const navigate = useNavigate();
     const [videos, setVideos] = useState([]);
     const [learnedVideoIds, setLearnedVideoIds] = useState([]);
+    const [recentLearning, setRecentLearning] = useState(null);
 
     // 学习状态筛选
     const [studyFilter, setStudyFilter] = useState('all'); // 'all' | 'learned' | 'unlearned'
@@ -59,6 +61,19 @@ function Home() {
             setLearnedVideoIds(learnedIds);
         };
         loadLearned();
+    }, [user]);
+
+    // 获取最近学习
+    useEffect(() => {
+        if (user) {
+            progressAPI.getRecentLearning()
+                .then(res => {
+                    if (res.success && res.data) {
+                        setRecentLearning(res.data);
+                    }
+                })
+                .catch(err => console.error('获取最近学习失败:', err));
+        }
     }, [user]);
 
     // 读取 URL 参数，初始化博主筛选
@@ -166,6 +181,22 @@ function Home() {
                     <span className="font-bold text-orange-500">{unlearnedVideos}</span>
                 </div>
             </div>
+
+            {/* 最近学习 */}
+            {user && recentLearning && (
+                <div
+                    onClick={() => navigate(`/video/${recentLearning.video_id}`)}
+                    className="mx-4 mt-3 px-4 py-3 bg-orange-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors"
+                >
+                    <div className="flex items-center gap-2 min-w-0">
+                        <span className="text-orange-500">▶</span>
+                        <span className="text-gray-700 truncate">
+                            最近学习 · 第{recentLearning.episode}期：{recentLearning.title}
+                        </span>
+                    </div>
+                    <span className="text-gray-400 flex-shrink-0">→</span>
+                </div>
+            )}
 
             {/* 学习状态筛选提示条 */}
             {studyFilter !== 'all' && (

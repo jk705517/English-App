@@ -1,14 +1,10 @@
 const API_BASE = 'https://api.biubiuenglish.com';
-
 // 获取存储的 token
 const getToken = () => localStorage.getItem('token');
-
 // 设置 token
 export const setToken = (token) => localStorage.setItem('token', token);
-
 // 清除 token
 export const clearToken = () => localStorage.removeItem('token');
-
 // 通用请求函数
 const request = async (endpoint, options = {}) => {
     const token = getToken();
@@ -16,25 +12,19 @@ const request = async (endpoint, options = {}) => {
         'Content-Type': 'application/json',
         ...options.headers,
     };
-
     if (token) {
         headers['Authorization'] = `Bearer ${token}`;
     }
-
     const response = await fetch(`${API_BASE}${endpoint}`, {
         ...options,
         headers,
     });
-
     const data = await response.json();
-
     if (!response.ok) {
         throw new Error(data.error || 'Request failed');
     }
-
     return data;
 };
-
 // 认证 API
 export const authAPI = {
     register: (phone, password, nickname) =>
@@ -42,16 +32,13 @@ export const authAPI = {
             method: 'POST',
             body: JSON.stringify({ phone, password, nickname }),
         }),
-
     login: (phone, password) =>
         request('/api/auth/login', {
             method: 'POST',
             body: JSON.stringify({ phone, password }),
         }),
-
     getMe: () => request('/api/auth/me'),
 };
-
 // 视频 API
 export const videoAPI = {
     getAll: (filters = {}) => {
@@ -62,14 +49,12 @@ export const videoAPI = {
         if (filters.gender && filters.gender !== '全部') params.append('gender', filters.gender);
         if (filters.author) params.append('author', filters.author);
         if (filters.sort) params.append('sort', filters.sort);
-
         const queryString = params.toString();
         const url = queryString ? `/api/videos?${queryString}` : '/api/videos';
         return request(url);
     },
     getById: (id) => request(`/api/videos/${id}`),
 };
-
 // 用户进度 API
 export const progressAPI = {
     getAll: () => request('/api/user/progress'),
@@ -79,8 +64,9 @@ export const progressAPI = {
             body: JSON.stringify({ video_id, item_type, item_id }),
         }),
     delete: (id) => request(`/api/user/progress/${id}`, { method: 'DELETE' }),
+    // 获取最近学习的视频
+    getRecentLearning: () => request('/api/user/recent-learning'),
 };
-
 // 收藏 API
 export const favoritesAPI = {
     getAll: () => request('/api/user/favorites'),
@@ -91,7 +77,6 @@ export const favoritesAPI = {
         }),
     delete: (id) => request(`/api/user/favorites/${id}`, { method: 'DELETE' }),
 };
-
 // 笔记本 API
 export const notebooksAPI = {
     getAll: () => request('/api/user/notebooks'),
@@ -115,7 +100,6 @@ export const notebooksAPI = {
     deleteItem: (notebookId, itemId) =>
         request(`/api/user/notebooks/${notebookId}/items/${itemId}`, { method: 'DELETE' }),
 };
-
 // 复习状态 API
 export const reviewStatesAPI = {
     getAll: () => request('/api/user/review-states'),
@@ -125,9 +109,7 @@ export const reviewStatesAPI = {
             body: JSON.stringify(data),
         }),
 };
-
 // 复习日志 API
 export const reviewLogsAPI = {
     getStats: (days = 7) => request(`/api/user/review-logs?days=${days}`),
 };
-

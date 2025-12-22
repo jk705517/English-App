@@ -289,6 +289,30 @@ app.get('/api/user/progress', authMiddleware, async (req, res) => {
   }
 });
 
+// 获取最近学习的视频
+app.get('/api/user/recent-learning', authenticateToken, async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT p.video_id, p.learned_at, 
+             v.title, v.episode, v.cover
+      FROM user_progress p
+      JOIN videos v ON p.video_id::text = v.id::text
+      WHERE p.user_id = $1 AND p.item_type = 'video'
+      ORDER BY p.learned_at DESC
+      LIMIT 1
+    `, [req.user.userId]);
+
+    if (result.rows.length === 0) {
+      return res.json({ success: true, data: null });
+    }
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('获取最近学习失败:', error);
+    res.status(500).json({ success: false, message: '获取失败' });
+  }
+});
+
 // 保存用户进度
 app.post('/api/user/progress', authMiddleware, async (req, res) => {
   try {
