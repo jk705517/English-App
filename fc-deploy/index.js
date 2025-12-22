@@ -290,7 +290,7 @@ app.get('/api/user/progress', authMiddleware, async (req, res) => {
 });
 
 // 获取最近学习的视频
-app.get('/api/user/recent-learning', authenticateToken, async (req, res) => {
+app.get('/api/user/recent-learning', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT p.video_id, p.learned_at, 
