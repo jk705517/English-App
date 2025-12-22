@@ -33,7 +33,6 @@ function ReviewStatsPage() {
         setLoading(false);
     };
 
-    // 未登录提示
     if (!user) {
         return (
             <div className="max-w-3xl mx-auto">
@@ -58,7 +57,6 @@ function ReviewStatsPage() {
         );
     }
 
-    // 加载中
     if (loading) {
         return (
             <div className="max-w-3xl mx-auto">
@@ -77,7 +75,6 @@ function ReviewStatsPage() {
         );
     }
 
-    // 加载失败
     if (error) {
         return (
             <div className="max-w-3xl mx-auto">
@@ -102,13 +99,10 @@ function ReviewStatsPage() {
 
     const { days, summary } = stats || { days: [], summary: {} };
     const { totalCount, vocabCount, sentenceCount, currentStreak } = summary;
-
-    // 计算柱状图最大值（用于高度比例）
     const maxTotal = Math.max(...days.map(d => d.total), 1);
 
     return (
         <div className="max-w-3xl mx-auto">
-            {/* 标题区 */}
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
                     <BarChart3 className="w-8 h-8 text-indigo-600" />
@@ -117,7 +111,6 @@ function ReviewStatsPage() {
                 <p className="text-gray-500">最近 7 天的复习情况（词汇 + 句子）</p>
             </div>
 
-            {/* 概览卡片 */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
                 {totalCount > 0 ? (
                     <div className="space-y-3">
@@ -159,37 +152,28 @@ function ReviewStatsPage() {
                 )}
             </div>
 
-            {/* 简易柱状图 */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
                 <h2 className="text-lg font-semibold text-gray-800 mb-4">每日复习趋势</h2>
-                <div className="flex items-end justify-between gap-2 h-32">
+                <div className="flex items-end gap-2" style={{ height: '120px' }}>
                     {[...days].reverse().map((day) => {
-                        const height = day.total > 0 ? Math.max((day.total / maxTotal) * 100, 10) : 4;
+                        const heightPercent = day.total > 0 ? Math.max((day.total / maxTotal) * 100, 10) : 4;
                         const hasActivity = day.total > 0;
-
                         return (
-                            <div
-                                key={day.date}
-                                className="flex-1 flex flex-col items-center"
-                            >
-                                <div
-                                    className={`w-full rounded-t-md transition-all ${hasActivity
-                                            ? 'bg-indigo-500'
-                                            : 'bg-gray-200'
-                                        }`}
-                                    style={{ height: `${height}%` }}
-                                    title={`${day.label}: ${day.total} 次`}
-                                />
-                                <span className="text-xs text-gray-500 mt-2 truncate w-full text-center">
-                                    {day.label}
-                                </span>
+                            <div key={day.date} className="flex-1 flex flex-col items-center h-full">
+                                <div className="flex-1 w-full flex items-end">
+                                    <div
+                                        className={`w-full rounded-t-md transition-all ${hasActivity ? 'bg-indigo-500' : 'bg-gray-200'}`}
+                                        style={{ height: `${heightPercent}%` }}
+                                        title={`${day.label}: ${day.total} 次`}
+                                    />
+                                </div>
+                                <span className="text-xs text-gray-500 mt-2 shrink-0">{day.label}</span>
                             </div>
                         );
                     })}
                 </div>
             </div>
 
-            {/* 每日列表 */}
             <div className="bg-white rounded-xl shadow-sm overflow-hidden">
                 <h2 className="text-lg font-semibold text-gray-800 p-4 border-b border-gray-100">
                     详细记录
@@ -198,8 +182,7 @@ function ReviewStatsPage() {
                     {days.map((day) => (
                         <div
                             key={day.date}
-                            className={`flex items-center justify-between px-4 py-3 ${day.total === 0 ? 'text-gray-400' : ''
-                                }`}
+                            className={`flex items-center justify-between px-4 py-3 ${day.total === 0 ? 'text-gray-400' : ''}`}
                         >
                             <div className="flex items-center gap-3">
                                 <span className="font-medium w-12">{day.label}</span>
@@ -208,9 +191,7 @@ function ReviewStatsPage() {
                             <div className="flex items-center gap-4">
                                 {day.total > 0 ? (
                                     <>
-                                        <span className="font-semibold text-indigo-600">
-                                            {day.total} 次
-                                        </span>
+                                        <span className="font-semibold text-indigo-600">{day.total} 次</span>
                                         <div className="flex items-center gap-3 text-sm text-gray-500">
                                             <span className="flex items-center gap-1">
                                                 <BookOpen className="w-4 h-4" />
