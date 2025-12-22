@@ -134,16 +134,6 @@ function Home() {
 
     return (
         <div className="max-w-7xl mx-auto fade-in">
-            {/* 页面标题 */}
-            <div className="mb-8">
-                <h1 className="text-4xl font-bold text-gray-800 mb-2">
-                    欢迎来到 BiuBiu English
-                </h1>
-                <p className="text-gray-600">
-                    每一段都有一句能用的
-                </p>
-            </div>
-
             {/* 统计条 - 紧凑一行显示 */}
             <div className="flex bg-white rounded-xl shadow-sm mb-4" style={{ padding: '12px 0' }}>
                 {/* 总期数 */}
