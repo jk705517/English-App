@@ -113,3 +113,15 @@ export const reviewStatesAPI = {
 export const reviewLogsAPI = {
     getStats: (days = 7) => request(`/api/user/review-logs?days=${days}`),
 };
+
+// 获取词汇在其他视频中的出现记录
+export const vocabOccurrencesAPI = {
+    get: async (word, excludeVideoId) => {
+        let url = `${API_BASE}/api/vocab/occurrences?word=${encodeURIComponent(word)}`;
+        if (excludeVideoId) {
+            url += `&exclude_video_id=${excludeVideoId}`;
+        }
+        const response = await fetch(url);
+        return response.json();
+    }
+};

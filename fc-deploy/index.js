@@ -243,6 +243,45 @@ app.get('/api/videos', async (req, res) => {
   }
 });
 
+// 获取词汇在其他视频中的出现记录
+app.get('/api/vocab/occurrences', async (req, res) => {
+  try {
+    const { word, exclude_video_id } = req.query;
+
+    if (!word) {
+      return res.status(400).json({ success: false, message: '缺少 word 参数' });
+    }
+
+    // 查询词汇出现记录（排除当前视频）
+    let query = `
+          SELECT video_id, video_title, episode, vocab_index, example_sentence
+          FROM vocab_occurrences
+          WHERE word = $1
+      `;
+    const params = [word.toLowerCase()];
+
+    if (exclude_video_id) {
+      query += ` AND video_id != $2`;
+      params.push(exclude_video_id);
+    }
+
+    query += ` ORDER BY episode ASC`;
+
+    const result = await pool.query(query, params);
+
+    res.json({
+      success: true,
+      word: word,
+      total: result.rows.length,
+      occurrences: result.rows
+    });
+
+  } catch (error) {
+    console.error('获取词汇出现记录失败:', error);
+    res.status(500).json({ success: false, message: '服务器错误' });
+  }
+});
+
 // 获取单个视频详情
 app.get('/api/videos/:id', async (req, res) => {
   try {
