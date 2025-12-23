@@ -24,6 +24,12 @@ const speak = (text, lang = 'en-US') => {
     window.speechSynthesis.speak(utterance);
 };
 
+// 难度等级转换为星星显示
+const renderLevel = (level) => {
+    const num = parseInt(level) || 0;
+    return '⭐'.repeat(Math.min(Math.max(num, 0), 5));
+};
+
 // 字幕导航组件
 const SubtitleTabs = ({ mode, setMode, className = "" }) => (
     <div className={`flex items-center justify-between ${className}`}>
@@ -1062,7 +1068,7 @@ const VideoDetail = () => {
                                 </svg>
                                 {videoData.duration}
                             </span>
-                            <span className="flex items-center">{videoData.level}</span>
+                            <span className="flex items-center">{renderLevel(videoData.level)}</span>
                             <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
                                 {videoData.category}
                             </span>
