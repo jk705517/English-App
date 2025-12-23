@@ -73,6 +73,10 @@ function Notebooks() {
     });
     const [renaming, setRenaming] = useState(false);
 
+    // 打印弹窗状态
+    const [showPrintDialog, setShowPrintDialog] = useState(false);
+    const [printNotebookId, setPrintNotebookId] = useState(null);
+
     // 移动端检测
     const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
 
@@ -526,6 +530,142 @@ function Notebooks() {
         setDeleteConfirm({ isOpen: false, type: null, data: null });
     };
 
+    // 执行打印本子
+    const executePrintNotebook = (format) => {
+        setShowPrintDialog(false);
+
+        // 找到当前本子
+        const notebook = notebooks.find(n => n.id === printNotebookId);
+        if (!notebook || !notebookDetail) return;
+
+        // 获取本子内容
+        const vocabItems = notebookDetail.vocabs || [];
+        const sentenceItems = notebookDetail.sentences || [];
+
+        // 根据格式生成内容
+        let vocabContent = '';
+        let sentenceContent = '';
+
+        if (format === 'vocab' || format === 'all') {
+            vocabItems.forEach((item, index) => {
+                vocabContent += `${index + 1}. ${item.word || ''}`;
+                if (item.phonetic) vocabContent += ` /${item.phonetic}/`;
+                vocabContent += `\n`;
+                vocabContent += `   释义：${item.meaning || ''}\n`;
+                if (item.examples && item.examples.length > 0) {
+                    vocabContent += `   例句：${item.examples[0].en || ''}\n`;
+                    vocabContent += `         ${item.examples[0].cn || ''}\n`;
+                }
+                if (item.collocations && item.collocations.length > 0) {
+                    vocabContent += `   搭配：${item.collocations.join('、')}\n`;
+                }
+                vocabContent += `   来源：第${item.episode}期 · ${item.title || ''}\n`;
+                vocabContent += '\n';
+            });
+        }
+
+        if (format === 'sentence' || format === 'all') {
+            sentenceItems.forEach((item, index) => {
+                sentenceContent += `${index + 1}. ${item.en || ''}\n`;
+                sentenceContent += `   ${item.cn || ''}\n`;
+                sentenceContent += `   来源：第${item.episode}期 · ${item.title || ''}\n`;
+                sentenceContent += '\n';
+            });
+        }
+
+        // 创建打印窗口
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('请允许弹出窗口以使用打印功能');
+            return;
+        }
+
+        const formatLabel = format === 'vocab' ? '词汇' : format === 'sentence' ? '句子' : '全部内容';
+        const itemCount = format === 'vocab' ? vocabItems.length : format === 'sentence' ? sentenceItems.length : vocabItems.length + sentenceItems.length;
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${notebook.name} - ${formatLabel}</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        padding: 40px;
+                        line-height: 1.8;
+                        color: #333;
+                    }
+                    .header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        padding-bottom: 20px;
+                        border-bottom: 2px solid #4F46E5;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        color: #1a1a1a;
+                        margin-bottom: 8px;
+                    }
+                    .header .meta {
+                        font-size: 14px;
+                        color: #666;
+                    }
+                    .section {
+                        margin-bottom: 30px;
+                    }
+                    .section-title {
+                        font-size: 18px;
+                        font-weight: bold;
+                        color: #4F46E5;
+                        margin-bottom: 15px;
+                        padding-bottom: 8px;
+                        border-bottom: 1px solid #e5e7eb;
+                    }
+                    .content {
+                        white-space: pre-wrap;
+                        font-size: 14px;
+                    }
+                    @media print {
+                        body { padding: 20px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>${notebook.name}</h1>
+                    <div class="meta">
+                        ${formatLabel} · 共 ${itemCount} 项
+                    </div>
+                </div>
+                ${(format === 'vocab' || format === 'all') && vocabItems.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">📚 词汇 (${vocabItems.length})</div>
+                        <div class="content">${vocabContent}</div>
+                    </div>
+                ` : ''}
+                ${(format === 'sentence' || format === 'all') && sentenceItems.length > 0 ? `
+                    <div class="section">
+                        <div class="section-title">💬 句子 (${sentenceItems.length})</div>
+                        <div class="content">${sentenceContent}</div>
+                    </div>
+                ` : ''}
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
+
     if (!user) {
         return (
             <div className="max-w-7xl mx-auto">
@@ -674,6 +814,18 @@ function Notebooks() {
                                 <h2 className="text-2xl font-bold text-gray-800">
                                     {notebookDetail.notebook.name}
                                 </h2>
+                                <button
+                                    onClick={() => {
+                                        setPrintNotebookId(selectedNotebook.id);
+                                        setShowPrintDialog(true);
+                                    }}
+                                    className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                                    title="打印本子"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                                    </svg>
+                                </button>
                             </div>
 
                             <div className="flex gap-2 mb-6">
@@ -1033,6 +1185,48 @@ function Notebooks() {
                     }
                 ]}
             />
+
+            {/* Print Notebook Dialog */}
+            {showPrintDialog && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 z-[200]"
+                        onClick={() => setShowPrintDialog(false)}
+                    />
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-sm">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">选择打印内容</h3>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => executePrintNotebook('all')}
+                                className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">全部内容</div>
+                                <div className="text-sm text-indigo-500 mt-0.5">词汇 + 句子</div>
+                            </button>
+                            <button
+                                onClick={() => executePrintNotebook('vocab')}
+                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">仅词汇</div>
+                                <div className="text-sm text-gray-500 mt-0.5">打印收藏的词汇</div>
+                            </button>
+                            <button
+                                onClick={() => executePrintNotebook('sentence')}
+                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">仅句子</div>
+                                <div className="text-sm text-gray-500 mt-0.5">打印收藏的句子</div>
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => setShowPrintDialog(false)}
+                            className="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors"
+                        >
+                            取消
+                        </button>
+                    </div>
+                </>
+            )}
         </div>
     );
 }
