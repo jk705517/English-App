@@ -31,20 +31,33 @@ const renderLevel = (level) => {
 };
 
 // 字幕导航组件
-const SubtitleTabs = ({ mode, setMode, className = "" }) => (
+const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
     <div className={`flex items-center justify-between ${className}`}>
         <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
-
-        <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full overflow-x-auto">
-            {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
-                <button
-                    key={m}
-                    onClick={() => setMode(m)}
-                    className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                >
-                    {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
-                </button>
-            ))}
+        <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full overflow-x-auto">
+                {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
+                    <button
+                        key={m}
+                        onClick={() => setMode(m)}
+                        className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                    >
+                        {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
+                    </button>
+                ))}
+            </div>
+            {/* 分隔线 */}
+            <div className="h-6 w-px bg-gray-300 mx-1"></div>
+            {/* 打印按钮 */}
+            <button
+                onClick={onPrint}
+                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                title="打印字幕"
+            >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                </svg>
+            </button>
         </div>
     </div>
 );
@@ -135,6 +148,9 @@ const VideoDetail = () => {
     // 本子弹窗状态
     const [notebookDialogOpen, setNotebookDialogOpen] = useState(false);
     const [notebookDialogItem, setNotebookDialogItem] = useState(null); // { itemType, itemId, videoId }
+
+    // 打印弹窗状态
+    const [showPrintDialog, setShowPrintDialog] = useState(false);
 
     // PC端键盘快捷键 - 播放器激活状态
     const [playerActive, setPlayerActive] = useState(false);
@@ -700,6 +716,107 @@ const VideoDetail = () => {
         await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
     };
 
+    // 打印字幕
+    const handlePrint = () => {
+        setShowPrintDialog(true);
+    };
+
+    // 执行打印
+    const executePrint = (format) => {
+        setShowPrintDialog(false);
+
+        if (!videoData?.transcript) return;
+
+        // 生成打印内容
+        let content = '';
+        const title = videoData.title || '字幕';
+        const author = videoData.author || '';
+        const episode = videoData.episode || '';
+
+        // 根据格式生成内容
+        videoData.transcript.forEach((item, index) => {
+            const lineNum = index + 1;
+            if (format === 'dual') {
+                content += `${lineNum}. ${item.text}\n   ${item.cn}\n\n`;
+            } else if (format === 'en') {
+                content += `${lineNum}. ${item.text}\n\n`;
+            } else if (format === 'cn') {
+                content += `${lineNum}. ${item.cn}\n\n`;
+            }
+        });
+
+        // 创建打印窗口
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('请允许弹出窗口以使用打印功能');
+            return;
+        }
+
+        const formatLabel = format === 'dual' ? '双语' : format === 'en' ? '英文' : '中文';
+
+        printWindow.document.write(`
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <meta charset="UTF-8">
+                <title>${title} - ${formatLabel}字幕</title>
+                <style>
+                    * { margin: 0; padding: 0; box-sizing: border-box; }
+                    body {
+                        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+                        padding: 40px;
+                        line-height: 1.8;
+                        color: #333;
+                    }
+                    .header {
+                        text-align: center;
+                        margin-bottom: 30px;
+                        padding-bottom: 20px;
+                        border-bottom: 2px solid #4F46E5;
+                    }
+                    .header h1 {
+                        font-size: 24px;
+                        color: #1a1a1a;
+                        margin-bottom: 8px;
+                    }
+                    .header .meta {
+                        font-size: 14px;
+                        color: #666;
+                    }
+                    .content {
+                        white-space: pre-wrap;
+                        font-size: 15px;
+                    }
+                    @media print {
+                        body { padding: 20px; }
+                        .header { margin-bottom: 20px; }
+                    }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <h1>${title}</h1>
+                    <div class="meta">
+                        ${author ? `博主: ${author}` : ''}
+                        ${episode ? ` · 第${episode}期` : ''}
+                        · ${formatLabel}字幕
+                    </div>
+                </div>
+                <div class="content">${content}</div>
+                <script>
+                    window.onload = function() {
+                        window.print();
+                        window.onafterprint = function() {
+                            window.close();
+                        };
+                    };
+                </script>
+            </body>
+            </html>
+        `);
+        printWindow.document.close();
+    };
+
     // 句子收藏切换
     const handleToggleSentenceFavorite = async (sentenceId) => {
         // 防止 sentenceId 为 undefined 导致问题
@@ -1045,6 +1162,18 @@ const VideoDetail = () => {
                                         </svg>
                                     )}
                                 </button>
+                                {videoData.audio_url && (
+                                    <a
+                                        href={videoData.audio_url}
+                                        download
+                                        className="p-2 rounded-full transition-colors bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                                        title="下载音频"
+                                    >
+                                        <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                    </a>
+                                )}
                             </div>
                         </div>
 
@@ -1485,7 +1614,7 @@ const VideoDetail = () => {
                         `}
                         style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
                     >
-                        <SubtitleTabs mode={mode} setMode={setMode} />
+                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
                     </div>
                 )}
 
@@ -1628,7 +1757,7 @@ const VideoDetail = () => {
                 {/* PC Subtitle Tabs */}
                 {!isMobile && (
                     <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
-                        <SubtitleTabs mode={mode} setMode={setMode} />
+                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
                     </div>
                 )}
 
@@ -1862,6 +1991,50 @@ const VideoDetail = () => {
                     console.log(`Added to notebook: ${notebookName}`);
                 }}
             />
+
+            {/* Print Dialog */}
+            {showPrintDialog && (
+                <>
+                    {/* 遮罩层 */}
+                    <div
+                        className="fixed inset-0 bg-black/50 z-[200]"
+                        onClick={() => setShowPrintDialog(false)}
+                    />
+                    {/* 弹窗 */}
+                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-sm">
+                        <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">选择打印格式</h3>
+                        <div className="space-y-3">
+                            <button
+                                onClick={() => executePrint('dual')}
+                                className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">双语字幕</div>
+                                <div className="text-sm text-indigo-500 mt-0.5">英文 + 中文翻译</div>
+                            </button>
+                            <button
+                                onClick={() => executePrint('en')}
+                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">纯英文</div>
+                                <div className="text-sm text-gray-500 mt-0.5">仅英文原文</div>
+                            </button>
+                            <button
+                                onClick={() => executePrint('cn')}
+                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                            >
+                                <div className="font-medium">纯中文</div>
+                                <div className="text-sm text-gray-500 mt-0.5">仅中文翻译</div>
+                            </button>
+                        </div>
+                        <button
+                            onClick={() => setShowPrintDialog(false)}
+                            className="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors"
+                        >
+                            取消
+                        </button>
+                    </div>
+                </>
+            )}
         </div>
     );
 };

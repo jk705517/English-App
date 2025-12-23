@@ -248,14 +248,12 @@ app.get('/api/videos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender FROM videos WHERE id = $1',
+      'SELECT id, episode, title, transcript, vocab, cover, video_url, audio_url, category, author, level, duration, accent, gender FROM videos WHERE id = $1',
       [id]
     );
-
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Video not found' });
     }
-
     res.json({ success: true, data: result.rows[0] });
   } catch (error) {
     console.error('Database error:', error);
@@ -278,7 +276,6 @@ app.get('/api/user/progress', authMiddleware, async (req, res) => {
       query += ' AND video_id = $2';
       params.push(video_id);
     }
-
     query += ' ORDER BY created_at DESC';
 
     const result = await pool.query(query, params);
