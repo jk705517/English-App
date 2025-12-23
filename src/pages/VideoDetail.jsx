@@ -1163,16 +1163,32 @@ const VideoDetail = () => {
                                     )}
                                 </button>
                                 {videoData.audio_url && (
-                                    <a
-                                        href={videoData.audio_url}
-                                        download
+                                    <button
+                                        onClick={async () => {
+                                            try {
+                                                const response = await fetch(videoData.audio_url);
+                                                const blob = await response.blob();
+                                                const url = window.URL.createObjectURL(blob);
+                                                const a = document.createElement('a');
+                                                a.href = url;
+                                                a.download = `BiuBiu英语_第${videoData.episode}期.mp3`;
+                                                document.body.appendChild(a);
+                                                a.click();
+                                                document.body.removeChild(a);
+                                                window.URL.revokeObjectURL(url);
+                                            } catch (error) {
+                                                console.error('下载失败:', error);
+                                                // 降级方案：直接打开链接
+                                                window.open(videoData.audio_url, '_blank');
+                                            }
+                                        }}
                                         className="p-2 rounded-full transition-colors bg-gray-100 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
                                         title="下载音频"
                                     >
                                         <svg className="w-5 h-5 md:w-6 md:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                                         </svg>
-                                    </a>
+                                    </button>
                                 )}
                             </div>
                         </div>
