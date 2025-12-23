@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
 import { videoAPI, vocabOccurrencesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -156,8 +156,7 @@ const VideoDetail = () => {
     const [playerActive, setPlayerActive] = useState(false);
 
     // 词汇关联期数状态
-    const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { loading, data } }
-    const [expandedVocabWord, setExpandedVocabWord] = useState(null);
+    const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
 
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
@@ -241,34 +240,31 @@ const VideoDetail = () => {
         loadVocabFavorites();
     }, [user, id]);
 
-    // 加载词汇在其他视频的出现记录
-    const loadVocabOccurrences = async (word) => {
-        if (vocabOccurrences[word]?.data) {
-            // 已加载过，直接切换展开状态
-            setExpandedVocabWord(expandedVocabWord === word ? null : word);
-            return;
-        }
+    // 加载所有词汇的出现记录
+    const loadAllVocabOccurrences = async (vocabList, currentVideoId) => {
+        if (!vocabList || vocabList.length === 0) return;
 
-        setVocabOccurrences(prev => ({
-            ...prev,
-            [word]: { loading: true, data: null }
-        }));
-        setExpandedVocabWord(word);
-
-        try {
-            const result = await vocabOccurrencesAPI.get(word, videoData.id);
-            setVocabOccurrences(prev => ({
-                ...prev,
-                [word]: { loading: false, data: result }
-            }));
-        } catch (error) {
-            console.error('加载词汇关联失败:', error);
-            setVocabOccurrences(prev => ({
-                ...prev,
-                [word]: { loading: false, data: { total: 0, occurrences: [] } }
-            }));
+        const results = {};
+        for (const vocab of vocabList) {
+            if (!vocab.word) continue;
+            try {
+                const result = await vocabOccurrencesAPI.get(vocab.word, currentVideoId);
+                if (result.total > 0) {
+                    results[vocab.word.toLowerCase()] = result;
+                }
+            } catch (error) {
+                console.error('加载词汇关联失败:', vocab.word, error);
+            }
         }
+        setVocabOccurrences(results);
     };
+
+    // 自动加载词汇关联期数
+    useEffect(() => {
+        if (videoData?.vocab && videoData.vocab.length > 0) {
+            loadAllVocabOccurrences(videoData.vocab, videoData.id);
+        }
+    }, [videoData?.vocab, videoData?.id]);
 
     // Fetch video data
     useEffect(() => {
@@ -377,6 +373,26 @@ const VideoDetail = () => {
             }, 500);
         }
     }, [videoData, sentenceIdFromQuery, vocabIdFromQuery, typeFromQuery, indexFromQuery]);
+
+    // Handle scrollTo vocab navigation from other pages
+    const [urlSearchParams] = useSearchParams();
+    const scrollToParam = urlSearchParams.get('scrollTo');
+    const vocabIndexParam = urlSearchParams.get('vocabIndex');
+
+    useEffect(() => {
+        if (scrollToParam === 'vocab' && vocabIndexParam !== null && videoData) {
+            setTimeout(() => {
+                const vocabElement = document.getElementById(`vocab-card-${vocabIndexParam}`);
+                if (vocabElement) {
+                    vocabElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    vocabElement.classList.add('ring-2', 'ring-indigo-500');
+                    setTimeout(() => {
+                        vocabElement.classList.remove('ring-2', 'ring-indigo-500');
+                    }, 2000);
+                }
+            }, 500);
+        }
+    }, [scrollToParam, vocabIndexParam, videoData]);
 
     // Fetch all videos for navigation
     useEffect(() => {
@@ -1678,7 +1694,7 @@ const VideoDetail = () => {
                                     ? item.id
                                     : `${id}-vocab-${index}`;
                                 return (
-                                    <div key={vocabId} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                    <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
                                         {/* 收藏按钮（右上角）*/}
                                         <button
                                             onClick={() => handleToggleVocabFavorite(vocabId)}
@@ -1793,47 +1809,23 @@ const VideoDetail = () => {
                                             </a>
                                         </div>
 
-                                        {/* 词汇关联期数 */}
-                                        <div className="mt-3 pt-3 border-t border-gray-100">
-                                            <button
-                                                onClick={() => loadVocabOccurrences(item.word)}
-                                                className="text-sm text-gray-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
-                                            >
-                                                <span>📍</span>
-                                                <span>查看其他出现</span>
-                                                <svg
-                                                    className={`w-4 h-4 transition-transform ${expandedVocabWord === item.word ? 'rotate-180' : ''}`}
-                                                    fill="none"
-                                                    stroke="currentColor"
-                                                    viewBox="0 0 24 24"
-                                                >
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                </svg>
-                                            </button>
-
-                                            {expandedVocabWord === item.word && (
-                                                <div className="mt-2 text-sm">
-                                                    {vocabOccurrences[item.word]?.loading ? (
-                                                        <span className="text-gray-400">加载中...</span>
-                                                    ) : vocabOccurrences[item.word]?.data?.total > 0 ? (
-                                                        <div className="flex flex-wrap gap-2">
-                                                            <span className="text-gray-500">还出现在：</span>
-                                                            {vocabOccurrences[item.word].data.occurrences.map((occ, idx) => (
-                                                                <a
-                                                                    key={idx}
-                                                                    href={`/video/${occ.video_id}`}
-                                                                    className="text-indigo-600 hover:text-indigo-800 hover:underline"
-                                                                >
-                                                                    第{occ.episode}期
-                                                                </a>
-                                                            ))}
-                                                        </div>
-                                                    ) : (
-                                                        <span className="text-gray-400">仅在本期出现</span>
-                                                    )}
+                                        {/* 词汇关联期数 - 直接显示 */}
+                                        {vocabOccurrences[item.word?.toLowerCase()]?.total > 0 && (
+                                            <div className="mt-3 pt-3 border-t border-gray-100">
+                                                <div className="text-sm flex flex-wrap items-center gap-2">
+                                                    <span className="text-gray-500">📍 还出现在：</span>
+                                                    {vocabOccurrences[item.word.toLowerCase()].occurrences.map((occ, idx) => (
+                                                        <a
+                                                            key={idx}
+                                                            href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
+                                                            className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                        >
+                                                            第{occ.episode}期
+                                                        </a>
+                                                    ))}
                                                 </div>
-                                            )}
-                                        </div>
+                                            </div>
+                                        )}
                                     </div>
                                 );
                             })}
@@ -1990,7 +1982,7 @@ const VideoDetail = () => {
                                         ? item.id
                                         : `${id}-vocab-${index}`;
                                     return (
-                                        <div key={vocabId} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                        <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
                                             {/* 收藏按钮（右上角）*/}
                                             <button
                                                 onClick={() => handleToggleVocabFavorite(vocabId)}
@@ -2057,47 +2049,23 @@ const VideoDetail = () => {
                                                 </div>
                                             )}
 
-                                            {/* 词汇关联期数 */}
-                                            <div className="mt-2 pt-2 border-t border-gray-100">
-                                                <button
-                                                    onClick={() => loadVocabOccurrences(item.word)}
-                                                    className="text-xs text-gray-500 hover:text-indigo-600 flex items-center gap-1 transition-colors"
-                                                >
-                                                    <span>📍</span>
-                                                    <span>查看其他出现</span>
-                                                    <svg
-                                                        className={`w-3 h-3 transition-transform ${expandedVocabWord === item.word ? 'rotate-180' : ''}`}
-                                                        fill="none"
-                                                        stroke="currentColor"
-                                                        viewBox="0 0 24 24"
-                                                    >
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                                                    </svg>
-                                                </button>
-
-                                                {expandedVocabWord === item.word && (
-                                                    <div className="mt-1.5 text-xs">
-                                                        {vocabOccurrences[item.word]?.loading ? (
-                                                            <span className="text-gray-400">加载中...</span>
-                                                        ) : vocabOccurrences[item.word]?.data?.total > 0 ? (
-                                                            <div className="flex flex-wrap gap-1.5">
-                                                                <span className="text-gray-500">还出现在：</span>
-                                                                {vocabOccurrences[item.word].data.occurrences.map((occ, idx) => (
-                                                                    <a
-                                                                        key={idx}
-                                                                        href={`/video/${occ.video_id}`}
-                                                                        className="text-indigo-600 hover:text-indigo-800 hover:underline"
-                                                                    >
-                                                                        第{occ.episode}期
-                                                                    </a>
-                                                                ))}
-                                                            </div>
-                                                        ) : (
-                                                            <span className="text-gray-400">仅在本期出现</span>
-                                                        )}
+                                            {/* 词汇关联期数 - 直接显示 */}
+                                            {vocabOccurrences[item.word?.toLowerCase()]?.total > 0 && (
+                                                <div className="mt-2 pt-2 border-t border-gray-100">
+                                                    <div className="text-xs flex flex-wrap items-center gap-1.5">
+                                                        <span className="text-gray-500">📍 还出现在：</span>
+                                                        {vocabOccurrences[item.word.toLowerCase()].occurrences.map((occ, idx) => (
+                                                            <a
+                                                                key={idx}
+                                                                href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
+                                                                className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                            >
+                                                                第{occ.episode}期
+                                                            </a>
+                                                        ))}
                                                     </div>
-                                                )}
-                                            </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
