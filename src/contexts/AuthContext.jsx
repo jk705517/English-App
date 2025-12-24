@@ -18,10 +18,12 @@ const getDeviceId = () => {
 // 获取设备名称
 const getDeviceName = () => {
     const ua = navigator.userAgent;
-    if (/Mobile|Android|iPhone/i.test(ua)) {
-        return 'Mobile Browser';
-    }
-    return 'Desktop Browser';
+    if (/iPhone/i.test(ua)) return 'iPhone';
+    if (/iPad/i.test(ua)) return 'iPad';
+    if (/Android/i.test(ua)) return 'Android';
+    if (/Mac/i.test(ua)) return 'Mac';
+    if (/Windows/i.test(ua)) return 'Windows PC';
+    return 'Browser';
 };
 
 export const AuthProvider = ({ children }) => {
