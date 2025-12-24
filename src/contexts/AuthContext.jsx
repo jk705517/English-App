@@ -86,6 +86,18 @@ export const AuthProvider = ({ children }) => {
         setUser(prev => ({ ...prev, ...userData }));
     };
 
+    // 刷新用户信息（从服务器重新获取）
+    const refreshUser = async () => {
+        try {
+            const response = await authAPI.getMe();
+            if (response.success) {
+                setUser(response.data);
+            }
+        } catch (error) {
+            console.error('刷新用户信息失败:', error);
+        }
+    };
+
     const value = {
         user,
         loading,
@@ -93,6 +105,7 @@ export const AuthProvider = ({ children }) => {
         register,
         logout,
         updateUser,
+        refreshUser,
     };
 
     return (

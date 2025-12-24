@@ -59,6 +59,11 @@ function AboutPage() {
                 <p className="text-sm text-gray-400">
                     © 2025 BiuBiu English
                 </p>
+
+                {/* 头像来源说明 */}
+                <p className="text-xs text-gray-400 mt-8 text-center">
+                    头像由 <a href="https://www.dicebear.com" target="_blank" rel="noopener noreferrer" className="underline">DiceBear</a> 提供
+                </p>
             </div>
         </div>
     );

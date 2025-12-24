@@ -1,6 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { BarChart3, ChevronRight, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { getAvatarUrl } from '../config/avatars';
 
 function Settings() {
     const { user, logout } = useAuth();
@@ -18,9 +19,17 @@ function Settings() {
             {/* 用户信息区域 */}
             <div className="mb-6 p-4 bg-white rounded-xl shadow-sm">
                 <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center">
-                        <User className="w-7 h-7 text-white" />
-                    </div>
+                    {user?.avatar ? (
+                        <img
+                            src={getAvatarUrl(user?.avatar)}
+                            alt="头像"
+                            className="w-12 h-12 rounded-full bg-gray-100"
+                        />
+                    ) : (
+                        <div className="w-14 h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center">
+                            <User className="w-7 h-7 text-white" />
+                        </div>
+                    )}
                     <div>
                         <h2 className="font-semibold text-gray-800 text-lg">
                             {user ? (user.nickname || user.phone) : '未登录'}

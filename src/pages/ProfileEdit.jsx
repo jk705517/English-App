@@ -1,18 +1,13 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { profileAPI } from '../services/api';
+import AVATAR_OPTIONS, { getAvatarUrl } from '../config/avatars';
 
 function ProfileEdit() {
-    const { user, updateUser } = useAuth();
+    const { user, updateUser, refreshUser } = useAuth();
     const navigate = useNavigate();
-
-    // 预设头像颜色
-    const avatarColors = [
-        '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4',
-        '#FFEAA7', '#DDA0DD', '#98D8C8', '#F7DC6F'
-    ];
 
     const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || 'avatar1');
     const [nickname, setNickname] = useState(user?.nickname || '');
@@ -32,6 +27,10 @@ function ProfileEdit() {
             });
             if (response.success) {
                 updateUser({ nickname: nickname.trim(), avatar: selectedAvatar });
+                // 刷新用户信息确保同步
+                if (refreshUser) {
+                    await refreshUser();
+                }
                 alert('保存成功！');
                 navigate(-1);
             } else {
@@ -61,26 +60,19 @@ function ProfileEdit() {
             {/* 头像选择 */}
             <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
                 <h3 className="font-semibold text-gray-800 mb-4">选择头像</h3>
-                <div className="grid grid-cols-4 gap-4">
-                    {avatarColors.map((color, index) => {
-                        const avatarId = `avatar${index + 1}`;
-                        const isSelected = selectedAvatar === avatarId;
-                        return (
-                            <button
-                                key={avatarId}
-                                onClick={() => setSelectedAvatar(avatarId)}
-                                className={`relative aspect-square rounded-full transition-transform hover:scale-105 ${isSelected ? 'ring-4 ring-indigo-600 ring-offset-2' : ''
-                                    }`}
-                                style={{ backgroundColor: color }}
-                            >
-                                {isSelected && (
-                                    <div className="absolute inset-0 flex items-center justify-center">
-                                        <Check className="w-8 h-8 text-white drop-shadow-lg" />
-                                    </div>
-                                )}
-                            </button>
-                        );
-                    })}
+                <div className="grid grid-cols-4 gap-3">
+                    {AVATAR_OPTIONS.map((avatar) => (
+                        <div
+                            key={avatar.id}
+                            onClick={() => setSelectedAvatar(avatar.id)}
+                            className={`cursor-pointer rounded-full overflow-hidden border-2 ${selectedAvatar === avatar.id
+                                    ? 'border-indigo-500 ring-2 ring-indigo-300'
+                                    : 'border-gray-200 hover:border-gray-300'
+                                }`}
+                        >
+                            <img src={avatar.url} alt={avatar.id} className="w-16 h-16" />
+                        </div>
+                    ))}
                 </div>
             </div>
 
