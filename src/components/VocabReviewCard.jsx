@@ -1,15 +1,18 @@
 import { Volume2 } from 'lucide-react';
 
 /**
- * TTS 朗读函数
+ * TTS 发音函数 - 使用 Azure TTS API
  */
-const speak = (text, lang = 'en-US') => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+const speak = async (text, lang = 'en-US') => {
+    try {
+        const accent = lang === 'en-GB' ? 'uk' : 'us';
+        const url = `https://api.biubiuenglish.com/api/tts?text=${encodeURIComponent(text)}&accent=${accent}`;
+
+        const audio = new Audio(url);
+        audio.play();
+    } catch (error) {
+        console.error('TTS 播放失败:', error);
+    }
 };
 
 /**
