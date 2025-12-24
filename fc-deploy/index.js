@@ -12,6 +12,16 @@ app.use(express.json());
 // JWT 密钥（生产环境应该放在环境变量里）
 const JWT_SECRET = process.env.JWT_SECRET || 'biubiu-english-secret-key-2024';
 
+// ============ Azure TTS 配置 ============
+const AZURE_TTS_KEY = process.env.AZURE_TTS_KEY || '';
+const AZURE_TTS_REGION = process.env.AZURE_TTS_REGION || 'eastasia';
+
+// 语音配置：美音和英音
+const VOICE_MAP = {
+  'us': 'en-US-JennyNeural',    // 美音女声
+  'uk': 'en-GB-SoniaNeural'     // 英音女声
+};
+
 // 数据库连接
 const pool = new Pool({
   host: process.env.RDS_HOST,
@@ -204,7 +214,7 @@ app.get('/api/videos', async (req, res) => {
   try {
     const { category, level, accent, gender, author, sort } = req.query;
 
-    let sql = 'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender FROM videos WHERE 1=1';
+    let sql = 'SELECT id, episode, title, transcript, vocab, cover, video_url, category, author, level, duration, accent, gender, youtube_url FROM videos WHERE 1=1';
     const params = [];
 
     if (category && category !== '全部') {
@@ -287,7 +297,7 @@ app.get('/api/videos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'SELECT id, episode, title, transcript, vocab, cover, video_url, audio_url, category, author, level, duration, accent, gender FROM videos WHERE id = $1',
+      'SELECT id, episode, title, transcript, vocab, cover, video_url, audio_url, category, author, level, duration, accent, gender, youtube_url FROM videos WHERE id = $1',
       [id]
     );
     if (result.rows.length === 0) {
@@ -935,6 +945,64 @@ app.get('/api/user/review-logs', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('获取复习日志失败:', error);
     res.status(500).json({ success: false, error: '获取复习日志失败' });
+  }
+});
+
+// ============ Azure TTS API ============
+
+// GET /api/tts - 文本转语音（不需要登录）
+app.get('/api/tts', async (req, res) => {
+  try {
+    const { text, accent = 'us' } = req.query;
+
+    if (!text) {
+      return res.status(400).json({ success: false, message: '缺少 text 参数' });
+    }
+
+    // 选择语音
+    const voice = VOICE_MAP[accent] || VOICE_MAP['us'];
+
+    // 构建 SSML
+    const ssml = `
+      <speak version='1.0' xmlns='http://www.w3.org/2001/10/synthesis' xml:lang='en-US'>
+        <voice name='${voice}'>
+          ${text}
+        </voice>
+      </speak>
+    `;
+
+    // 调用 Azure TTS API
+    const response = await fetch(
+      `https://${AZURE_TTS_REGION}.tts.speech.microsoft.com/cognitiveservices/v1`,
+      {
+        method: 'POST',
+        headers: {
+          'Ocp-Apim-Subscription-Key': AZURE_TTS_KEY,
+          'Content-Type': 'application/ssml+xml',
+          'X-Microsoft-OutputFormat': 'audio-16khz-128kbitrate-mono-mp3',
+          'User-Agent': 'BiuBiuEnglish'
+        },
+        body: ssml
+      }
+    );
+
+    if (!response.ok) {
+      console.error('Azure TTS error:', response.status, await response.text());
+      return res.status(500).json({ success: false, message: 'TTS 服务错误' });
+    }
+
+    // 返回音频流
+    res.set({
+      'Content-Type': 'audio/mpeg',
+      'Cache-Control': 'public, max-age=86400' // 缓存 1 天
+    });
+
+    const audioBuffer = await response.arrayBuffer();
+    res.send(Buffer.from(audioBuffer));
+
+  } catch (error) {
+    console.error('TTS error:', error);
+    res.status(500).json({ success: false, message: '服务器错误' });
   }
 });
 
