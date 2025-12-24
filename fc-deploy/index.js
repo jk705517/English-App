@@ -86,6 +86,59 @@ function calculateNextReviewAt(familiarityLevel) {
   return nextReview;
 }
 
+// ============ 设备管理辅助函数 ============
+
+/**
+ * 管理设备登录
+ * - 同一设备更新登录时间
+ * - 新设备检查数量限制（最多3台）
+ * - 超过限制踢掉最早的设备
+ */
+async function manageDeviceLogin(userId, deviceId, deviceName) {
+  try {
+    // 检查设备是否已存在
+    const existing = await pool.query(
+      'SELECT id FROM user_devices WHERE user_id = $1 AND device_id = $2',
+      [userId, deviceId]
+    );
+
+    if (existing.rows.length > 0) {
+      // 设备已存在，更新最后登录时间
+      await pool.query(
+        'UPDATE user_devices SET last_login_at = NOW(), device_name = $1 WHERE user_id = $2 AND device_id = $3',
+        [deviceName, userId, deviceId]
+      );
+    } else {
+      // 新设备，检查数量限制
+      const countResult = await pool.query(
+        'SELECT COUNT(*) as count FROM user_devices WHERE user_id = $1',
+        [userId]
+      );
+      const deviceCount = parseInt(countResult.rows[0].count);
+
+      // 如果已有3台设备，踢掉最早的
+      if (deviceCount >= 3) {
+        await pool.query(
+          `DELETE FROM user_devices WHERE id IN (
+            SELECT id FROM user_devices WHERE user_id = $1 
+            ORDER BY last_login_at ASC LIMIT $2
+          )`,
+          [userId, deviceCount - 2]  // 保留2台，给新设备腾位置
+        );
+      }
+
+      // 添加新设备
+      await pool.query(
+        'INSERT INTO user_devices (user_id, device_id, device_name) VALUES ($1, $2, $3)',
+        [userId, deviceId, deviceName]
+      );
+    }
+  } catch (error) {
+    console.error('设备管理失败:', error);
+    // 不阻断登录流程
+  }
+}
+
 // ============ 认证相关 API ============
 
 // 注册
@@ -137,7 +190,7 @@ app.post('/api/auth/register', async (req, res) => {
 // 登录
 app.post('/api/auth/login', async (req, res) => {
   try {
-    const { phone, password } = req.body;
+    const { phone, password, deviceId, deviceName } = req.body;
 
     if (!phone || !password) {
       return res.status(400).json({ success: false, error: '手机号和密码不能为空' });
@@ -168,6 +221,11 @@ app.post('/api/auth/login', async (req, res) => {
     // 更新最后登录时间
     await pool.query('UPDATE users SET last_login_at = NOW() WHERE id = $1', [user.id]);
 
+    // 设备管理：记录登录设备
+    const finalDeviceId = deviceId || 'unknown-' + Date.now();
+    const finalDeviceName = deviceName || 'Unknown Device';
+    await manageDeviceLogin(user.id, finalDeviceId, finalDeviceName);
+
     // 生成 JWT
     const token = jwt.sign(
       { userId: user.id, phone: user.phone },
@@ -192,7 +250,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, phone, nickname, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, phone, nickname, avatar, avatar_url, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 
@@ -204,6 +262,97 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============ 用户设置 API ============
+
+// 修改用户资料（昵称、头像）
+app.put('/api/user/profile', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { nickname, avatar } = req.body;
+
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (nickname !== undefined) {
+      updates.push(`nickname = $${paramIndex++}`);
+      values.push(nickname);
+    }
+    if (avatar !== undefined) {
+      updates.push(`avatar = $${paramIndex++}`);
+      values.push(avatar);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ success: false, error: '没有要更新的字段' });
+    }
+
+    values.push(userId);
+    const sql = `UPDATE users SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING id, phone, nickname, avatar`;
+    const result = await pool.query(sql, values);
+
+    res.json({ success: true, data: result.rows[0] });
+  } catch (error) {
+    console.error('更新用户资料失败:', error);
+    res.status(500).json({ success: false, error: '更新失败' });
+  }
+});
+
+// 提交意见反馈
+app.post('/api/user/feedback', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { type, content } = req.body;
+
+    if (!type || !content) {
+      return res.status(400).json({ success: false, error: '请填写反馈类型和内容' });
+    }
+
+    const result = await pool.query(
+      'INSERT INTO user_feedback (user_id, type, content) VALUES ($1, $2, $3) RETURNING id',
+      [userId, type, content]
+    );
+
+    res.json({ success: true, data: { id: result.rows[0].id }, message: '感谢您的反馈！' });
+  } catch (error) {
+    console.error('提交反馈失败:', error);
+    res.status(500).json({ success: false, error: '提交失败' });
+  }
+});
+
+// 获取设备列表
+app.get('/api/user/devices', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const result = await pool.query(
+      'SELECT id, device_id, device_name, last_login_at, created_at FROM user_devices WHERE user_id = $1 ORDER BY last_login_at DESC',
+      [userId]
+    );
+    res.json({ success: true, data: result.rows });
+  } catch (error) {
+    console.error('获取设备列表失败:', error);
+    res.status(500).json({ success: false, error: '获取失败' });
+  }
+});
+
+// 删除指定设备（退出登录）
+app.delete('/api/user/devices/:id', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const deviceId = req.params.id;
+
+    await pool.query(
+      'DELETE FROM user_devices WHERE id = $1 AND user_id = $2',
+      [deviceId, userId]
+    );
+
+    res.json({ success: true, message: '设备已移除' });
+  } catch (error) {
+    console.error('删除设备失败:', error);
+    res.status(500).json({ success: false, error: '删除失败' });
   }
 });
 

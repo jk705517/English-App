@@ -65,18 +65,21 @@ function Settings() {
                     <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
                 </Link>
 
-                {/* 占位：未来功能 */}
-                <div className="p-4 bg-white rounded-xl shadow-sm opacity-60">
+                {/* 更多设置入口 */}
+                <Link
+                    to="/settings/more"
+                    className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow group"
+                >
                     <div className="flex items-center gap-4">
                         <div className="w-12 h-12 bg-gray-100 rounded-lg flex items-center justify-center">
                             <span className="text-xl">⚙️</span>
                         </div>
                         <div>
                             <h3 className="font-semibold text-gray-800">更多设置</h3>
-                            <p className="text-sm text-gray-500">字幕模式、自动循环等功能即将上线...</p>
                         </div>
                     </div>
-                </div>
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                </Link>
             </div>
 
             {/* 退出登录按钮 - 仅登录状态显示 */}

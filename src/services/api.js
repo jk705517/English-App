@@ -32,10 +32,10 @@ export const authAPI = {
             method: 'POST',
             body: JSON.stringify({ phone, password, nickname }),
         }),
-    login: (phone, password) =>
+    login: (data) =>
         request('/api/auth/login', {
             method: 'POST',
-            body: JSON.stringify({ phone, password }),
+            body: JSON.stringify(data),
         }),
     getMe: () => request('/api/auth/me'),
 };
@@ -124,4 +124,28 @@ export const vocabOccurrencesAPI = {
         const response = await fetch(url);
         return response.json();
     }
+};
+
+// 设备管理 API
+export const devicesAPI = {
+    getList: () => request('/api/user/devices'),
+    remove: (id) => request(`/api/user/devices/${id}`, { method: 'DELETE' }),
+};
+
+// 反馈 API
+export const feedbackAPI = {
+    submit: (data) =>
+        request('/api/user/feedback', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+};
+
+// 用户资料 API
+export const profileAPI = {
+    update: (data) =>
+        request('/api/user/profile', {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
 };
