@@ -14,14 +14,18 @@ import IntensiveSentenceList from '../components/IntensiveSentenceList';
 import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { generateClozeData } from '../utils/clozeGenerator';
 
-// TTS 鏈楄鍑芥暟
-const speak = (text, lang = 'en-US') => {
-    if (!window.speechSynthesis) return;
-    window.speechSynthesis.cancel();
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = lang;
-    utterance.rate = 0.9;
-    window.speechSynthesis.speak(utterance);
+// TTS 发音函数 - 使用 Azure TTS API
+const speak = async (text, lang = 'en-US') => {
+    try {
+        // 将浏览器的 lang 参数转换为 API 的 accent 参数
+        const accent = lang === 'en-GB' ? 'uk' : 'us';
+        const url = `https://api.biubiuenglish.com/api/tts?text=${encodeURIComponent(text)}&accent=${accent}`;
+
+        const audio = new Audio(url);
+        audio.play();
+    } catch (error) {
+        console.error('TTS 播放失败:', error);
+    }
 };
 
 // 难度等级转换为星星显示
