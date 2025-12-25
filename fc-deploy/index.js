@@ -251,7 +251,7 @@ app.post('/api/auth/login', async (req, res) => {
 app.get('/api/auth/me', authMiddleware, async (req, res) => {
   try {
     const result = await pool.query(
-      'SELECT id, phone, nickname, avatar, avatar_url, created_at FROM users WHERE id = $1',
+      'SELECT id, phone, nickname, avatar, avatar_url, email, created_at FROM users WHERE id = $1',
       [req.user.userId]
     );
 

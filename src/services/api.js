@@ -166,6 +166,21 @@ export const profileAPI = {
         }),
 };
 
+// 用户设置 API
+export const userAPI = {
+    updateEmail: async (email) => {
+        const response = await fetch(`${API_BASE}/api/user/email`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${localStorage.getItem('token')}`,
+            },
+            body: JSON.stringify({ email }),
+        });
+        return response.json();
+    },
+};
+
 // 激活链接 API
 export const activateAPI = {
     getInfo: async (token) => {

@@ -2,7 +2,7 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
-import { profileAPI } from '../services/api';
+import { profileAPI, userAPI } from '../services/api';
 import AVATAR_OPTIONS, { getAvatarUrl } from '../config/avatars';
 
 function ProfileEdit() {
@@ -11,6 +11,7 @@ function ProfileEdit() {
 
     const [selectedAvatar, setSelectedAvatar] = useState(user?.avatar || 'avatar1');
     const [nickname, setNickname] = useState(user?.nickname || '');
+    const [email, setEmail] = useState(user?.email || '');
     const [saving, setSaving] = useState(false);
 
     const handleSave = async () => {
@@ -21,12 +22,27 @@ function ProfileEdit() {
 
         setSaving(true);
         try {
+            // 保存昵称和头像
             const response = await profileAPI.update({
                 nickname: nickname.trim(),
                 avatar: selectedAvatar
             });
+
+            // 如果有邮箱，保存邮箱
+            if (email.trim()) {
+                try {
+                    await userAPI.updateEmail(email.trim());
+                } catch (emailError) {
+                    console.error('邮箱保存失败:', emailError);
+                }
+            }
+
             if (response.success) {
-                updateUser({ nickname: nickname.trim(), avatar: selectedAvatar });
+                updateUser({
+                    nickname: nickname.trim(),
+                    avatar: selectedAvatar,
+                    email: email.trim() || user?.email
+                });
                 // 刷新用户信息确保同步
                 if (refreshUser) {
                     await refreshUser();
@@ -66,8 +82,8 @@ function ProfileEdit() {
                             key={avatar.id}
                             onClick={() => setSelectedAvatar(avatar.id)}
                             className={`cursor-pointer rounded-full overflow-hidden border-2 ${selectedAvatar === avatar.id
-                                    ? 'border-violet-500 ring-2 ring-violet-300'
-                                    : 'border-gray-200 hover:border-gray-300'
+                                ? 'border-violet-500 ring-2 ring-violet-300'
+                                : 'border-gray-200 hover:border-gray-300'
                                 }`}
                         >
                             <img src={avatar.url} alt={avatar.id} className="w-16 h-16" />
@@ -90,6 +106,21 @@ function ProfileEdit() {
                 <div className="mt-2 text-sm text-gray-500 text-right">
                     {nickname.length} / 20
                 </div>
+            </div>
+
+            {/* 邮箱绑定 */}
+            <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+                <h3 className="font-semibold text-gray-800 mb-4">绑定邮箱</h3>
+                <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="请输入邮箱地址"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400"
+                />
+                <p className="mt-2 text-sm text-gray-500">
+                    绑定邮箱后，可用于找回密码
+                </p>
             </div>
 
             {/* 保存按钮 */}
