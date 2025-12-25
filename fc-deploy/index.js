@@ -2,6 +2,7 @@ const express = require('express');
 const { Pool } = require('pg');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const crypto = require('crypto');
 
 const app = express();
 const port = 9000;
@@ -262,6 +263,234 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('Get user error:', error);
     res.status(500).json({ success: false, error: error.message });
+  }
+});
+
+// ============ 注册链接相关 API ============
+
+// 1. 生成注册链接（管理员用）
+app.post('/api/admin/generate-link', async (req, res) => {
+  try {
+    const { phone } = req.body;
+
+    if (!phone) {
+      return res.status(400).json({ success: false, message: '手机号不能为空' });
+    }
+
+    // 检查手机号是否已注册
+    const existingUser = await pool.query('SELECT id FROM users WHERE phone = $1', [phone]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ success: false, message: '该手机号已注册' });
+    }
+
+    // 生成 token
+    const token = crypto.randomUUID();
+
+    // 生成密码：biubiu + 手机号后4位
+    const password = 'biubiu' + phone.slice(-4);
+
+    // 计算过期时间：24小时后
+    const expiresAt = new Date();
+    expiresAt.setHours(expiresAt.getHours() + 24);
+
+    // 存入数据库
+    await pool.query(
+      'INSERT INTO registration_links (token, phone, password, expires_at) VALUES ($1, $2, $3, $4)',
+      [token, phone, password, expiresAt]
+    );
+
+    res.json({
+      success: true,
+      link: `https://biubiuenglish.com/activate/${token}`,
+      phone,
+      password
+    });
+  } catch (error) {
+    console.error('生成注册链接失败:', error);
+    res.status(500).json({ success: false, message: '生成链接失败' });
+  }
+});
+
+// 2. 获取链接信息
+app.get('/api/activate/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // 查询链接信息
+    const result = await pool.query(
+      'SELECT phone, password, expires_at, is_used FROM registration_links WHERE token = $1',
+      [token]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ success: false, message: '链接无效' });
+    }
+
+    const link = result.rows[0];
+
+    // 检查是否已使用
+    if (link.is_used) {
+      return res.status(400).json({ success: false, message: '链接已被使用' });
+    }
+
+    // 检查是否过期
+    if (new Date() > new Date(link.expires_at)) {
+      return res.status(400).json({ success: false, message: '链接已过期' });
+    }
+
+    res.json({
+      success: true,
+      phone: link.phone,
+      password: link.password,
+      expired: false,
+      used: false
+    });
+  } catch (error) {
+    console.error('获取链接信息失败:', error);
+    res.status(500).json({ success: false, message: '获取链接信息失败' });
+  }
+});
+
+// 3. 激活账号
+app.post('/api/activate/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+
+    // 查询链接信息
+    const linkResult = await pool.query(
+      'SELECT id, phone, password, expires_at, is_used FROM registration_links WHERE token = $1',
+      [token]
+    );
+
+    if (linkResult.rows.length === 0) {
+      return res.status(404).json({ success: false, message: '链接无效' });
+    }
+
+    const link = linkResult.rows[0];
+
+    // 检查是否已使用
+    if (link.is_used) {
+      return res.status(400).json({ success: false, message: '链接已被使用' });
+    }
+
+    // 检查是否过期
+    if (new Date() > new Date(link.expires_at)) {
+      return res.status(400).json({ success: false, message: '链接已过期' });
+    }
+
+    // 检查手机号是否已注册
+    const existingUser = await pool.query('SELECT id FROM users WHERE phone = $1', [link.phone]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ success: false, message: '该手机号已注册' });
+    }
+
+    // 加密密码
+    const passwordHash = await bcrypt.hash(link.password, 10);
+
+    // 创建用户
+    await pool.query(
+      'INSERT INTO users (phone, password_hash) VALUES ($1, $2)',
+      [link.phone, passwordHash]
+    );
+
+    // 标记链接为已使用
+    await pool.query(
+      'UPDATE registration_links SET is_used = true WHERE id = $1',
+      [link.id]
+    );
+
+    res.json({
+      success: true,
+      message: '账号激活成功',
+      phone: link.phone
+    });
+  } catch (error) {
+    console.error('激活账号失败:', error);
+    res.status(500).json({ success: false, message: '激活账号失败' });
+  }
+});
+
+// 4. 绑定邮箱
+app.put('/api/user/email', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: '邮箱不能为空' });
+    }
+
+    // 更新邮箱
+    await pool.query(
+      'UPDATE users SET email = $1 WHERE id = $2',
+      [email, userId]
+    );
+
+    res.json({ success: true, message: '邮箱绑定成功' });
+  } catch (error) {
+    console.error('绑定邮箱失败:', error);
+    res.status(500).json({ success: false, message: '绑定邮箱失败' });
+  }
+});
+
+// 5. 验证手机号+邮箱（忘记密码第一步）
+app.post('/api/auth/verify-reset', async (req, res) => {
+  try {
+    const { phone, email } = req.body;
+
+    if (!phone || !email) {
+      return res.status(400).json({ success: false, message: '手机号和邮箱不能为空' });
+    }
+
+    // 查询用户
+    const result = await pool.query(
+      'SELECT id FROM users WHERE phone = $1 AND email = $2',
+      [phone, email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: '手机号或邮箱不正确' });
+    }
+
+    res.json({ success: true, verified: true });
+  } catch (error) {
+    console.error('验证失败:', error);
+    res.status(500).json({ success: false, message: '验证失败' });
+  }
+});
+
+// 6. 重置密码（忘记密码第二步）
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { phone, email, newPassword } = req.body;
+
+    if (!phone || !email || !newPassword) {
+      return res.status(400).json({ success: false, message: '缺少必要参数' });
+    }
+
+    // 再次验证手机号和邮箱
+    const result = await pool.query(
+      'SELECT id FROM users WHERE phone = $1 AND email = $2',
+      [phone, email]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(400).json({ success: false, message: '手机号或邮箱不正确' });
+    }
+
+    // 加密新密码
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // 更新密码
+    await pool.query(
+      'UPDATE users SET password_hash = $1 WHERE id = $2',
+      [passwordHash, result.rows[0].id]
+    );
+
+    res.json({ success: true, message: '密码重置成功' });
+  } catch (error) {
+    console.error('重置密码失败:', error);
+    res.status(500).json({ success: false, message: '重置密码失败' });
   }
 });
 
