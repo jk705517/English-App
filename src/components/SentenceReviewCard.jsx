@@ -1,4 +1,4 @@
-/**
+﻿/**
  * 句子复习卡片组件
  * @param {object} sentence - 句子对象 { id, videoId, index, en, cn, episode, title, analysis }
  * @param {boolean} isFlipped - 是否已翻面
@@ -60,7 +60,7 @@ const SentenceReviewCard = ({
                     {/* 中文翻译 */}
                     {cn && (
                         <div className="mb-4 pb-4 border-b border-gray-100">
-                            <p className="text-base text-indigo-700 leading-relaxed">
+                            <p className="text-base text-violet-500 leading-relaxed">
                                 {cn}
                             </p>
                         </div>
@@ -82,9 +82,9 @@ const SentenceReviewCard = ({
                             <h4 className="text-xs font-medium text-gray-400 mb-2">地道表达</h4>
                             <div className="space-y-2">
                                 {expressions.slice(0, 2).map((expr, idx) => (
-                                    <div key={idx} className="bg-indigo-50 rounded-lg p-3">
+                                    <div key={idx} className="bg-violet-50 rounded-lg p-3">
                                         <div className="flex items-center gap-2 mb-1">
-                                            <span className="font-medium text-indigo-700">{expr.phrase || expr.word}</span>
+                                            <span className="font-medium text-violet-500">{expr.phrase || expr.word}</span>
                                             <span className="text-sm text-gray-600">{expr.explanation || expr.chinese}</span>
                                         </div>
                                         {(expr.example_en || expr.example) && (
@@ -131,7 +131,7 @@ const SentenceReviewCard = ({
                                     onGoToVideo();
                                 }
                             }}
-                            className="w-full py-2 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+                            className="w-full py-2 text-sm text-white bg-violet-400 rounded-lg hover:bg-violet-400 transition-colors"
                         >
                             去原视频学习
                         </button>

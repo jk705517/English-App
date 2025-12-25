@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -81,7 +81,7 @@ export default function Auth() {
                                 value={phone}
                                 onChange={(e) => setPhone(e.target.value)}
                                 placeholder="请输入手机号"
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-violet-400"
                                 required
                             />
                         </div>
@@ -93,7 +93,7 @@ export default function Auth() {
                                 type="password"
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
-                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-violet-400"
                                 required
                             />
                         </div>
@@ -106,14 +106,14 @@ export default function Auth() {
                                     type="text"
                                     value={nickname}
                                     onChange={(e) => setNickname(e.target.value)}
-                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                    className="w-full px-3 py-2 border border-gray-300 rounded focus:outline-none focus:ring-2 focus:ring-violet-400"
                                 />
                             </div>
                         )}
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full bg-indigo-600 text-white py-2 px-4 rounded hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                            className="w-full bg-violet-400 text-white py-2 px-4 rounded hover:bg-violet-400 disabled:opacity-50 transition-colors"
                         >
                             {loading ? '处理中...' : (isRegister ? '注册' : '登录')}
                         </button>
@@ -125,7 +125,7 @@ export default function Auth() {
                                     setIsRegister(!isRegister);
                                     setMessage('');
                                 }}
-                                className="text-indigo-600 hover:underline ml-1"
+                                className="text-violet-500 hover:underline ml-1"
                             >
                                 {isRegister ? '去登录' : '去注册'}
                             </button>

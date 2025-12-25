@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -49,7 +49,7 @@ function ProfileEdit() {
             <div className="mb-6">
                 <Link
                     to="/settings/more"
-                    className="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors mb-4"
+                    className="inline-flex items-center gap-2 text-gray-600 hover:text-violet-500 transition-colors mb-4"
                 >
                     <ArrowLeft className="w-5 h-5" />
                     <span>返回</span>
@@ -66,7 +66,7 @@ function ProfileEdit() {
                             key={avatar.id}
                             onClick={() => setSelectedAvatar(avatar.id)}
                             className={`cursor-pointer rounded-full overflow-hidden border-2 ${selectedAvatar === avatar.id
-                                    ? 'border-indigo-500 ring-2 ring-indigo-300'
+                                    ? 'border-violet-500 ring-2 ring-violet-300'
                                     : 'border-gray-200 hover:border-gray-300'
                                 }`}
                         >
@@ -85,7 +85,7 @@ function ProfileEdit() {
                     onChange={(e) => setNickname(e.target.value)}
                     placeholder="请输入昵称"
                     maxLength={20}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400"
                 />
                 <div className="mt-2 text-sm text-gray-500 text-right">
                     {nickname.length} / 20
@@ -96,7 +96,7 @@ function ProfileEdit() {
             <button
                 onClick={handleSave}
                 disabled={saving}
-                className="w-full flex items-center justify-center gap-2 p-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                className="w-full flex items-center justify-center gap-2 p-4 bg-violet-400 text-white rounded-xl hover:bg-violet-400 disabled:opacity-50 transition-colors"
             >
                 <span className="font-medium">{saving ? '保存中...' : '保存修改'}</span>
             </button>

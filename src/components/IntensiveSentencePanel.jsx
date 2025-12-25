@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+﻿import React, { useMemo } from 'react';
 
 const IntensiveSentencePanel = ({
     sentence,
@@ -49,7 +49,7 @@ const IntensiveSentencePanel = ({
 
         return parts.map((part, i) =>
             part.isPhrase ? (
-                <span key={i} className="text-indigo-600 font-bold bg-indigo-50 px-1 rounded">
+                <span key={i} className="text-violet-500 font-bold bg-violet-50 px-1 rounded">
                     {part.text}
                 </span>
             ) : (
@@ -75,8 +75,8 @@ const IntensiveSentencePanel = ({
                         className={`
                             inline-flex items-center px-4 py-2 rounded-full text-sm font-medium transition-all
                             ${isPlaying
-                                ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
-                                : 'bg-indigo-600 text-white hover:bg-indigo-700 hover:shadow-md'
+                                ? 'bg-violet-100 text-violet-500 hover:bg-violet-200'
+                                : 'bg-violet-400 text-white hover:bg-violet-400 hover:shadow-md'
                             }
                         `}
                     >
@@ -118,11 +118,11 @@ const IntensiveSentencePanel = ({
                     {/* Syntax */}
                     {analysis.syntax && (
                         <div>
-                            <h4 className="flex items-center text-sm font-bold text-indigo-900 uppercase tracking-wider mb-2">
-                                <span className="w-1 h-4 bg-indigo-500 rounded-full mr-2"></span>
+                            <h4 className="flex items-center text-sm font-bold text-violet-500 uppercase tracking-wider mb-2">
+                                <span className="w-1 h-4 bg-violet-400 rounded-full mr-2"></span>
                                 语法结构
                             </h4>
-                            <p className="text-gray-700 bg-indigo-50/50 p-3 rounded-lg text-sm md:text-base leading-relaxed">
+                            <p className="text-gray-700 bg-violet-50/50 p-3 rounded-lg text-sm md:text-base leading-relaxed">
                                 {analysis.syntax}
                             </p>
                         </div>
@@ -131,7 +131,7 @@ const IntensiveSentencePanel = ({
                     {/* Expressions */}
                     {analysis.expressions && analysis.expressions.length > 0 && (
                         <div>
-                            <h4 className="flex items-center text-sm font-bold text-indigo-900 uppercase tracking-wider mb-3">
+                            <h4 className="flex items-center text-sm font-bold text-violet-500 uppercase tracking-wider mb-3">
                                 <span className="w-1 h-4 bg-pink-500 rounded-full mr-2"></span>
                                 地道表达
                             </h4>
@@ -155,7 +155,7 @@ const IntensiveSentencePanel = ({
                     {/* Phonetics */}
                     {analysis.phonetics && (
                         <div>
-                            <h4 className="flex items-center text-sm font-bold text-indigo-900 uppercase tracking-wider mb-2">
+                            <h4 className="flex items-center text-sm font-bold text-violet-500 uppercase tracking-wider mb-2">
                                 <span className="w-1 h-4 bg-teal-500 rounded-full mr-2"></span>
                                 发音提示
                             </h4>
@@ -168,7 +168,7 @@ const IntensiveSentencePanel = ({
                     {/* Context */}
                     {analysis.context && (
                         <div>
-                            <h4 className="flex items-center text-sm font-bold text-indigo-900 uppercase tracking-wider mb-2">
+                            <h4 className="flex items-center text-sm font-bold text-violet-500 uppercase tracking-wider mb-2">
                                 <span className="w-1 h-4 bg-amber-500 rounded-full mr-2"></span>
                                 语境 / 背景
                             </h4>

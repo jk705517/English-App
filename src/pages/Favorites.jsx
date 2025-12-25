@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import VideoCard from '../components/VideoCard';
 import AddToNotebookDialog from '../components/AddToNotebookDialog';
@@ -164,7 +164,7 @@ function Favorites() {
                     <p className="text-gray-400 mb-6">登录后可以收藏视频、句子和词汇</p>
                     <Link
                         to="/auth"
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                        className="px-6 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                     >
                         去登录
                     </Link>
@@ -209,7 +209,7 @@ function Favorites() {
                         key={tab.key}
                         onClick={() => handleTabChange(tab.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab.key
-                            ? 'bg-indigo-600 text-white'
+                            ? 'bg-violet-400 text-white'
                             : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                             }`}
                     >
@@ -235,7 +235,7 @@ function Favorites() {
             {/* 加载状态 */}
             {loading ? (
                 <div className="flex flex-col items-center justify-center py-20">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mb-4"></div>
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-400 mb-4"></div>
                     <p className="text-gray-500">正在加载收藏...</p>
                 </div>
             ) : (
@@ -298,7 +298,7 @@ function Favorites() {
                                                         });
                                                         setNotebookDialogOpen(true);
                                                     }}
-                                                    className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg hover:bg-indigo-50 hover:text-indigo-500 font-medium transition-colors text-sm flex items-center gap-1"
+                                                    className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg hover:bg-violet-50 hover:text-violet-500 font-medium transition-colors text-sm flex items-center gap-1"
                                                     title="加入本子"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -309,7 +309,7 @@ function Favorites() {
                                                 {/* 去学习按钮 */}
                                                 <button
                                                     onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
-                                                    className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                    className="px-4 py-2 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习
                                                 </button>
@@ -339,7 +339,7 @@ function Favorites() {
                                         <div className="flex justify-between items-start mb-3">
                                             <div>
                                                 {/* 单词 */}
-                                                <span className="text-xl font-bold text-indigo-700">
+                                                <span className="text-xl font-bold text-violet-500">
                                                     {vocab.word}
                                                 </span>
                                                 {/* 音标 */}
@@ -360,7 +360,7 @@ function Favorites() {
                                                         });
                                                         setNotebookDialogOpen(true);
                                                     }}
-                                                    className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg hover:bg-indigo-50 hover:text-indigo-500 transition-colors"
+                                                    className="px-2 py-1 bg-gray-50 text-gray-400 rounded-lg hover:bg-violet-50 hover:text-violet-500 transition-colors"
                                                     title="加入本子"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +370,7 @@ function Favorites() {
                                                 {/* 去学习按钮 */}
                                                 <button
                                                     onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
-                                                    className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                    className="px-3 py-1 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习
                                                 </button>

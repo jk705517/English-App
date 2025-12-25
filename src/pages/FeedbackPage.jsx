@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Send } from 'lucide-react';
 import { feedbackAPI } from '../services/api';
@@ -51,7 +51,7 @@ function FeedbackPage() {
             <div className="mb-6">
                 <Link
                     to="/settings/more"
-                    className="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors mb-4"
+                    className="inline-flex items-center gap-2 text-gray-600 hover:text-violet-500 transition-colors mb-4"
                 >
                     <ArrowLeft className="w-5 h-5" />
                     <span>返回</span>
@@ -69,7 +69,7 @@ function FeedbackPage() {
                             <label
                                 key={item.value}
                                 className={`flex items-center justify-center p-3 rounded-lg border-2 cursor-pointer transition-colors ${type === item.value
-                                        ? 'border-indigo-600 bg-indigo-50 text-indigo-600'
+                                        ? 'border-violet-400 bg-violet-50 text-violet-500'
                                         : 'border-gray-200 hover:border-gray-300'
                                     }`}
                             >
@@ -94,7 +94,7 @@ function FeedbackPage() {
                         value={content}
                         onChange={(e) => setContent(e.target.value)}
                         placeholder="请详细描述您的建议或问题（至少10个字）"
-                        className="w-full h-40 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                        className="w-full h-40 px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 resize-none"
                     />
                     <div className="mt-2 text-sm text-gray-500 text-right">
                         {content.length} / 至少10字
@@ -105,7 +105,7 @@ function FeedbackPage() {
                 <button
                     type="submit"
                     disabled={submitting}
-                    className="w-full flex items-center justify-center gap-2 p-4 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+                    className="w-full flex items-center justify-center gap-2 p-4 bg-violet-400 text-white rounded-xl hover:bg-violet-400 disabled:opacity-50 transition-colors"
                 >
                     <Send className="w-5 h-5" />
                     <span className="font-medium">{submitting ? '提交中...' : '提交反馈'}</span>

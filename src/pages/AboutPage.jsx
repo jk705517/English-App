@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+﻿import { Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 
 function AboutPage() {
@@ -8,7 +8,7 @@ function AboutPage() {
             <div className="mb-6">
                 <Link
                     to="/settings/more"
-                    className="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors"
+                    className="inline-flex items-center gap-2 text-gray-600 hover:text-violet-500 transition-colors"
                 >
                     <ArrowLeft className="w-5 h-5" />
                     <span>返回</span>
@@ -49,7 +49,7 @@ function AboutPage() {
                     <p className="text-sm text-gray-500 mb-1">联系我们</p>
                     <a
                         href="mailto:biubiuenglish@example.com"
-                        className="text-indigo-600 hover:underline"
+                        className="text-violet-500 hover:underline"
                     >
                         biubiuenglish@example.com
                     </a>

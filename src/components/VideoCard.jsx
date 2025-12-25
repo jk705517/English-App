@@ -1,4 +1,4 @@
-import { Clock, User, Star } from 'lucide-react';
+﻿import { Clock, User, Star } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 // 把数字转换成星星
@@ -47,7 +47,7 @@ function VideoCard({ video, onAuthorClick }) {
             {/* 卡片内容 */}
             <div className="p-4">
                 {/* 标题 */}
-                <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                <h3 className="text-lg font-semibold text-gray-800 mb-2 line-clamp-2 group-hover:text-violet-500 transition-colors">
                     {video.title}
                 </h3>
 
@@ -73,7 +73,7 @@ function VideoCard({ video, onAuthorClick }) {
 
                 {/* 分类标签和口音标签 */}
                 <div className="mt-3 flex flex-wrap gap-2">
-                    <span className="inline-block bg-indigo-100 text-indigo-700 text-xs px-3 py-1 rounded-full font-medium">
+                    <span className="inline-block bg-violet-100 text-violet-500 text-xs px-3 py-1 rounded-full font-medium">
                         {video.category}
                     </span>
                     {video.accent && (

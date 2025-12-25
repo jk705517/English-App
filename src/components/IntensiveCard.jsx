@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+﻿import React, { useMemo, useState } from 'react';
 
 const IntensiveCard = ({
     index,
@@ -63,7 +63,7 @@ const IntensiveCard = ({
 
         return parts.map((part, i) =>
             part.isPhrase ? (
-                <span key={i} className="text-indigo-600 font-bold bg-indigo-50 px-1 rounded">
+                <span key={i} className="text-violet-500 font-bold bg-violet-50 px-1 rounded">
                     {part.text}
                 </span>
             ) : (
@@ -85,8 +85,8 @@ const IntensiveCard = ({
             className={`
                 relative p-4 md:p-6 rounded-xl border-2 transition-all duration-300 cursor-pointer scroll-mt-24
                 ${isActive
-                    ? 'bg-white border-indigo-500 shadow-lg ring-4 ring-indigo-50/50'
-                    : 'bg-white border-gray-100 hover:border-indigo-200 hover:shadow-md'
+                    ? 'bg-white border-violet-500 shadow-lg ring-4 ring-violet-50/50'
+                    : 'bg-white border-gray-100 hover:border-violet-200 hover:shadow-md'
                 }
             `}
         >
@@ -95,7 +95,7 @@ const IntensiveCard = ({
                 <div className="flex items-center gap-2">
                     <span className={`
                         font-mono text-sm font-bold px-2 py-0.5 rounded
-                        ${isActive ? 'bg-indigo-100 text-indigo-700' : 'bg-gray-100 text-gray-500'}
+                        ${isActive ? 'bg-violet-100 text-violet-500' : 'bg-gray-100 text-gray-500'}
                     `}>
                         #{index + 1}
                     </span>
@@ -132,7 +132,7 @@ const IntensiveCard = ({
                                 e.stopPropagation();
                                 onAddToNotebook(sentence.id);
                             }}
-                            className="p-1.5 rounded-full transition-colors text-gray-300 hover:text-indigo-500 hover:bg-indigo-50"
+                            className="p-1.5 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
                             title="加入本子"
                         >
                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -156,16 +156,16 @@ const IntensiveCard = ({
             {/* Analysis Content - 3 cases */}
             {/* Case 1: Toggle ON + has analysis -> show analysis */}
             {showExplanations && hasAnalysis && (
-                <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-indigo-100' : 'border-gray-100'}`}>
+                <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-violet-100' : 'border-gray-100'}`}>
 
                     {/* Syntax */}
                     {analysis.syntax && (
                         <div className="text-sm">
                             <div className="flex items-center gap-2 mb-1.5">
-                                <span className="w-1 h-3 bg-indigo-500 rounded-full"></span>
-                                <span className="font-bold text-indigo-900">语法结构</span>
+                                <span className="w-1 h-3 bg-violet-400 rounded-full"></span>
+                                <span className="font-bold text-violet-500">语法结构</span>
                             </div>
-                            <p className="text-gray-700 bg-indigo-50/50 p-2.5 rounded-lg leading-relaxed">
+                            <p className="text-gray-700 bg-violet-50/50 p-2.5 rounded-lg leading-relaxed">
                                 {analysis.syntax}
                             </p>
                         </div>
@@ -176,7 +176,7 @@ const IntensiveCard = ({
                         <div className="text-sm">
                             <div className="flex items-center gap-2 mb-1.5">
                                 <span className="w-1 h-3 bg-pink-500 rounded-full"></span>
-                                <span className="font-bold text-indigo-900">地道表达</span>
+                                <span className="font-bold text-violet-500">地道表达</span>
                             </div>
                             <div className="space-y-3">
                                 {analysis.expressions.slice(0, showAllExpressions ? undefined : 1).map((exp, idx) => (
@@ -214,7 +214,7 @@ const IntensiveCard = ({
                         <div className="text-sm">
                             <div className="flex items-center gap-2 mb-1.5">
                                 <span className="text-base">🎧</span>
-                                <span className="font-bold text-indigo-900">发音提示</span>
+                                <span className="font-bold text-violet-500">发音提示</span>
                             </div>
                             <p className="text-gray-700 bg-teal-50/50 p-2.5 rounded-lg leading-relaxed">
                                 {analysis.phonetics}
@@ -227,7 +227,7 @@ const IntensiveCard = ({
                         <div className="text-sm">
                             <div className="flex items-center gap-2 mb-1.5">
                                 <span className="text-base">💡</span>
-                                <span className="font-bold text-indigo-900">背景知识</span>
+                                <span className="font-bold text-violet-500">背景知识</span>
                             </div>
                             <p className="text-gray-700 bg-amber-50/50 p-2.5 rounded-lg leading-relaxed">
                                 {analysis.context}

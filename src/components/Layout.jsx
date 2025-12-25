@@ -1,4 +1,4 @@
-import { Outlet, Link, useLocation } from 'react-router-dom';
+﻿import { Outlet, Link, useLocation } from 'react-router-dom';
 import { Home, Heart, Settings, GraduationCap, BookOpen } from 'lucide-react';
 import { clsx } from 'clsx';
 
@@ -46,7 +46,7 @@ function Layout() {
                                 className={clsx(
                                     'flex items-center gap-3 px-4 py-3 rounded-lg transition-all duration-200',
                                     active
-                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        ? 'bg-violet-400 text-white shadow-md'
                                         : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
                                 )}
                             >
@@ -66,7 +66,7 @@ function Layout() {
                         href="https://beian.miit.gov.cn/"
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="text-xs text-gray-400 hover:text-indigo-500 transition-colors"
+                        className="text-xs text-gray-400 hover:text-violet-500 transition-colors"
                     >
                         粤ICP备2025506915号-1
                     </a>
@@ -93,7 +93,7 @@ function Layout() {
                                 className={clsx(
                                     'flex-1 flex flex-col items-center justify-center py-3 transition-all duration-200',
                                     active
-                                        ? 'text-indigo-600 bg-indigo-50'
+                                        ? 'text-violet-500 bg-violet-50'
                                         : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
                                 )}
                             >

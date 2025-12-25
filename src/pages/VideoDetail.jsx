@@ -44,7 +44,7 @@ const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
                     <button
                         key={m}
                         onClick={() => setMode(m)}
-                        className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-indigo-600 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                         {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                     </button>
@@ -322,9 +322,9 @@ const VideoDetail = () => {
                                 block: 'center'
                             });
                             // Add highlight effect
-                            vocabElement.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                            vocabElement.classList.add('ring-2', 'ring-violet-400', 'ring-offset-2');
                             setTimeout(() => {
-                                vocabElement.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                                vocabElement.classList.remove('ring-2', 'ring-violet-400', 'ring-offset-2');
                             }, 3000);
                         }
                     }, 500);
@@ -369,9 +369,9 @@ const VideoDetail = () => {
                         block: 'center'
                     });
                     // Add highlight effect
-                    vocabElement.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                    vocabElement.classList.add('ring-2', 'ring-violet-400', 'ring-offset-2');
                     setTimeout(() => {
-                        vocabElement.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                        vocabElement.classList.remove('ring-2', 'ring-violet-400', 'ring-offset-2');
                     }, 3000);
                 }
             }, 500);
@@ -389,9 +389,9 @@ const VideoDetail = () => {
                 const vocabElement = document.getElementById(`vocab-card-${vocabIndexParam}`);
                 if (vocabElement) {
                     vocabElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                    vocabElement.classList.add('ring-2', 'ring-indigo-500');
+                    vocabElement.classList.add('ring-2', 'ring-violet-400');
                     setTimeout(() => {
-                        vocabElement.classList.remove('ring-2', 'ring-indigo-500');
+                        vocabElement.classList.remove('ring-2', 'ring-violet-400');
                     }, 2000);
                 }
             }, 500);
@@ -1137,7 +1137,7 @@ const VideoDetail = () => {
             {/* ========== 移动端：顶部"继续播放"小条 ========== */}
             {showMobileMiniBar && (
                 <div
-                    className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-indigo-600 to-purple-600 px-4 py-3 cursor-pointer shadow-lg md:hidden"
+                    className="fixed top-0 left-0 right-0 z-[100] bg-gradient-to-r from-violet-300 to-purple-600 px-4 py-3 cursor-pointer shadow-lg md:hidden"
                     onClick={handleMobileResume}
                 >
                     <div className="flex items-center justify-center gap-2 text-white">
@@ -1160,7 +1160,7 @@ const VideoDetail = () => {
                             {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
                                 <Link
                                     to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
-                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm md:text-base"
+                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors text-sm md:text-base"
                                 >
                                     <svg className="w-4 h-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
@@ -1171,7 +1171,7 @@ const VideoDetail = () => {
                             {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
                                 <Link
                                     to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
-                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors text-sm md:text-base"
+                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors text-sm md:text-base"
                                 >
                                     下一期
                                     <svg className="w-4 h-4 ml-1 md:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1267,7 +1267,7 @@ const VideoDetail = () => {
                                 {videoData.duration}
                             </span>
                             <span className="flex items-center">{renderLevel(videoData.level)}</span>
-                            <span className="px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-xs font-medium">
+                            <span className="px-2 py-1 bg-violet-100 text-violet-500 rounded-full text-xs font-medium">
                                 {videoData.category}
                             </span>
                         </div>
@@ -1379,7 +1379,7 @@ const VideoDetail = () => {
                                                             setShowMobileSettings(false);
                                                         }}
                                                         className={`px-4 py-2 rounded-lg text-sm transition-colors ${playbackRate === rate
-                                                            ? 'bg-indigo-500 text-white font-medium'
+                                                            ? 'bg-violet-400 text-white font-medium'
                                                             : 'bg-white/10 text-white hover:bg-white/20'
                                                             }`}
                                                     >
@@ -1397,7 +1397,7 @@ const VideoDetail = () => {
                                                     e.stopPropagation();
                                                     setIsVideoLooping(!isVideoLooping);
                                                 }}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVideoLooping ? 'bg-indigo-500' : 'bg-neutral-500/70'}`}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVideoLooping ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
                                             >
                                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isVideoLooping ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
@@ -1411,7 +1411,7 @@ const VideoDetail = () => {
                                                     e.stopPropagation();
                                                     setShowOverlaySubtitles(!showOverlaySubtitles);
                                                 }}
-                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOverlaySubtitles ? 'bg-indigo-500' : 'bg-neutral-500/70'}`}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOverlaySubtitles ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
                                             >
                                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${showOverlaySubtitles ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
@@ -1455,7 +1455,7 @@ const VideoDetail = () => {
                                     onClick={handleProgressClick}
                                 >
                                     <div
-                                        className="h-full bg-indigo-500 rounded relative"
+                                        className="h-full bg-violet-400 rounded relative"
                                         style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                                     >
                                         <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1513,7 +1513,7 @@ const VideoDetail = () => {
                                                                     key={rate}
                                                                     onClick={() => handleSetPlaybackRate(rate)}
                                                                     className={`py-3 text-center text-base rounded-lg transition-colors ${playbackRate === rate
-                                                                        ? 'text-indigo-400 bg-indigo-500/20 font-medium'
+                                                                        ? 'text-violet-400 bg-violet-500/20 font-medium'
                                                                         : 'text-white hover:bg-white/10'
                                                                         }`}
                                                                 >
@@ -1529,7 +1529,7 @@ const VideoDetail = () => {
                                                                 key={rate}
                                                                 onClick={() => handleSetPlaybackRate(rate)}
                                                                 className={`block w-full px-4 py-1.5 text-left text-sm transition-colors ${playbackRate === rate
-                                                                    ? 'text-indigo-400 bg-indigo-500/20'
+                                                                    ? 'text-violet-400 bg-violet-500/20'
                                                                     : 'text-white hover:bg-white/10'
                                                                     }`}
                                                             >
@@ -1544,7 +1544,7 @@ const VideoDetail = () => {
                                         {/* 字幕按钮 - 手机端隐藏 */}
                                         <button
                                             onClick={() => setShowOverlaySubtitles(!showOverlaySubtitles)}
-                                            className={`hidden md:block p-1.5 rounded transition-colors ${showOverlaySubtitles ? 'text-indigo-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                                            className={`hidden md:block p-1.5 rounded transition-colors ${showOverlaySubtitles ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
                                             title={showOverlaySubtitles ? '关闭字幕' : '打开字幕'}
                                         >
                                             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1595,7 +1595,7 @@ const VideoDetail = () => {
                                                             step="0.05"
                                                             value={muted ? 0 : volume}
                                                             onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                                                            className="h-16 accent-indigo-500 cursor-pointer"
+                                                            className="h-16 accent-violet-400 cursor-pointer"
                                                             style={{
                                                                 writingMode: 'vertical-lr',
                                                                 direction: 'rtl'
@@ -1612,7 +1612,7 @@ const VideoDetail = () => {
                                         {/* 单句循环按钮 */}
                                         <button
                                             onClick={() => setIsSentenceLooping(!isSentenceLooping)}
-                                            className={`flex items-center gap-1 p-1.5 rounded transition-colors ${isSentenceLooping ? 'text-indigo-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                                            className={`flex items-center gap-1 p-1.5 rounded transition-colors ${isSentenceLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
                                             title={isSentenceLooping ? '关闭单句循环' : '开启单句循环'}
                                         >
                                             <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
@@ -1641,7 +1641,7 @@ const VideoDetail = () => {
                                         {/* 视频循环按钮 - 手机端隐藏 */}
                                         <button
                                             onClick={() => setIsVideoLooping(!isVideoLooping)}
-                                            className={`hidden md:flex items-center gap-1 p-1.5 rounded transition-colors ${isVideoLooping ? 'text-indigo-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                                            className={`hidden md:flex items-center gap-1 p-1.5 rounded transition-colors ${isVideoLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
                                             title={isVideoLooping ? '关闭视频循环' : '开启视频循环'}
                                         >
                                             <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24">
@@ -1698,7 +1698,7 @@ const VideoDetail = () => {
                                     ? item.id
                                     : `${id}-vocab-${index}`;
                                 return (
-                                    <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-indigo-50 rounded-lg border border-indigo-100 transition-all duration-200">
+                                    <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-violet-50 rounded-lg border border-violet-100 transition-all duration-200">
                                         {/* 收藏按钮（右上角）*/}
                                         <button
                                             onClick={() => handleToggleVocabFavorite(vocabId)}
@@ -1726,7 +1726,7 @@ const VideoDetail = () => {
                                                 });
                                                 setNotebookDialogOpen(true);
                                             }}
-                                            className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-indigo-500 hover:bg-indigo-50"
+                                            className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
                                             title="加入本子"
                                         >
                                             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1734,7 +1734,7 @@ const VideoDetail = () => {
                                             </svg>
                                         </button>
                                         <div className="flex items-end mb-2">
-                                            <span className="text-lg font-bold text-indigo-700 mr-2">{item.word}</span>
+                                            <span className="text-lg font-bold text-violet-500 mr-2">{item.word}</span>
                                             <span className="text-sm text-gray-500">{item.type}</span>
                                         </div>
 
@@ -1743,7 +1743,7 @@ const VideoDetail = () => {
                                                 <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                     <span className="text-gray-400 w-4">US</span>
                                                     <span>/{item.ipa_us}/</span>
-                                                    <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="美式发音">
+                                                    <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors" title="美式发音">
                                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                         </svg>
@@ -1754,7 +1754,7 @@ const VideoDetail = () => {
                                                 <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                     <span className="text-gray-400 w-4">UK</span>
                                                     <span>/{item.ipa_uk}/</span>
-                                                    <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors" title="英式发音">
+                                                    <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors" title="英式发音">
                                                         <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                         </svg>
@@ -1779,7 +1779,7 @@ const VideoDetail = () => {
                                         {item.collocations && item.collocations.length > 0 && (
                                             <div className="flex flex-wrap gap-2">
                                                 {item.collocations.map((col, i) => (
-                                                    <span key={i} className="px-2 py-1 bg-white text-indigo-600 text-[13px] rounded border border-indigo-100">
+                                                    <span key={i} className="px-2 py-1 bg-white text-violet-500 text-[13px] rounded border border-violet-100">
                                                         {col}
                                                     </span>
                                                 ))}
@@ -1787,7 +1787,7 @@ const VideoDetail = () => {
                                         )}
 
                                         {/* 外部词典链接 */}
-                                        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-indigo-100">
+                                        <div className="flex items-center gap-3 mt-3 pt-3 border-t border-violet-100">
                                             <a
                                                 href={`https://dict.youdao.com/result?word=${encodeURIComponent(item.word)}&lang=en`}
                                                 target="_blank"
@@ -1804,7 +1804,7 @@ const VideoDetail = () => {
                                                 href={`https://www.google.com/search?q=${encodeURIComponent(item.word)}+meaning`}
                                                 target="_blank"
                                                 rel="noopener noreferrer"
-                                                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-blue-600 transition-colors"
+                                                className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-violet-500 transition-colors"
                                             >
                                                 <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor">
                                                     <path d="M12.48 10.92v3.28h7.84c-.24 1.84-.853 3.187-1.787 4.133-1.147 1.147-2.933 2.4-6.053 2.4-4.827 0-8.6-3.893-8.6-8.72s3.773-8.72 8.6-8.72c2.6 0 4.507 1.027 5.907 2.347l2.307-2.307C18.747 1.44 16.133 0 12.48 0 5.867 0 .307 5.387.307 12s5.56 12 12.173 12c3.573 0 6.267-1.173 8.373-3.36 2.16-2.16 2.84-5.213 2.84-7.667 0-.76-.053-1.467-.173-2.053H12.48z" />
@@ -1822,7 +1822,7 @@ const VideoDetail = () => {
                                                         <a
                                                             key={idx}
                                                             href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
-                                                            className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                            className="text-violet-500 hover:text-violet-500 hover:underline"
                                                         >
                                                             第{occ.episode}期
                                                         </a>
@@ -1850,7 +1850,7 @@ const VideoDetail = () => {
 
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
                     {mode === 'cloze' && (
-                        <div className="sticky top-0 z-10 bg-indigo-50 border-b px-4 py-2 flex items-center justify-between text-sm text-indigo-900">
+                        <div className="sticky top-0 z-10 bg-violet-50 border-b px-4 py-2 flex items-center justify-between text-sm text-violet-500">
                             <div className="flex items-center gap-4">
                                 <span>
                                     <strong>进度：</strong>
@@ -1869,7 +1869,7 @@ const VideoDetail = () => {
                         </div>
                     )}
                     {mode === 'dictation' && (
-                        <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 rounded-lg shadow-sm">
+                        <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-violet-50 to-violet-50 p-4 rounded-lg shadow-sm">
                             <div className="flex justify-around">
                                 <div className="text-center">
                                     <div className="text-2xl font-bold text-green-600">{dictationStats.correct}</div>
@@ -1884,7 +1884,7 @@ const VideoDetail = () => {
                                     <div className="text-xs text-gray-600">跳过</div>
                                 </div>
                                 <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-600">
+                                    <div className="text-2xl font-bold text-violet-500">
                                         {dictationStats.correct + dictationStats.wrong + dictationStats.skipped > 0
                                             ? Math.round((dictationStats.correct / (dictationStats.correct + dictationStats.wrong + dictationStats.skipped)) * 100)
                                             : 0}%
@@ -1897,7 +1897,7 @@ const VideoDetail = () => {
 
                     <div className="p-3 md:p-4 space-y-2 md:space-y-3">
                         {mode === 'dictation' ? (
-                            <div className="bg-blue-50 p-6 rounded-lg border-2 border-blue-200">
+                            <div className="bg-violet-50 p-6 rounded-lg border-2 border-violet-200">
                                 <DictationInput
                                     correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
                                     currentIndex={dictationIndex}
@@ -1977,8 +1977,8 @@ const VideoDetail = () => {
                         )}
 
                         {/* 重点词汇 - 只在手机端显示 */}
-                        <div className="md:hidden mt-6 p-4 bg-indigo-50 rounded-lg">
-                            <h3 className="text-lg font-bold mb-3 text-indigo-900">重点词汇</h3>
+                        <div className="md:hidden mt-6 p-4 bg-violet-50 rounded-lg">
+                            <h3 className="text-lg font-bold mb-3 text-violet-500">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => {
                                     // Generate stable vocab ID (use existing or fallback)
@@ -1986,7 +1986,7 @@ const VideoDetail = () => {
                                         ? item.id
                                         : `${id}-vocab-${index}`;
                                     return (
-                                        <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-indigo-100 transition-all duration-200">
+                                        <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-violet-100 transition-all duration-200">
                                             {/* 收藏按钮（右上角）*/}
                                             <button
                                                 onClick={() => handleToggleVocabFavorite(vocabId)}
@@ -2001,7 +2001,7 @@ const VideoDetail = () => {
                                                 </svg>
                                             </button>
                                             <div className="flex items-end mb-1">
-                                                <span className="text-base font-bold text-indigo-700 mr-2">{item.word}</span>
+                                                <span className="text-base font-bold text-violet-500 mr-2">{item.word}</span>
                                                 <span className="text-sm text-gray-500">{item.type}</span>
                                             </div>
 
@@ -2010,7 +2010,7 @@ const VideoDetail = () => {
                                                     <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                         <span className="text-gray-400 w-4">US</span>
                                                         <span>/{item.ipa_us}/</span>
-                                                        <button onClick={() => speak(item.word, 'en-US')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
+                                                        <button onClick={() => speak(item.word, 'en-US')} className="p-0.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                             </svg>
@@ -2021,7 +2021,7 @@ const VideoDetail = () => {
                                                     <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
                                                         <span className="text-gray-400 w-4">UK</span>
                                                         <span>/{item.ipa_uk}/</span>
-                                                        <button onClick={() => speak(item.word, 'en-GB')} className="p-0.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors">
+                                                        <button onClick={() => speak(item.word, 'en-GB')} className="p-0.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
                                                             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
                                                             </svg>
@@ -2046,7 +2046,7 @@ const VideoDetail = () => {
                                             {item.collocations && item.collocations.length > 0 && (
                                                 <div className="flex flex-wrap gap-1">
                                                     {item.collocations.slice(0, 3).map((col, i) => (
-                                                        <span key={i} className="px-2 py-1 bg-indigo-50 text-indigo-600 text-[13px] rounded border border-indigo-100">
+                                                        <span key={i} className="px-2 py-1 bg-violet-50 text-violet-500 text-[13px] rounded border border-violet-100">
                                                             {col}
                                                         </span>
                                                     ))}
@@ -2062,7 +2062,7 @@ const VideoDetail = () => {
                                                             <a
                                                                 key={idx}
                                                                 href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
-                                                                className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                                                                className="text-violet-500 hover:text-violet-500 hover:underline"
                                                             >
                                                                 第{occ.episode}期
                                                             </a>
@@ -2111,10 +2111,10 @@ const VideoDetail = () => {
                         <div className="space-y-3">
                             <button
                                 onClick={() => executePrint('dual')}
-                                className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors text-left"
+                                className="w-full py-3 px-4 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded-lg font-medium transition-colors text-left"
                             >
                                 <div className="font-medium">双语字幕</div>
-                                <div className="text-sm text-indigo-500 mt-0.5">英文 + 中文翻译</div>
+                                <div className="text-sm text-violet-500 mt-0.5">英文 + 中文翻译</div>
                             </button>
                             <button
                                 onClick={() => executePrint('en')}

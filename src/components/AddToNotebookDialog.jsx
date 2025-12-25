@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+﻿import React, { useState, useEffect } from 'react';
 import { X, Plus, BookOpen, Check } from 'lucide-react';
 import { notebookService } from '../services/notebookService';
 
@@ -145,7 +145,7 @@ const AddToNotebookDialog = ({
                 {/* Header */}
                 <div className="flex items-center justify-between p-4 border-b shrink-0">
                     <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <BookOpen className="w-5 h-5 text-indigo-600" />
+                        <BookOpen className="w-5 h-5 text-violet-500" />
                         加入本子
                     </h3>
                     <button
@@ -165,12 +165,12 @@ const AddToNotebookDialog = ({
                             value={newNotebookName}
                             onChange={(e) => setNewNotebookName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreateAndAdd()}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent text-sm"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
                         />
                         <button
                             onClick={handleCreateAndAdd}
                             disabled={!newNotebookName.trim() || creating}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-1"
+                            className="px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm flex items-center gap-1"
                         >
                             <Plus className="w-4 h-4" />
                             {creating ? '创建中...' : '新建'}
@@ -182,7 +182,7 @@ const AddToNotebookDialog = ({
                 <div className="flex-1 overflow-y-auto p-4">
                     {loading ? (
                         <div className="flex items-center justify-center py-8">
-                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-indigo-600"></div>
+                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-400"></div>
                         </div>
                     ) : notebooks.length === 0 ? (
                         <div className="text-center py-8 text-gray-500">
@@ -198,15 +198,9 @@ const AddToNotebookDialog = ({
                                     key={notebook.id}
                                     onClick={() => handleAddToNotebook(notebook)}
                                     disabled={adding === notebook.id}
-                                    className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-indigo-300 hover:bg-indigo-50 transition-all text-left disabled:opacity-50"
+                                    className="w-full flex items-center justify-between p-3 rounded-lg border border-gray-200 hover:border-violet-300 hover:bg-violet-50 transition-all text-left disabled:opacity-50"
                                 >
                                     <div className="flex items-center gap-2">
-                                        {notebook.color && (
-                                            <div
-                                                className="w-3 h-3 rounded-full shrink-0"
-                                                style={{ backgroundColor: notebook.color }}
-                                            />
-                                        )}
                                         <div>
                                             <span className="font-medium text-gray-800">{notebook.name}</span>
                                             <span className="text-xs text-gray-400 ml-2">
@@ -215,7 +209,7 @@ const AddToNotebookDialog = ({
                                         </div>
                                     </div>
                                     {adding === notebook.id ? (
-                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-indigo-600"></div>
+                                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-violet-400"></div>
                                     ) : (
                                         <Plus className="w-4 h-4 text-gray-400" />
                                     )}
@@ -229,7 +223,7 @@ const AddToNotebookDialog = ({
                 {message && (
                     <div className={`p-3 border-t shrink-0 flex items-center gap-2 ${message.type === 'success' ? 'bg-green-50 text-green-700' :
                         message.type === 'error' ? 'bg-red-50 text-red-700' :
-                            'bg-blue-50 text-blue-700'
+                            'bg-violet-50 text-violet-500'
                         }`}>
                         {message.type === 'success' && <Check className="w-4 h-4" />}
                         <span className="text-sm font-medium">{message.text}</span>

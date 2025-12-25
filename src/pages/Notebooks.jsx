@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+﻿import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Plus, MessageSquare, ChevronRight, Edit2, X, Play, MoreHorizontal, Trash2 } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -282,7 +282,7 @@ function Notebooks() {
                     </div>
                     <button
                         type="button"
-                        className="mt-2 inline-flex items-center justify-center rounded-md bg-blue-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-blue-700 md:mt-0"
+                        className="mt-2 inline-flex items-center justify-center rounded-md bg-violet-400 px-3 py-1.5 text-sm font-medium text-white hover:bg-violet-500 md:mt-0"
                         onClick={() => handleJumpToNotebook(firstDueNotebookId, firstDueNotebookTab)}
                     >
                         开始今天的复习
@@ -671,7 +671,7 @@ function Notebooks() {
             <div className="max-w-7xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                        <BookOpen className="w-10 h-10 text-indigo-600" />
+                        <BookOpen className="w-10 h-10 text-violet-500" />
                         我的本子
                     </h1>
                 </div>
@@ -681,7 +681,7 @@ function Notebooks() {
                     <p className="text-gray-400 mb-6">登录后可以创建主题本子，整理你的收藏</p>
                     <Link
                         to="/login"
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                        className="px-6 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                     >
                         去登录
                     </Link>
@@ -694,7 +694,7 @@ function Notebooks() {
         <div className="max-w-7xl mx-auto fade-in">
             <div className="mb-6">
                 <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                    <BookOpen className="w-10 h-10 text-indigo-600" />
+                    <BookOpen className="w-10 h-10 text-violet-500" />
                     我的本子
                 </h1>
                 <p className="text-gray-600">
@@ -712,7 +712,7 @@ function Notebooks() {
                 <div className="w-full md:w-80 shrink-0">
                     <button
                         onClick={() => setShowCreateModal(true)}
-                        className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                        className="w-full mb-4 flex items-center justify-center gap-2 px-4 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                     >
                         <Plus className="w-5 h-5" />
                         新建本子
@@ -720,7 +720,7 @@ function Notebooks() {
 
                     {loading ? (
                         <div className="flex items-center justify-center py-12">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-400"></div>
                         </div>
                     ) : notebooks.length === 0 ? (
                         <div className="text-center py-12 bg-white rounded-xl shadow-sm">
@@ -737,21 +737,15 @@ function Notebooks() {
                                     type="notebook"
                                     onClick={() => handleSelectNotebook(notebook)}
                                     className={`group flex items-center justify-between p-4 rounded-xl cursor-pointer transition-all ${selectedNotebook?.id === notebook.id
-                                        ? 'bg-indigo-600 text-white shadow-md'
+                                        ? 'bg-violet-400 text-white shadow-md'
                                         : 'bg-white hover:bg-gray-50 shadow-sm'
                                         }`}
                                 >
                                     <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2">
-                                            {notebook.color && (
-                                                <div
-                                                    className="w-3 h-3 rounded-full shrink-0"
-                                                    style={{ backgroundColor: notebook.color }}
-                                                />
-                                            )}
                                             <span className="font-medium truncate">{notebook.name}</span>
                                         </div>
-                                        <div className={`text-sm mt-1 ${selectedNotebook?.id === notebook.id ? 'text-indigo-200' : 'text-gray-400'}`}>
+                                        <div className={`text-sm mt-1 ${selectedNotebook?.id === notebook.id ? 'text-violet-200' : 'text-gray-400'}`}>
                                             {renderNotebookSubtitle(notebook)}
                                         </div>
                                     </div>
@@ -760,7 +754,7 @@ function Notebooks() {
                                             <DropdownMenu
                                                 trigger={
                                                     <button className={`p-2 rounded-lg transition-colors ${selectedNotebook?.id === notebook.id
-                                                        ? 'hover:bg-indigo-500 text-indigo-100'
+                                                        ? 'hover:bg-violet-400 text-violet-100'
                                                         : 'hover:bg-gray-200 text-gray-400'
                                                         }`}>
                                                         <MoreHorizontal className="w-5 h-5" />
@@ -800,17 +794,12 @@ function Notebooks() {
                         </div>
                     ) : detailLoading ? (
                         <div className="flex items-center justify-center py-20 bg-white rounded-xl shadow-sm">
-                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                            <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-400"></div>
                         </div>
                     ) : notebookDetail ? (
                         <div className="bg-white rounded-xl shadow-sm p-6">
                             <div className="flex items-center gap-3 mb-6">
-                                {notebookDetail.notebook.color && (
-                                    <div
-                                        className="w-4 h-4 rounded-full"
-                                        style={{ backgroundColor: notebookDetail.notebook.color }}
-                                    />
-                                )}
+                                
                                 <h2 className="text-2xl font-bold text-gray-800">
                                     {notebookDetail.notebook.name}
                                 </h2>
@@ -832,7 +821,7 @@ function Notebooks() {
                                 <button
                                     onClick={() => handleTabChange('sentence')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'sentence'
-                                        ? 'bg-indigo-600 text-white'
+                                        ? 'bg-violet-400 text-white'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
@@ -842,7 +831,7 @@ function Notebooks() {
                                 <button
                                     onClick={() => handleTabChange('vocab')}
                                     className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === 'vocab'
-                                        ? 'bg-indigo-600 text-white'
+                                        ? 'bg-violet-400 text-white'
                                         : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                                         }`}
                                 >
@@ -860,7 +849,7 @@ function Notebooks() {
                                             ) : !sentenceStats.hasReviewState ? (
                                                 <div>📚 这个本子里有 {notebookDetail.sentences.length} 个句子还没学过，开始第一轮学习吧~</div>
                                             ) : sentenceStats.dueCount > 0 ? (
-                                                <>今日待复习：<span className="font-medium text-indigo-600">{sentenceStats.dueCount}</span> / 共 {sentenceStats.totalSentenceCount} 个句子</>
+                                                <>今日待复习：<span className="font-medium text-violet-500">{sentenceStats.dueCount}</span> / 共 {sentenceStats.totalSentenceCount} 个句子</>
                                             ) : (
                                                 <div>🎉 今天没有待复习的句子（共 {sentenceStats.totalSentenceCount} 个）</div>
                                             )}
@@ -871,7 +860,7 @@ function Notebooks() {
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=sentence`)}
                                             disabled={notebookDetail.sentences.length === 0}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${notebookDetail.sentences.length > 0
-                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                ? 'bg-violet-400 text-white hover:bg-violet-400'
                                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                 }`}
                                         >
@@ -925,7 +914,7 @@ function Notebooks() {
                                                                         : parseInt(sid, 10);
                                                                     navigate(`/video/${sentence.videoId}?mode=intensive&type=sentence&index=${index}`);
                                                                 }}
-                                                                className="px-4 py-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                                className="px-4 py-2 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                             >
                                                                 去学习
                                                             </button>
@@ -952,7 +941,7 @@ function Notebooks() {
                                             ) : !vocabStats.hasReviewState ? (
                                                 <div>📚 这个本子里有 {notebookDetail.vocabs.length} 个词还没学过，开始第一轮学习吧~</div>
                                             ) : vocabStats.dueCount > 0 ? (
-                                                <>今日待复习：<span className="font-medium text-indigo-600">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
+                                                <>今日待复习：<span className="font-medium text-violet-500">{vocabStats.dueCount}</span> / 共 {vocabStats.totalVocabCount} 个词</>
                                             ) : (
                                                 <div>🎉 今天没有待复习的词（共 {vocabStats.totalVocabCount} 个）</div>
                                             )}
@@ -963,7 +952,7 @@ function Notebooks() {
                                             onClick={() => navigate(`/notebooks/${selectedNotebook.id}/review?type=vocab`)}
                                             disabled={notebookDetail.vocabs.length === 0}
                                             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${notebookDetail.vocabs.length > 0
-                                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                                ? 'bg-violet-400 text-white hover:bg-violet-400'
                                                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                                                 }`}
                                         >
@@ -987,7 +976,7 @@ function Notebooks() {
                                                 >
                                                     <div className="flex justify-between items-start mb-3">
                                                         <div>
-                                                            <span className="text-xl font-bold text-indigo-700">
+                                                            <span className="text-xl font-bold text-violet-500">
                                                                 {vocab.word}
                                                             </span>
                                                             {vocab.phonetic && (
@@ -1021,7 +1010,7 @@ function Notebooks() {
                                                                     }
                                                                     navigate(`/video/${vocab.videoId}?mode=intensive&type=vocab&index=${index}`);
                                                                 }}
-                                                                className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100 font-medium transition-colors text-sm"
+                                                                className="px-3 py-1 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                             >
                                                                 去学习
                                                             </button>
@@ -1070,7 +1059,7 @@ function Notebooks() {
                             value={newNotebookName}
                             onChange={(e) => setNewNotebookName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreateNotebook()}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
                             autoFocus
                         />
                         <div className="flex gap-3 mt-4">
@@ -1086,7 +1075,7 @@ function Notebooks() {
                             <button
                                 onClick={handleCreateNotebook}
                                 disabled={!newNotebookName.trim() || creating}
-                                className="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                className="flex-1 px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 {creating ? '创建中...' : '创建'}
                             </button>
@@ -1110,7 +1099,7 @@ function Notebooks() {
                         <button
                             onClick={handleRenameNotebook}
                             disabled={renaming || !renameModal.newName.trim()}
-                            className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors disabled:opacity-50"
+                            className="px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors disabled:opacity-50"
                         >
                             {renaming ? '保存中...' : '确定'}
                         </button>
@@ -1122,7 +1111,7 @@ function Notebooks() {
                     value={renameModal.newName}
                     onChange={e => setRenameModal(prev => ({ ...prev, newName: e.target.value }))}
                     placeholder="请输入新名称"
-                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400"
                     autoFocus
                     onKeyDown={e => {
                         if (e.key === 'Enter' && renameModal.newName.trim()) {
@@ -1198,10 +1187,10 @@ function Notebooks() {
                         <div className="space-y-3">
                             <button
                                 onClick={() => executePrintNotebook('all')}
-                                className="w-full py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg font-medium transition-colors text-left"
+                                className="w-full py-3 px-4 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded-lg font-medium transition-colors text-left"
                             >
                                 <div className="font-medium">全部内容</div>
-                                <div className="text-sm text-indigo-500 mt-0.5">词汇 + 句子</div>
+                                <div className="text-sm text-violet-500 mt-0.5">词汇 + 句子</div>
                             </button>
                             <button
                                 onClick={() => executePrintNotebook('vocab')}

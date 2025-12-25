@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { loadLearnedVideoIds } from '../services/progressService';
@@ -130,7 +130,7 @@ function Home() {
     }
 
     // 下拉框通用样式
-    const selectClassName = "text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 cursor-pointer";
+    const selectClassName = "text-sm bg-white border border-gray-300 rounded-md px-2 py-1 focus:outline-none focus:ring-1 focus:ring-violet-400 focus:border-violet-500 cursor-pointer";
 
     return (
         <div className="max-w-7xl mx-auto fade-in">
@@ -139,13 +139,13 @@ function Home() {
                 {/* 总期数 */}
                 <div
                     onClick={() => setStudyFilter('all')}
-                    className={`flex-1 flex items-center justify-center gap-2 cursor-pointer transition-colors ${studyFilter === 'all' ? 'bg-indigo-50' : 'hover:bg-gray-50'
+                    className={`flex-1 flex items-center justify-center gap-2 cursor-pointer transition-colors ${studyFilter === 'all' ? 'bg-violet-50' : 'hover:bg-gray-50'
                         }`}
                     style={{ borderRight: '1px solid #e5e7eb' }}
                 >
-                    <BookOpen className="w-5 h-5 text-indigo-500" />
+                    <BookOpen className="w-5 h-5 text-violet-500" />
                     <span className="text-gray-600">总期数</span>
-                    <span className="font-bold text-indigo-500">{totalVideos}</span>
+                    <span className="font-bold text-violet-500">{totalVideos}</span>
                 </div>
 
                 {/* 已学习 */}
@@ -190,14 +190,14 @@ function Home() {
 
             {/* 学习状态筛选提示条 */}
             {studyFilter !== 'all' && (
-                <div className="flex items-center justify-between bg-blue-50 text-blue-700 px-4 py-2 rounded-lg mb-4">
+                <div className="flex items-center justify-between bg-violet-50 text-violet-500 px-4 py-2 rounded-lg mb-4">
                     <span>
                         当前显示：{studyFilter === 'learned' ? '已学习' : '未学习'}的视频
                         ({studyFilter === 'learned' ? learnedVideos : unlearnedVideos}个)
                     </span>
                     <button
                         onClick={() => setStudyFilter('all')}
-                        className="text-blue-500 hover:text-blue-700"
+                        className="text-violet-400 hover:text-violet-500"
                     >
                         清除
                     </button>
@@ -212,7 +212,7 @@ function Home() {
                             key={category}
                             onClick={() => handleFilterChange('category', category)}
                             className={`px-4 py-2 rounded-lg font-medium transition-all duration-200 ${filters.category === category
-                                ? 'bg-indigo-600 text-white shadow-md'
+                                ? 'bg-violet-400 text-white shadow-md'
                                 : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-200'
                                 }`}
                         >
@@ -289,7 +289,7 @@ function Home() {
                 {hasActiveFilters && (
                     <button
                         onClick={handleReset}
-                        className="text-sm text-blue-600 hover:text-blue-700 font-medium ml-2"
+                        className="text-sm text-violet-500 hover:text-violet-500 font-medium ml-2"
                     >
                         重置
                     </button>

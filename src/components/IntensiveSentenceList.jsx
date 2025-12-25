@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+﻿import React, { useEffect, useRef, useState } from 'react';
 import IntensiveCard from './IntensiveCard';
 
 const IntensiveSentenceList = ({
@@ -65,14 +65,14 @@ const IntensiveSentenceList = ({
 
                     {/* 开关区域：紧凑布局，适配手机端 */}
                     <div className="flex items-center gap-1.5 flex-shrink-0">
-                        <span className={`text-xs font-medium whitespace-nowrap ${!showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <span className={`text-xs font-medium whitespace-nowrap ${!showExplanations ? 'text-violet-500' : 'text-gray-400'}`}>
                             只看中英
                         </span>
                         <button
                             onClick={() => setShowExplanations(!showExplanations)}
                             className={`
-                                relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1
-                                ${showExplanations ? 'bg-indigo-600' : 'bg-gray-200'}
+                                relative inline-flex h-5 w-9 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-1
+                                ${showExplanations ? 'bg-violet-400' : 'bg-gray-200'}
                             `}
                         >
                             <span
@@ -82,7 +82,7 @@ const IntensiveSentenceList = ({
                                 `}
                             />
                         </button>
-                        <span className={`text-xs font-medium whitespace-nowrap ${showExplanations ? 'text-indigo-600' : 'text-gray-400'}`}>
+                        <span className={`text-xs font-medium whitespace-nowrap ${showExplanations ? 'text-violet-500' : 'text-gray-400'}`}>
                             中文解析
                         </span>
                     </div>
@@ -91,7 +91,7 @@ const IntensiveSentenceList = ({
                 {/* Progress Bar */}
                 <div className="w-full bg-gray-100 rounded-full h-2 overflow-hidden">
                     <div
-                        className="bg-indigo-500 h-2 rounded-full transition-all duration-500 ease-out"
+                        className="bg-violet-400 h-2 rounded-full transition-all duration-500 ease-out"
                         style={{ width: `${progressPercentage}%` }}
                     />
                 </div>

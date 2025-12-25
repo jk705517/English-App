@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react';
+﻿import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, RotateCcw, Check, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -326,12 +326,12 @@ function NotebookReviewPage() {
     // 未登录
     if (!user) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 flex items-center justify-center p-4">
                 <div className="text-center">
                     <p className="text-xl text-gray-600 mb-4">请先登录后使用复习功能</p>
                     <button
                         onClick={() => navigate('/login')}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        className="px-6 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400"
                     >
                         去登录
                     </button>
@@ -343,8 +343,8 @@ function NotebookReviewPage() {
     // 加载中
     if (loading) {
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600"></div>
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 flex items-center justify-center">
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-violet-400"></div>
             </div>
         );
     }
@@ -354,7 +354,7 @@ function NotebookReviewPage() {
         const isReallyEmpty = type === 'vocab' ? totalVocabCount === 0 : true;
 
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 flex items-center justify-center p-4">
                 <div className="text-center">
                     {isReallyEmpty ? (
                         <>
@@ -377,7 +377,7 @@ function NotebookReviewPage() {
                     )}
                     <button
                         onClick={handleBack}
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        className="px-6 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400"
                     >
                         返回本子
                     </button>
@@ -393,7 +393,7 @@ function NotebookReviewPage() {
         const knownLabel = type === 'sentence' ? '我懂了' : '我会了';
 
         return (
-            <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col">
+            <div className="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 flex flex-col">
                 {/* 顶部栏 */}
                 <div className="flex items-center justify-between p-4 bg-white/80 backdrop-blur-sm shadow-sm">
                     <button
@@ -432,7 +432,7 @@ function NotebookReviewPage() {
                         <div className="flex flex-col gap-3">
                             <button
                                 onClick={handleRestart}
-                                className="w-full py-3 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors flex items-center justify-center gap-2"
+                                className="w-full py-3 bg-violet-400 text-white rounded-lg font-medium hover:bg-violet-400 transition-colors flex items-center justify-center gap-2"
                             >
                                 <RotateCcw className="w-5 h-5" />
                                 再刷这一轮
@@ -484,7 +484,7 @@ function NotebookReviewPage() {
     }
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex flex-col">
+        <div className="min-h-screen bg-gradient-to-br from-violet-50 to-purple-50 flex flex-col">
             {/* 顶部导航栏 */}
             <div className="flex items-center justify-between p-4 bg-white/80 backdrop-blur-sm shadow-sm">
                 {/* 返回按钮 */}
@@ -503,7 +503,7 @@ function NotebookReviewPage() {
 
                 {/* 进度 */}
                 <div className="text-right">
-                    <span className="text-lg font-semibold text-indigo-600">
+                    <span className="text-lg font-semibold text-violet-500">
                         {currentIndex + 1}
                     </span>
                     <span className="text-gray-400"> / {total}</span>
@@ -513,7 +513,7 @@ function NotebookReviewPage() {
             {/* 进度条 */}
             <div className="h-1 bg-gray-200">
                 <div
-                    className="h-full bg-indigo-600 transition-all duration-300"
+                    className="h-full bg-violet-400 transition-all duration-300"
                     style={{ width: `${progress}%` }}
                 />
             </div>
@@ -531,7 +531,7 @@ function NotebookReviewPage() {
                         onClick={handleFlip}
                         disabled={!canReveal}
                         className={`w-full py-4 rounded-xl font-medium text-lg transition-colors ${canReveal
-                            ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                            ? 'bg-violet-400 text-white hover:bg-violet-400'
                             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                             }`}
                     >

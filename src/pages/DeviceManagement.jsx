@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Monitor, Trash2 } from 'lucide-react';
 import { devicesAPI } from '../services/api';
@@ -62,7 +62,7 @@ function DeviceManagement() {
             <div className="mb-6">
                 <Link
                     to="/settings/more"
-                    className="inline-flex items-center gap-2 text-gray-600 hover:text-indigo-600 transition-colors mb-4"
+                    className="inline-flex items-center gap-2 text-gray-600 hover:text-violet-500 transition-colors mb-4"
                 >
                     <ArrowLeft className="w-5 h-5" />
                     <span>返回</span>

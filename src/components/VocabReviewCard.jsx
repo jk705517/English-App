@@ -1,4 +1,4 @@
-import { Volume2 } from 'lucide-react';
+﻿import { Volume2 } from 'lucide-react';
 
 /**
  * TTS 发音函数 - 使用 Azure TTS API
@@ -61,7 +61,7 @@ const VocabReviewCard = ({
             {!isFlipped ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                     {/* 单词 */}
-                    <h2 className="text-4xl md:text-5xl font-bold text-indigo-700 mb-4">
+                    <h2 className="text-4xl md:text-5xl font-bold text-violet-500 mb-4">
                         {word}
                     </h2>
 
@@ -76,7 +76,7 @@ const VocabReviewCard = ({
                                         e.stopPropagation();
                                         speak(word, 'en-US');
                                     }}
-                                    className="p-1.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                    className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
                                     title="美式发音"
                                 >
                                     <Volume2 className="w-4 h-4" />
@@ -92,7 +92,7 @@ const VocabReviewCard = ({
                                         e.stopPropagation();
                                         speak(word, 'en-GB');
                                     }}
-                                    className="p-1.5 hover:bg-indigo-100 rounded-full text-indigo-400 hover:text-indigo-600 transition-colors"
+                                    className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
                                     title="英式发音"
                                 >
                                     <Volume2 className="w-4 h-4" />
@@ -116,7 +116,7 @@ const VocabReviewCard = ({
                 <div className="flex-1 flex flex-col p-6 overflow-y-auto">
                     {/* 顶部：单词 + 音标 + 词性 */}
                     <div className="text-center border-b pb-4 mb-4">
-                        <h2 className="text-2xl md:text-3xl font-bold text-indigo-700 mb-2">
+                        <h2 className="text-2xl md:text-3xl font-bold text-violet-500 mb-2">
                             {word}
                         </h2>
                         <div className="flex items-center justify-center gap-4 text-sm text-gray-500 flex-wrap">
@@ -169,7 +169,7 @@ const VocabReviewCard = ({
                                 {collocations.slice(0, 4).map((col, i) => (
                                     <span
                                         key={i}
-                                        className="px-3 py-1.5 bg-indigo-50 text-indigo-600 text-sm rounded-full border border-indigo-100"
+                                        className="px-3 py-1.5 bg-violet-50 text-violet-500 text-sm rounded-full border border-violet-100"
                                     >
                                         {col}
                                     </span>
@@ -219,7 +219,7 @@ const VocabReviewCard = ({
                                     onGoToVideo();
                                 }
                             }}
-                            className="w-full py-2 text-sm text-white bg-indigo-600 rounded-lg hover:bg-indigo-700 transition-colors"
+                            className="w-full py-2 text-sm text-white bg-violet-400 rounded-lg hover:bg-violet-400 transition-colors"
                         >
                             去原视频看词汇
                         </button>

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from 'react';
+﻿import { useState, useMemo, useEffect } from 'react';
 
 /**
  * 词汇弹窗组件 v3.0 - 手机端 Bottom Sheet + 全屏详情版本
@@ -47,9 +47,9 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
         );
         if (targetCard) {
             targetCard.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            targetCard.classList.add('ring-2', 'ring-indigo-500', 'ring-offset-2');
+            targetCard.classList.add('ring-2', 'ring-violet-400', 'ring-offset-2');
             setTimeout(() => {
-                targetCard.classList.remove('ring-2', 'ring-indigo-500', 'ring-offset-2');
+                targetCard.classList.remove('ring-2', 'ring-violet-400', 'ring-offset-2');
             }, 2000);
         }
     };
@@ -98,35 +98,35 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                 <div className="p-5 space-y-5">
                     {/* 单词标题 */}
                     <div className="flex items-center gap-3">
-                        <svg className="w-6 h-6 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                        <svg className="w-6 h-6 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
                             <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
                         </svg>
                         <h1 className="text-2xl font-bold text-gray-800">{word}</h1>
                     </div>
 
                     {/* 发音区域 */}
-                    <div className="bg-indigo-50 rounded-lg p-4">
+                    <div className="bg-violet-50 rounded-lg p-4">
                         {vocabInfo.ipa_us && (
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-sm text-gray-500 font-medium w-8">US</span>
-                                <span className="font-mono text-lg text-indigo-600">/{vocabInfo.ipa_us}/</span>
+                                <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_us}/</span>
                             </div>
                         )}
                         {vocabInfo.ipa_uk && (
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-500 font-medium w-8">UK</span>
-                                <span className="font-mono text-lg text-indigo-600">/{vocabInfo.ipa_uk}/</span>
+                                <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_uk}/</span>
                             </div>
                         )}
                         {!vocabInfo.ipa_us && !vocabInfo.ipa_uk && vocabInfo.phonetic && (
-                            <div className="font-mono text-lg text-indigo-600">{vocabInfo.phonetic}</div>
+                            <div className="font-mono text-lg text-violet-500">{vocabInfo.phonetic}</div>
                         )}
                     </div>
 
                     {/* 词性和释义 */}
                     <div className="bg-white rounded-lg border p-4">
                         <div className="flex items-start gap-3">
-                            <span className="inline-block bg-blue-100 text-blue-700 text-sm px-3 py-1 rounded font-medium">
+                            <span className="inline-block bg-violet-100 text-violet-500 text-sm px-3 py-1 rounded font-medium">
                                 {vocabInfo.type || '单词'}
                             </span>
                             <p className="text-gray-800 text-lg font-medium flex-1">
@@ -172,7 +172,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                             <h3 className="text-sm font-bold text-gray-500 mb-3">常见搭配</h3>
                             <div className="flex flex-wrap gap-2">
                                 {vocabInfo.collocations.map((col, i) => (
-                                    <span key={i} className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-full text-sm">
+                                    <span key={i} className="px-3 py-1.5 bg-violet-50 text-violet-500 rounded-full text-sm">
                                         {col}
                                     </span>
                                 ))}
@@ -245,7 +245,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                     <div className="px-5 pb-6">
                         {/* 单词标题 */}
                         <div className="flex items-center gap-2 mb-3">
-                            <svg className="w-5 h-5 text-indigo-500" fill="currentColor" viewBox="0 0 20 20">
+                            <svg className="w-5 h-5 text-violet-500" fill="currentColor" viewBox="0 0 20 20">
                                 <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
                             </svg>
                             <h3 className="text-xl font-bold text-gray-800">{word}</h3>
@@ -257,18 +257,18 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                                 {vocabInfo.ipa_us && (
                                     <div className="flex items-center gap-2 text-sm">
                                         <span className="text-xs text-gray-400 font-medium w-8">US</span>
-                                        <span className="font-mono text-indigo-600">/{vocabInfo.ipa_us}/</span>
+                                        <span className="font-mono text-violet-500">/{vocabInfo.ipa_us}/</span>
                                     </div>
                                 )}
                                 {!vocabInfo.ipa_us && vocabInfo.phonetic && (
-                                    <div className="font-mono text-sm text-indigo-600">{vocabInfo.phonetic}</div>
+                                    <div className="font-mono text-sm text-violet-500">{vocabInfo.phonetic}</div>
                                 )}
                             </div>
                         )}
 
                         {/* 词性和释义 */}
                         <div className="mb-4">
-                            <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded mr-2">
+                            <span className="inline-block bg-violet-100 text-violet-500 text-xs px-2 py-1 rounded mr-2">
                                 {vocabInfo.type || '单词'}
                             </span>
                             <span className="text-gray-700 font-medium">
@@ -304,7 +304,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                         <div className="flex flex-col gap-3 mt-4 pt-3 border-t">
                             <button
                                 onClick={handleViewFullCard}
-                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm font-medium"
+                                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400 transition shadow-sm font-medium"
                             >
                                 <span>查看完整卡片</span>
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -384,7 +384,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
 
                 {/* 单词标题 */}
                 <div className="flex items-center gap-2 mb-3">
-                    <svg className="w-5 h-5 text-blue-500" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-5 h-5 text-violet-400" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M9 4.804A7.968 7.968 0 005.5 4c-1.255 0-2.443.29-3.5.804v10A7.969 7.969 0 015.5 14c1.669 0 3.218.51 4.5 1.385A7.962 7.962 0 0114.5 14c1.255 0 2.443.29 3.5.804v-10A7.968 7.968 0 0014.5 4c-1.255 0-2.443.29-3.5.804V12a1 1 0 11-2 0V4.804z" />
                     </svg>
                     <h3 className="text-xl font-bold text-gray-800">{word}</h3>
@@ -396,18 +396,18 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                         {vocabInfo.ipa_us && (
                             <div className="flex items-center gap-2 text-sm">
                                 <span className="text-xs text-gray-400 font-medium w-8">US</span>
-                                <span className="font-mono text-indigo-600">/{vocabInfo.ipa_us}/</span>
+                                <span className="font-mono text-violet-500">/{vocabInfo.ipa_us}/</span>
                             </div>
                         )}
                         {!vocabInfo.ipa_us && vocabInfo.phonetic && (
-                            <div className="font-mono text-sm text-indigo-600">{vocabInfo.phonetic}</div>
+                            <div className="font-mono text-sm text-violet-500">{vocabInfo.phonetic}</div>
                         )}
                     </div>
                 )}
 
                 {/* 词性和释义 */}
                 <div className="mb-4">
-                    <span className="inline-block bg-blue-100 text-blue-700 text-xs px-2 py-1 rounded mr-2">
+                    <span className="inline-block bg-violet-100 text-violet-500 text-xs px-2 py-1 rounded mr-2">
                         {vocabInfo.type || '单词'}
                     </span>
                     <span className="text-gray-700 font-medium">
@@ -443,7 +443,7 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                 <div className="mt-4 pt-3 border-t">
                     <button
                         onClick={handleViewFullCard}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition shadow-sm font-medium"
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 transition shadow-sm font-medium"
                     >
                         <span>查看完整卡片</span>
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

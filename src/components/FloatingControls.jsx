@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 
 /**
  * 浮动控制按钮组
@@ -42,7 +42,7 @@ const FloatingControls = ({
             label: '单句循环',
             active: isLooping,
             onClick: onToggleLoop,
-            activeColor: 'bg-blue-500 hover:bg-blue-600',
+            activeColor: 'bg-violet-400 hover:bg-violet-500',
             inactiveColor: 'bg-gray-600 hover:bg-gray-700'
         },
         {
@@ -53,7 +53,7 @@ const FloatingControls = ({
             label: '倍速',
             active: playbackRate !== 1,
             onClick: onChangeSpeed,
-            activeColor: 'bg-indigo-500 hover:bg-indigo-600',
+            activeColor: 'bg-violet-400 hover:bg-violet-400',
             inactiveColor: 'bg-gray-600 hover:bg-gray-700'
         }
     ];

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import VocabPopover from './VocabPopover';
 
 /**
@@ -104,7 +104,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                 <span
                     className={`
                         font-medium px-1 rounded
-                        ${status === 'correct' ? 'text-green-600 bg-green-50' : 'text-indigo-600 border-b border-indigo-300'}
+                        ${status === 'correct' ? 'text-green-600 bg-green-50' : 'text-violet-500 border-b border-violet-300'}
                     `}
                 >
                     {answer}
@@ -114,7 +114,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                 {vocabInfo && (
                     <>
                         <button
-                            className="outline-none text-indigo-400 hover:text-indigo-600 transition-colors ml-1"
+                            className="outline-none text-violet-400 hover:text-violet-500 transition-colors ml-1"
                             onClick={(e) => {
                                 e.stopPropagation();
                                 const rect = e.currentTarget.getBoundingClientRect();
@@ -164,7 +164,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                 className={`
                     text-center font-medium rounded px-1 outline-none transition-all
                     border-b-2 bg-gray-50
-                    ${status === 'error' ? 'border-red-400 bg-red-50 text-red-600 animate-shake' : 'border-gray-300 focus:border-indigo-500 focus:bg-white'}
+                    ${status === 'error' ? 'border-red-400 bg-red-50 text-red-600 animate-shake' : 'border-gray-300 focus:border-violet-500 focus:bg-white'}
                 `}
             />
 
@@ -175,7 +175,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                         <button
                             onMouseDown={(e) => e.preventDefault()} // 防止 input 失焦
                             onClick={handleShowAnswer}
-                            className="bg-indigo-600 text-white text-xs px-2 py-1 rounded shadow hover:bg-indigo-700 transition-colors flex items-center gap-1"
+                            className="bg-violet-400 text-white text-xs px-2 py-1 rounded shadow hover:bg-violet-400 transition-colors flex items-center gap-1"
                         >
                             <span>显示答案</span>
                         </button>

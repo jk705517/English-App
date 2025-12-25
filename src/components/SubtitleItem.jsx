@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+﻿import React, { memo } from 'react';
 import HighlightedText from './HighlightedText';
 
 // 🚀 性能优化：字幕行组件（使用 React.memo 避免不必要的 re-render）
@@ -42,18 +42,18 @@ const SubtitleItem = memo(({
     return (
         <div
             onClick={() => onSeek(item.start)}
-            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-indigo-50' : 'hover:bg-gray-50'
+            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-violet-50' : 'hover:bg-gray-50'
                 }`}
         >
             {/* 字幕行编号 */}
-            <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-indigo-600' : 'text-gray-400'
+            <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-violet-500' : 'text-gray-400'
                 }`}>
                 {index + 1}
             </span>
 
             {/* 蓝色指示条 */}
             <div
-                className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-indigo-600 opacity-100' : 'opacity-0'
+                className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-violet-400 opacity-100' : 'opacity-0'
                     }`}
             />
 

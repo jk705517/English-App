@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, Calendar, Flame, BookOpen, MessageSquare } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -38,7 +38,7 @@ function ReviewStatsPage() {
             <div className="max-w-3xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                        <BarChart3 className="w-8 h-8 text-indigo-600" />
+                        <BarChart3 className="w-8 h-8 text-violet-500" />
                         学习统计
                     </h1>
                 </div>
@@ -48,7 +48,7 @@ function ReviewStatsPage() {
                     <p className="text-gray-400 mb-6">登录后可以查看你的学习进度</p>
                     <Link
                         to="/login"
-                        className="px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                        className="px-6 py-3 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                     >
                         去登录
                     </Link>
@@ -62,13 +62,13 @@ function ReviewStatsPage() {
             <div className="max-w-3xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                        <BarChart3 className="w-8 h-8 text-indigo-600" />
+                        <BarChart3 className="w-8 h-8 text-violet-500" />
                         学习统计
                     </h1>
                     <p className="text-gray-500">最近 7 天的复习情况（词汇 + 句子）</p>
                 </div>
                 <div className="flex items-center justify-center py-20 bg-white rounded-xl shadow-sm">
-                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
+                    <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-violet-400"></div>
                     <span className="ml-3 text-gray-500">加载中...</span>
                 </div>
             </div>
@@ -80,7 +80,7 @@ function ReviewStatsPage() {
             <div className="max-w-3xl mx-auto">
                 <div className="mb-8">
                     <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                        <BarChart3 className="w-8 h-8 text-indigo-600" />
+                        <BarChart3 className="w-8 h-8 text-violet-500" />
                         学习统计
                     </h1>
                 </div>
@@ -88,7 +88,7 @@ function ReviewStatsPage() {
                     <p className="text-red-500 mb-4">{error}</p>
                     <button
                         onClick={fetchStats}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                        className="px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                     >
                         重试
                     </button>
@@ -105,7 +105,7 @@ function ReviewStatsPage() {
         <div className="max-w-3xl mx-auto">
             <div className="mb-6">
                 <h1 className="text-3xl font-bold text-gray-800 mb-2 flex items-center gap-3">
-                    <BarChart3 className="w-8 h-8 text-indigo-600" />
+                    <BarChart3 className="w-8 h-8 text-violet-500" />
                     学习统计
                 </h1>
                 <p className="text-gray-500">最近 7 天的复习情况（词汇 + 句子）</p>
@@ -115,10 +115,10 @@ function ReviewStatsPage() {
                 {totalCount > 0 ? (
                     <div className="space-y-3">
                         <div className="flex items-center gap-2 text-lg">
-                            <Calendar className="w-5 h-5 text-indigo-600" />
+                            <Calendar className="w-5 h-5 text-violet-500" />
                             <span>
                                 最近 7 天一共复习了{' '}
-                                <span className="font-bold text-indigo-600">{totalCount}</span> 次
+                                <span className="font-bold text-violet-500">{totalCount}</span> 次
                                 <span className="text-gray-500 text-base ml-1">
                                     （{vocabCount} 个词 · {sentenceCount} 个句子）
                                 </span>
@@ -144,7 +144,7 @@ function ReviewStatsPage() {
                         </p>
                         <Link
                             to="/notebooks"
-                            className="inline-block mt-4 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 font-medium transition-colors"
+                            className="inline-block mt-4 px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors"
                         >
                             去复习
                         </Link>
@@ -162,7 +162,7 @@ function ReviewStatsPage() {
                             <div key={day.date} className="flex-1 flex flex-col items-center h-full">
                                 <div className="flex-1 w-full flex items-end">
                                     <div
-                                        className={`w-full rounded-t-md transition-all ${hasActivity ? 'bg-indigo-500' : 'bg-gray-200'}`}
+                                        className={`w-full rounded-t-md transition-all ${hasActivity ? 'bg-violet-400' : 'bg-gray-200'}`}
                                         style={{ height: `${heightPercent}%` }}
                                         title={`${day.label}: ${day.total} 次`}
                                     />
@@ -191,7 +191,7 @@ function ReviewStatsPage() {
                             <div className="flex items-center gap-4">
                                 {day.total > 0 ? (
                                     <>
-                                        <span className="font-semibold text-indigo-600">{day.total} 次</span>
+                                        <span className="font-semibold text-violet-500">{day.total} 次</span>
                                         <div className="flex items-center gap-3 text-sm text-gray-500">
                                             <span className="flex items-center gap-1">
                                                 <BookOpen className="w-4 h-4" />

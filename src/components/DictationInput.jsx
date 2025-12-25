@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react';
+﻿import { useState, useRef, useEffect } from 'react';
 
 /**
  * 听写输入组件（增强版）
@@ -108,7 +108,7 @@ const DictationInput = ({
                 <span>听写练习：第 {currentIndex + 1} / {totalCount} 句</span>
                 <button
                     onClick={onReplay}
-                    className="flex items-center gap-1 text-blue-600 hover:text-blue-700"
+                    className="flex items-center gap-1 text-violet-500 hover:text-violet-500"
                 >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
@@ -131,7 +131,7 @@ const DictationInput = ({
             focus:outline-none focus:ring-2 transition-all
             ${status === 'correct' ? 'border-green-500 bg-green-50' : ''}
             ${status === 'wrong' ? 'border-red-500 bg-red-50' : ''}
-            ${status === 'editing' ? 'border-gray-300 focus:border-blue-500 focus:ring-blue-200' : ''}
+            ${status === 'editing' ? 'border-gray-300 focus:border-violet-400 focus:ring-violet-200' : ''}
           `}
                     rows={3}
                 />
@@ -188,7 +188,7 @@ const DictationInput = ({
                         <button
                             onClick={handleSubmit}
                             disabled={!userInput.trim()}
-                            className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                            className="flex-1 bg-violet-400 text-white py-2.5 rounded-lg hover:bg-violet-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
                         >
                             提交答案 (Enter)
                         </button>
@@ -213,14 +213,14 @@ const DictationInput = ({
                     <>
                         <button
                             onClick={handleRetry}
-                            className="flex-1 bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                            className="flex-1 bg-violet-400 text-white py-2.5 rounded-lg hover:bg-violet-500 transition-colors font-medium"
                         >
                             🔄 重新输入
                         </button>
                         {!showAnswer && (
                             <button
                                 onClick={handleShowAnswer}
-                                className="flex-1 bg-gray-600 text-white py-2.5 rounded-lg hover:bg-gray-700 transition-colors font-medium"
+                                className="flex-1 bg-white border-2 border-violet-400 text-violet-500 py-2.5 rounded-lg hover:bg-violet-50 transition-colors font-medium"
                             >
                                 👁️ 显示答案
                             </button>
@@ -233,7 +233,7 @@ const DictationInput = ({
                                     setStatus('editing');
                                     setShowAnswer(false);
                                 }}
-                                className="flex-1 bg-green-600 text-white py-2.5 rounded-lg hover:bg-green-700 transition-colors font-medium"
+                                className="flex-1 bg-violet-500 text-white py-2.5 rounded-lg hover:bg-violet-600 transition-colors font-medium"
                             >
                                 下一句 →
                             </button>

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from 'react-router-dom';
+﻿import { Link, useNavigate } from 'react-router-dom';
 import { BarChart3, ChevronRight, User, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { getAvatarUrl } from '../config/avatars';
@@ -26,7 +26,7 @@ function Settings() {
                             className="w-12 h-12 rounded-full bg-gray-100"
                         />
                     ) : (
-                        <div className="w-14 h-14 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center">
+                        <div className="w-14 h-14 bg-gradient-to-br from-violet-300 to-purple-500 rounded-full flex items-center justify-center">
                             <User className="w-7 h-7 text-white" />
                         </div>
                     )}
@@ -38,7 +38,7 @@ function Settings() {
                             <p className="text-sm text-gray-500">{user.phone}</p>
                         )}
                         {!user && (
-                            <a href="https://www.biubiuenglish.com/login" className="text-sm text-indigo-600 hover:underline">
+                            <a href="https://www.biubiuenglish.com/login" className="text-sm text-violet-500 hover:underline">
                                 点击登录
                             </a>
                         )}
@@ -63,15 +63,15 @@ function Settings() {
                     className="flex items-center justify-between p-4 bg-white rounded-xl shadow-sm hover:shadow-md transition-shadow group"
                 >
                     <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-indigo-100 rounded-lg flex items-center justify-center">
-                            <BarChart3 className="w-6 h-6 text-indigo-600" />
+                        <div className="w-12 h-12 bg-violet-100 rounded-lg flex items-center justify-center">
+                            <BarChart3 className="w-6 h-6 text-violet-500" />
                         </div>
                         <div>
                             <h3 className="font-semibold text-gray-800">学习统计（最近 7 天）</h3>
                             <p className="text-sm text-gray-500">看看这几天有没有偷懒 😄</p>
                         </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-500 transition-colors" />
                 </Link>
 
                 {/* 更多设置入口 */}
@@ -87,7 +87,7 @@ function Settings() {
                             <h3 className="font-semibold text-gray-800">更多设置</h3>
                         </div>
                     </div>
-                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-indigo-600 transition-colors" />
+                    <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-violet-500 transition-colors" />
                 </Link>
             </div>
 
