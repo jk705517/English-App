@@ -16,8 +16,8 @@ function ProfileEdit() {
 
     // 当 user 异步加载完成时，同步邮箱状态
     useEffect(() => {
-        if (user?.email !== undefined) {
-            setEmail(user.email || '');
+        if (user?.email) {
+            setEmail(user.email);
         }
     }, [user?.email]);
 
