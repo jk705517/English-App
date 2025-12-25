@@ -237,7 +237,7 @@ app.post('/api/auth/login', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: { id: user.id, phone: user.phone, nickname: user.nickname },
+        user: { id: user.id, phone: user.phone, nickname: user.nickname, email: user.email },
         token
       }
     });
