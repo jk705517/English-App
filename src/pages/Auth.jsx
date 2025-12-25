@@ -3,6 +3,24 @@ import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { activateAPI, authAPI } from '../services/api';
 
+// 模态框组件 - 定义在组件外部避免每次渲染重新创建
+const Modal = ({ show, onClose, children }) => {
+    if (!show) return null;
+    return (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
+            <div className="bg-white rounded-xl shadow-xl w-full max-w-md relative" onClick={e => e.stopPropagation()}>
+                <button
+                    onClick={onClose}
+                    className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl leading-none"
+                >
+                    ×
+                </button>
+                {children}
+            </div>
+        </div>
+    );
+};
+
 export default function Auth() {
     const [phone, setPhone] = useState('');
     const [password, setPassword] = useState('');
@@ -191,24 +209,6 @@ export default function Auth() {
         setConfirmPassword('');
         setResetError('');
         setResetSuccess(false);
-    };
-
-    // 模态框组件
-    const Modal = ({ show, onClose, children }) => {
-        if (!show) return null;
-        return (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={onClose}>
-                <div className="bg-white rounded-xl shadow-xl w-full max-w-md relative" onClick={e => e.stopPropagation()}>
-                    <button
-                        onClick={onClose}
-                        className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl leading-none"
-                    >
-                        ×
-                    </button>
-                    {children}
-                </div>
-            </div>
-        );
     };
 
     return (
