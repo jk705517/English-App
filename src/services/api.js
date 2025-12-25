@@ -198,11 +198,11 @@ export const activateAPI = {
 
 // 管理员 API
 export const adminAPI = {
-    generateLink: async (phone) => {
+    generateLink: async (phone, adminPassword) => {
         const response = await fetch(`${API_BASE}/api/admin/generate-link`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ phone }),
+            body: JSON.stringify({ phone, adminPassword }),
         });
         return response.json();
     },

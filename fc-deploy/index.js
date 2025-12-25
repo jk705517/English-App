@@ -271,7 +271,13 @@ app.get('/api/auth/me', authMiddleware, async (req, res) => {
 // 1. 生成注册链接（管理员用）
 app.post('/api/admin/generate-link', async (req, res) => {
   try {
-    const { phone } = req.body;
+    const { phone, adminPassword } = req.body;
+
+    // 验证管理员密码
+    const correctPassword = process.env.ADMIN_PASSWORD || 'biubiu2025admin';
+    if (adminPassword !== correctPassword) {
+      return res.status(403).json({ success: false, error: '管理员密码错误' });
+    }
 
     if (!phone) {
       return res.status(400).json({ success: false, message: '手机号不能为空' });

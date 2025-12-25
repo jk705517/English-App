@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { adminAPI } from '../services/api';
 
 export default function AdminGenerateLink() {
+    const [adminPassword, setAdminPassword] = useState('');
     const [phone, setPhone] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
@@ -10,6 +11,11 @@ export default function AdminGenerateLink() {
 
     const handleGenerate = async (e) => {
         e.preventDefault();
+
+        if (!adminPassword.trim()) {
+            setError('请输入管理员密码');
+            return;
+        }
 
         if (!phone.trim()) {
             setError('请输入手机号');
@@ -20,7 +26,7 @@ export default function AdminGenerateLink() {
         setError('');
 
         try {
-            const response = await adminAPI.generateLink(phone.trim());
+            const response = await adminAPI.generateLink(phone.trim(), adminPassword.trim());
             if (response.success) {
                 setResults(prev => [{
                     link: response.link,
@@ -57,6 +63,18 @@ export default function AdminGenerateLink() {
                 {/* 生成表单 */}
                 <div className="bg-white p-6 rounded-lg shadow-md mb-6">
                     <form onSubmit={handleGenerate} className="space-y-4">
+                        <div>
+                            <label className="block text-sm font-medium text-gray-700 mb-2">
+                                管理员密码
+                            </label>
+                            <input
+                                type="password"
+                                value={adminPassword}
+                                onChange={(e) => setAdminPassword(e.target.value)}
+                                placeholder="请输入管理员密码"
+                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent"
+                            />
+                        </div>
                         <div>
                             <label className="block text-sm font-medium text-gray-700 mb-2">
                                 手机号
