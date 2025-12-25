@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Layout from './components/Layout';
+import ProtectedRoute from './components/ProtectedRoute';
 import Home from './pages/Home';
 import VideoDetail from './pages/VideoDetail';
 import VocabDetail from './pages/VocabDetail';
@@ -23,29 +24,30 @@ function App() {
         <BrowserRouter>
             <Routes>
                 <Route path="/" element={<Layout />}>
-                    <Route index element={<Home />} />
-                    <Route path="video/:id" element={<VideoDetail />} />
-                    <Route path="vocab-detail/:word" element={<VocabDetail />} />
-                    <Route path="favorites" element={<Favorites />} />
-                    <Route path="notebooks" element={<Notebooks />} />
-                    <Route path="notebooks/:notebookId/review" element={<NotebookReviewPage />} />
-                    <Route path="review-stats" element={<ReviewStatsPage />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="settings/more" element={<MoreSettings />} />
-                    <Route path="settings/devices" element={<DeviceManagement />} />
-                    <Route path="settings/feedback" element={<FeedbackPage />} />
-                    <Route path="settings/profile" element={<ProfileEdit />} />
-                    <Route path="settings/about" element={<AboutPage />} />
-                    <Route path="data-check" element={<DataCheck />} />
+                    {/* 需要登录才能访问的页面 */}
+                    <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
+                    <Route path="video/:id" element={<ProtectedRoute><VideoDetail /></ProtectedRoute>} />
+                    <Route path="vocab-detail/:word" element={<ProtectedRoute><VocabDetail /></ProtectedRoute>} />
+                    <Route path="favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
+                    <Route path="notebooks" element={<ProtectedRoute><Notebooks /></ProtectedRoute>} />
+                    <Route path="notebooks/:notebookId/review" element={<ProtectedRoute><NotebookReviewPage /></ProtectedRoute>} />
+                    <Route path="review-stats" element={<ProtectedRoute><ReviewStatsPage /></ProtectedRoute>} />
+                    <Route path="settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                    <Route path="settings/more" element={<ProtectedRoute><MoreSettings /></ProtectedRoute>} />
+                    <Route path="settings/devices" element={<ProtectedRoute><DeviceManagement /></ProtectedRoute>} />
+                    <Route path="settings/feedback" element={<ProtectedRoute><FeedbackPage /></ProtectedRoute>} />
+                    <Route path="settings/profile" element={<ProtectedRoute><ProfileEdit /></ProtectedRoute>} />
+                    <Route path="settings/about" element={<ProtectedRoute><AboutPage /></ProtectedRoute>} />
+                    <Route path="data-check" element={<ProtectedRoute><DataCheck /></ProtectedRoute>} />
+
+                    {/* 不需要登录的页面 */}
                     <Route path="login" element={<Auth />} />
                     <Route path="activate/:token" element={<Activate />} />
                     <Route path="admin/generate-link" element={<AdminGenerateLink />} />
                 </Route>
             </Routes>
         </BrowserRouter>
-
     );
 }
 
 export default App;
-
