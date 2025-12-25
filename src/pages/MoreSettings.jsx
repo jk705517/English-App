@@ -1,11 +1,10 @@
 ﻿import { Link } from 'react-router-dom';
-import { ArrowLeft, Monitor, MessageSquare, User, Info, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Monitor, MessageSquare, Info, ChevronRight } from 'lucide-react';
 
 function MoreSettings() {
     const menuItems = [
         { icon: Monitor, label: '设备管理', path: '/settings/devices' },
         { icon: MessageSquare, label: '意见反馈', path: '/settings/feedback' },
-        { icon: User, label: '修改资料', path: '/settings/profile' },
         { icon: Info, label: '关于BiuBiu English', path: '/settings/about' },
     ];
 
