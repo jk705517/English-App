@@ -38,6 +38,22 @@ export const authAPI = {
             body: JSON.stringify(data),
         }),
     getMe: () => request('/api/auth/me'),
+    verifyReset: async ({ phone, email }) => {
+        const response = await fetch(`${API_BASE}/api/auth/verify-reset`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, email }),
+        });
+        return response.json();
+    },
+    resetPassword: async ({ phone, email, newPassword }) => {
+        const response = await fetch(`${API_BASE}/api/auth/reset-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, email, newPassword }),
+        });
+        return response.json();
+    },
 };
 // 视频 API
 export const videoAPI = {
