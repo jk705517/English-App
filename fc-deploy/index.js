@@ -178,7 +178,7 @@ app.post('/api/auth/register', async (req, res) => {
     res.json({
       success: true,
       data: {
-        user: { id: user.id, phone: user.phone, nickname: user.nickname },
+        user: { id: user.id, phone: user.phone, nickname: user.nickname, email: user.email },
         token
       }
     });
@@ -199,7 +199,7 @@ app.post('/api/auth/login', async (req, res) => {
 
     // 查找用户
     const result = await pool.query(
-      'SELECT id, phone, password_hash, nickname, is_active FROM users WHERE phone = $1',
+      'SELECT id, phone, password_hash, nickname, is_active, email FROM users WHERE phone = $1',
       [phone]
     );
 
