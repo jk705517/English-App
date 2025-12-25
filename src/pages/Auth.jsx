@@ -165,7 +165,7 @@ export default function Auth() {
     // 复制小红书号
     const handleCopyXHS = async () => {
         try {
-            await navigator.clipboard.writeText('94548062469');
+            await navigator.clipboard.writeText('2931793559');
             setCopied(true);
             setTimeout(() => setCopied(false), 2000);
         } catch (err) {
@@ -447,7 +447,7 @@ export default function Auth() {
                                 <p className="font-medium text-gray-800">BiuBiu英语</p>
                             </div>
                             <a
-                                href="https://www.xiaohongshu.com/user/profile/94548062469"
+                                href="https://xhslink.com/m/2AOUeuRUVhZ"
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-violet-500 hover:text-violet-600"
@@ -462,7 +462,7 @@ export default function Auth() {
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                             <div>
                                 <p className="text-sm text-gray-500">小红书号</p>
-                                <p className="font-mono font-medium text-gray-800">94548062469</p>
+                                <p className="font-mono font-medium text-gray-800">2931793559</p>
                             </div>
                             <button
                                 onClick={handleCopyXHS}
