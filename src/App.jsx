@@ -15,6 +15,8 @@ import NotebookReviewPage from './pages/NotebookReviewPage';
 import ReviewStatsPage from './pages/ReviewStatsPage';
 import DataCheck from './pages/DataCheck';
 import Auth from './pages/Auth';
+import Activate from './pages/Activate';
+import AdminGenerateLink from './pages/AdminGenerateLink';
 
 function App() {
     return (
@@ -36,6 +38,8 @@ function App() {
                     <Route path="settings/about" element={<AboutPage />} />
                     <Route path="data-check" element={<DataCheck />} />
                     <Route path="login" element={<Auth />} />
+                    <Route path="activate/:token" element={<Activate />} />
+                    <Route path="admin/generate-link" element={<AdminGenerateLink />} />
                 </Route>
             </Routes>
         </BrowserRouter>

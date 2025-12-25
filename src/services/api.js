@@ -149,3 +149,30 @@ export const profileAPI = {
             body: JSON.stringify(data),
         }),
 };
+
+// 激活链接 API
+export const activateAPI = {
+    getInfo: async (token) => {
+        const response = await fetch(`${API_BASE}/api/activate/${token}`);
+        return response.json();
+    },
+    activate: async (token) => {
+        const response = await fetch(`${API_BASE}/api/activate/${token}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+        });
+        return response.json();
+    },
+};
+
+// 管理员 API
+export const adminAPI = {
+    generateLink: async (phone) => {
+        const response = await fetch(`${API_BASE}/api/admin/generate-link`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone }),
+        });
+        return response.json();
+    },
+};
