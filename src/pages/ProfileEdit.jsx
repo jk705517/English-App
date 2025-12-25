@@ -1,4 +1,4 @@
-﻿import { useState } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
@@ -13,6 +13,13 @@ function ProfileEdit() {
     const [nickname, setNickname] = useState(user?.nickname || '');
     const [email, setEmail] = useState(user?.email || '');
     const [saving, setSaving] = useState(false);
+
+    // 当 user 异步加载完成时，同步邮箱状态
+    useEffect(() => {
+        if (user?.email && !email) {
+            setEmail(user.email);
+        }
+    }, [user]);
 
     const handleSave = async () => {
         if (!nickname.trim()) {
