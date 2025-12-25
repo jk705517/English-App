@@ -16,10 +16,10 @@ function ProfileEdit() {
 
     // 当 user 异步加载完成时，同步邮箱状态
     useEffect(() => {
-        if (user?.email && !email) {
-            setEmail(user.email);
+        if (user?.email !== undefined) {
+            setEmail(user.email || '');
         }
-    }, [user]);
+    }, [user?.email]);
 
     const handleSave = async () => {
         if (!nickname.trim()) {
@@ -71,7 +71,7 @@ function ProfileEdit() {
             {/* 返回按钮和标题 */}
             <div className="mb-6">
                 <Link
-                    to="/settings/more"
+                    to="/settings"
                     className="inline-flex items-center gap-2 text-gray-600 hover:text-violet-500 transition-colors mb-4"
                 >
                     <ArrowLeft className="w-5 h-5" />
