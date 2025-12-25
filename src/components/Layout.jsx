@@ -58,10 +58,18 @@ function Layout() {
                 </nav>
 
                 {/* 底部信息 */}
-                <div className="p-4 border-t border-gray-200">
-                    <p className="text-xs text-gray-400 text-center">
+                <div className="p-4 border-t border-gray-200 text-center">
+                    <p className="text-xs text-gray-400">
                         © 2025 BiuBiu English
                     </p>
+                    <a
+                        href="https://beian.miit.gov.cn/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs text-gray-400 hover:text-indigo-500 transition-colors"
+                    >
+                        粤ICP备2025506915号-1
+                    </a>
                 </div>
             </aside>
 
