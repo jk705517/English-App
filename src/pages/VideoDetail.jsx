@@ -199,51 +199,53 @@ const VideoDetail = () => {
 
     // Load learned status
     useEffect(() => {
+        if (!videoData?.id) return;
         const loadLearnedStatus = async () => {
             const learnedIds = await progressService.loadLearnedVideoIds(user);
-            setIsLearned(learnedIds.includes(Number(id)));
+            setIsLearned(learnedIds.includes(Number(videoData.id)));
         };
         loadLearnedStatus();
-    }, [id, user]);
+    }, [videoData?.id, user]);
 
     // Load favorite status
     useEffect(() => {
+        if (!videoData?.id) return;
         const loadFavoriteStatus = async () => {
             const favoriteIds = await favoritesService.loadFavoriteVideoIds(user);
-            setIsFavorite(favoriteIds.includes(Number(id)));
+            setIsFavorite(favoriteIds.includes(Number(videoData.id)));
         };
         loadFavoriteStatus();
-    }, [id, user]);
+    }, [videoData?.id, user]);
 
     // Load sentence favorites (filtered by current video)
     useEffect(() => {
-        if (!user) {
-            console.log('📋 VideoDetail: No user, skipping sentence favorites load');
+        if (!user || !videoData?.id) {
+            console.log('📋 VideoDetail: No user or video, skipping sentence favorites load');
             return;
         }
         const loadSentenceFavorites = async () => {
-            console.log('📋 VideoDetail: Loading sentence favorites for video:', id, 'user:', user.id);
-            const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(id));
+            console.log('📋 VideoDetail: Loading sentence favorites for video:', videoData.id, 'user:', user.id);
+            const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(videoData.id));
             console.log('📋 VideoDetail: Loaded sentence favorite IDs:', ids);
             setFavoriteSentenceIds(ids);
         };
         loadSentenceFavorites();
-    }, [user, id]);
+    }, [user, videoData?.id]);
 
     // Load vocab favorites (filtered by current video)
     useEffect(() => {
-        if (!user) {
-            console.log('📋 VideoDetail: No user, skipping vocab favorites load');
+        if (!user || !videoData?.id) {
+            console.log('📋 VideoDetail: No user or video, skipping vocab favorites load');
             return;
         }
         const loadVocabFavorites = async () => {
-            console.log('📋 VideoDetail: Loading vocab favorites for video:', id, 'user:', user.id);
-            const ids = await favoritesService.loadFavoriteVocabIds(user, Number(id));
+            console.log('📋 VideoDetail: Loading vocab favorites for video:', videoData.id, 'user:', user.id);
+            const ids = await favoritesService.loadFavoriteVocabIds(user, Number(videoData.id));
             console.log('📋 VideoDetail: Loaded vocab favorite IDs:', ids);
             setFavoriteVocabIds(ids);
         };
         loadVocabFavorites();
-    }, [user, id]);
+    }, [user, videoData?.id]);
 
     // 加载所有词汇的出现记录
     const loadAllVocabOccurrences = async (vocabList, currentVideoId) => {
