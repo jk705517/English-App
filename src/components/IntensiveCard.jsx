@@ -73,7 +73,7 @@ const IntensiveCard = ({
     }, [text, analysis]);
 
     const hasAnalysis = analysis && (
-        (analysis.syntax && analysis.syntax.trim() !== '') ||
+        (analysis.takeaway && analysis.takeaway.trim() !== '') ||
         (analysis.expressions && analysis.expressions.length > 0) ||
         (analysis.phonetics && analysis.phonetics.trim() !== '') ||
         (analysis.context && analysis.context.trim() !== '')
@@ -158,15 +158,15 @@ const IntensiveCard = ({
             {showExplanations && hasAnalysis && (
                 <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-violet-100' : 'border-gray-100'}`}>
 
-                    {/* Syntax */}
-                    {analysis.syntax && (
+                    {/* Takeaway */}
+                    {analysis.takeaway && (
                         <div className="text-sm">
                             <div className="flex items-center gap-2 mb-1.5">
                                 <span className="w-1 h-3 bg-violet-400 rounded-full"></span>
-                                <span className="font-bold text-violet-500">语法结构</span>
+                                <span className="font-bold text-violet-500">学习要点</span>
                             </div>
                             <p className="text-gray-700 bg-violet-50/50 p-2.5 rounded-lg leading-relaxed">
-                                {analysis.syntax}
+                                {analysis.takeaway}
                             </p>
                         </div>
                     )}

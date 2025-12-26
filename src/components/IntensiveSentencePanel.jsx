@@ -115,15 +115,15 @@ const IntensiveSentencePanel = ({
             {/* Analysis Content */}
             {analysis && (
                 <div className="space-y-6 border-t pt-6">
-                    {/* Syntax */}
-                    {analysis.syntax && (
+                    {/* Takeaway */}
+                    {analysis.takeaway && (
                         <div>
                             <h4 className="flex items-center text-sm font-bold text-violet-500 uppercase tracking-wider mb-2">
                                 <span className="w-1 h-4 bg-violet-400 rounded-full mr-2"></span>
-                                语法结构
+                                学习要点
                             </h4>
                             <p className="text-gray-700 bg-violet-50/50 p-3 rounded-lg text-sm md:text-base leading-relaxed">
-                                {analysis.syntax}
+                                {analysis.takeaway}
                             </p>
                         </div>
                     )}
@@ -181,7 +181,7 @@ const IntensiveSentencePanel = ({
             )}
 
             {/* Empty State for Analysis */}
-            {(!analysis || (!analysis.syntax && (!analysis.expressions || analysis.expressions.length === 0) && !analysis.phonetics && !analysis.context)) && (
+            {(!analysis || (!analysis.takeaway && (!analysis.expressions || analysis.expressions.length === 0) && !analysis.phonetics && !analysis.context)) && (
                 <div className="border-t pt-6 text-center text-gray-400 text-sm italic">
                     暂无精读解析数据
                 </div>

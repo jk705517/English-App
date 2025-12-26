@@ -18,7 +18,7 @@ const SentenceReviewCard = ({
     const { en, cn, index, episode, title, analysis } = sentence;
 
     // 解析 analysis 中的字段
-    const syntax = analysis?.syntax || '';
+    const takeaway = analysis?.takeaway || '';
     const expressions = analysis?.expressions || [];
     const context = analysis?.context || '';
 
@@ -66,12 +66,12 @@ const SentenceReviewCard = ({
                         </div>
                     )}
 
-                    {/* 语法结构 */}
-                    {syntax && (
+                    {/* 学习要点 */}
+                    {takeaway && (
                         <div className="mb-4">
-                            <h4 className="text-xs font-medium text-gray-400 mb-1">语法结构</h4>
+                            <h4 className="text-xs font-medium text-gray-400 mb-1">学习要点</h4>
                             <p className="text-sm text-gray-600 leading-relaxed">
-                                {syntax}
+                                {takeaway}
                             </p>
                         </div>
                     )}
