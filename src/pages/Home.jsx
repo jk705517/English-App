@@ -175,7 +175,7 @@ function Home() {
             {/* 最近学习 */}
             {user && recentLearning && (
                 <div
-                    onClick={() => navigate(`/video/${recentLearning.video_id}`)}
+                    onClick={() => navigate(`/episode/${recentLearning.episode}`)}
                     className="mx-4 mt-3 px-4 py-3 bg-orange-50 rounded-lg flex items-center justify-between cursor-pointer hover:bg-orange-100 transition-colors"
                 >
                     <div className="flex items-center gap-2 min-w-0">

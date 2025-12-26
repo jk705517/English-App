@@ -308,7 +308,7 @@ function Favorites() {
                                                 </button>
                                                 {/* 去学习按钮 */}
                                                 <button
-                                                    onClick={() => navigate(`/video/${sentence.videoId}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                    onClick={() => navigate(`/episode/${sentence.episode}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
                                                     className="px-4 py-2 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习
@@ -369,7 +369,7 @@ function Favorites() {
                                                 </button>
                                                 {/* 去学习按钮 */}
                                                 <button
-                                                    onClick={() => navigate(`/video/${vocab.videoId}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                    onClick={() => navigate(`/episode/${vocab.episode}?mode=intensive&vocabId=${vocab.vocabId}`)}
                                                     className="px-3 py-1 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习

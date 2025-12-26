@@ -75,7 +75,7 @@ function Layout() {
 
             {/* 右侧主内容区 - 手机端添加底部内边距 */}
             {/* 视频详情页在移动端需要自己控制滚动，所以移除overflow */}
-            <main className={`flex-1 ${location.pathname.startsWith('/video/') ? 'md:overflow-y-auto' : 'overflow-y-auto'} p-4 md:p-8 pb-20 md:pb-8`}>
+            <main className={`flex-1 ${location.pathname.startsWith('/episode/') ? 'md:overflow-y-auto' : 'overflow-y-auto'} p-4 md:p-8 pb-20 md:pb-8`}>
                 <Outlet />
             </main>
 

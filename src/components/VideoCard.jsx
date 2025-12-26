@@ -13,7 +13,7 @@ const renderLevel = (level) => {
 function VideoCard({ video, onAuthorClick }) {
     return (
         <Link
-            to={`/video/${video.id}`}
+            to={`/episode/${video.episode}`}
             className="group bg-white rounded-xl shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden cursor-pointer"
         >
             {/* 封面图片 */}

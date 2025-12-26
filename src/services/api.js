@@ -1,11 +1,11 @@
-const API_BASE = 'https://api.biubiuenglish.com';
-// 获取存储的 token
+﻿const API_BASE = 'https://api.biubiuenglish.com';
+// 鑾峰彇瀛樺偍鐨?token
 const getToken = () => localStorage.getItem('token');
-// 设置 token
+// 璁剧疆 token
 export const setToken = (token) => localStorage.setItem('token', token);
-// 清除 token
+// 娓呴櫎 token
 export const clearToken = () => localStorage.removeItem('token');
-// 通用请求函数
+// 閫氱敤璇锋眰鍑芥暟
 const request = async (endpoint, options = {}) => {
     const token = getToken();
     const headers = {
@@ -25,7 +25,7 @@ const request = async (endpoint, options = {}) => {
     }
     return data;
 };
-// 认证 API
+// 璁よ瘉 API
 export const authAPI = {
     register: (phone, password, nickname) =>
         request('/api/auth/register', {
@@ -55,14 +55,14 @@ export const authAPI = {
         return response.json();
     },
 };
-// 视频 API
+// 瑙嗛 API
 export const videoAPI = {
     getAll: (filters = {}) => {
         const params = new URLSearchParams();
-        if (filters.category && filters.category !== '全部') params.append('category', filters.category);
+        if (filters.category && filters.category !== '鍏ㄩ儴') params.append('category', filters.category);
         if (filters.level) params.append('level', filters.level);
-        if (filters.accent && filters.accent !== '全部') params.append('accent', filters.accent);
-        if (filters.gender && filters.gender !== '全部') params.append('gender', filters.gender);
+        if (filters.accent && filters.accent !== '鍏ㄩ儴') params.append('accent', filters.accent);
+        if (filters.gender && filters.gender !== '鍏ㄩ儴') params.append('gender', filters.gender);
         if (filters.author) params.append('author', filters.author);
         if (filters.sort) params.append('sort', filters.sort);
         const queryString = params.toString();
@@ -70,8 +70,9 @@ export const videoAPI = {
         return request(url);
     },
     getById: (id) => request(`/api/videos/${id}`),
+    getByEpisode: (episode) => request(`/api/videos/episode/${episode}`),
 };
-// 用户进度 API
+// 鐢ㄦ埛杩涘害 API
 export const progressAPI = {
     getAll: () => request('/api/user/progress'),
     add: (video_id, item_type, item_id) =>
@@ -80,10 +81,10 @@ export const progressAPI = {
             body: JSON.stringify({ video_id, item_type, item_id }),
         }),
     delete: (id) => request(`/api/user/progress/${id}`, { method: 'DELETE' }),
-    // 获取最近学习的视频
+    // 鑾峰彇鏈€杩戝涔犵殑瑙嗛
     getRecentLearning: () => request('/api/user/recent-learning'),
 };
-// 收藏 API
+// 鏀惰棌 API
 export const favoritesAPI = {
     getAll: () => request('/api/user/favorites'),
     add: (video_id, item_type, item_id) =>
@@ -93,7 +94,7 @@ export const favoritesAPI = {
         }),
     delete: (id) => request(`/api/user/favorites/${id}`, { method: 'DELETE' }),
 };
-// 笔记本 API
+// 绗旇鏈?API
 export const notebooksAPI = {
     getAll: () => request('/api/user/notebooks'),
     create: (name, color) =>
@@ -116,7 +117,7 @@ export const notebooksAPI = {
     deleteItem: (notebookId, itemId) =>
         request(`/api/user/notebooks/${notebookId}/items/${itemId}`, { method: 'DELETE' }),
 };
-// 复习状态 API
+// 澶嶄範鐘舵€?API
 export const reviewStatesAPI = {
     getAll: () => request('/api/user/review-states'),
     update: (data) =>
@@ -125,12 +126,12 @@ export const reviewStatesAPI = {
             body: JSON.stringify(data),
         }),
 };
-// 复习日志 API
+// 澶嶄範鏃ュ織 API
 export const reviewLogsAPI = {
     getStats: (days = 7) => request(`/api/user/review-logs?days=${days}`),
 };
 
-// 获取词汇在其他视频中的出现记录
+// 鑾峰彇璇嶆眹鍦ㄥ叾浠栬棰戜腑鐨勫嚭鐜拌褰?
 export const vocabOccurrencesAPI = {
     get: async (word, excludeVideoId) => {
         let url = `${API_BASE}/api/vocab/occurrences?word=${encodeURIComponent(word)}`;
@@ -142,13 +143,13 @@ export const vocabOccurrencesAPI = {
     }
 };
 
-// 设备管理 API
+// 璁惧绠＄悊 API
 export const devicesAPI = {
     getList: () => request('/api/user/devices'),
     remove: (id) => request(`/api/user/devices/${id}`, { method: 'DELETE' }),
 };
 
-// 反馈 API
+// 鍙嶉 API
 export const feedbackAPI = {
     submit: (data) =>
         request('/api/user/feedback', {
@@ -157,7 +158,7 @@ export const feedbackAPI = {
         }),
 };
 
-// 用户资料 API
+// 鐢ㄦ埛璧勬枡 API
 export const profileAPI = {
     update: (data) =>
         request('/api/user/profile', {
@@ -166,7 +167,7 @@ export const profileAPI = {
         }),
 };
 
-// 用户设置 API
+// 鐢ㄦ埛璁剧疆 API
 export const userAPI = {
     updateEmail: async (email) => {
         const response = await fetch(`${API_BASE}/api/user/email`, {
@@ -181,7 +182,7 @@ export const userAPI = {
     },
 };
 
-// 激活链接 API
+// 婵€娲婚摼鎺?API
 export const activateAPI = {
     getInfo: async (token) => {
         const response = await fetch(`${API_BASE}/api/activate/${token}`);
@@ -196,7 +197,7 @@ export const activateAPI = {
     },
 };
 
-// 管理员 API
+// 绠＄悊鍛?API
 export const adminAPI = {
     generateLink: async (phone, adminPassword) => {
         const response = await fetch(`${API_BASE}/api/admin/generate-link`, {

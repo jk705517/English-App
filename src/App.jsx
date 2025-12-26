@@ -26,7 +26,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                     {/* 需要登录才能访问的页面 */}
                     <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
-                    <Route path="video/:id" element={<ProtectedRoute><VideoDetail /></ProtectedRoute>} />
+                    <Route path="episode/:episode" element={<ProtectedRoute><VideoDetail /></ProtectedRoute>} />
                     <Route path="vocab-detail/:word" element={<ProtectedRoute><VocabDetail /></ProtectedRoute>} />
                     <Route path="favorites" element={<ProtectedRoute><Favorites /></ProtectedRoute>} />
                     <Route path="notebooks" element={<ProtectedRoute><Notebooks /></ProtectedRoute>} />

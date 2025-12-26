@@ -799,7 +799,7 @@ function Notebooks() {
                     ) : notebookDetail ? (
                         <div className="bg-white rounded-xl shadow-sm p-6">
                             <div className="flex items-center gap-3 mb-6">
-                                
+
                                 <h2 className="text-2xl font-bold text-gray-800">
                                     {notebookDetail.notebook.name}
                                 </h2>
@@ -912,7 +912,7 @@ function Notebooks() {
                                                                     let index = typeof sid === 'string' && sid.includes('-')
                                                                         ? parseInt(sid.split('-').pop(), 10)
                                                                         : parseInt(sid, 10);
-                                                                    navigate(`/video/${sentence.videoId}?mode=intensive&type=sentence&index=${index}`);
+                                                                    navigate(`/episode/${sentence.episode}?mode=intensive&type=sentence&index=${index}`);
                                                                 }}
                                                                 className="px-4 py-2 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                             >
@@ -1008,7 +1008,7 @@ function Notebooks() {
                                                                     } else {
                                                                         index = parseInt(vid, 10);
                                                                     }
-                                                                    navigate(`/video/${vocab.videoId}?mode=intensive&type=vocab&index=${index}`);
+                                                                    navigate(`/episode/${vocab.episode}?mode=intensive&type=vocab&index=${index}`);
                                                                 }}
                                                                 className="px-3 py-1 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                             >

@@ -67,7 +67,7 @@ const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
 );
 
 const VideoDetail = () => {
-    const { id } = useParams();
+    const { episode } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
     const { user } = useAuth();
@@ -275,7 +275,7 @@ const VideoDetail = () => {
     useEffect(() => {
         const fetchVideoData = async () => {
             try {
-                const response = await videoAPI.getById(id);
+                const response = await videoAPI.getByEpisode(episode);
                 if (response.success && response.data) {
                     setVideoData(response.data);
                     setPrevVideo(response.data.prevVideo);
@@ -288,7 +288,7 @@ const VideoDetail = () => {
             }
         };
         fetchVideoData();
-    }, [id]);
+    }, [episode]);
 
     // Handle navigation from Favorites page - scroll to specific sentence or vocab
     useEffect(() => {
@@ -1147,7 +1147,7 @@ const VideoDetail = () => {
                         <div className="flex gap-2 mb-2 pt-2 md:pt-0">
                             {prevVideo && (
                                 <button
-                                    onClick={() => navigate(`/video/${prevVideo.id}`)}
+                                    onClick={() => navigate(`/episode/${prevVideo.episode}`)}
                                     className="px-3 py-1.5 bg-violet-100 text-violet-600 rounded-full text-sm font-medium hover:bg-violet-200 transition-colors flex items-center gap-1"
                                 >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1158,7 +1158,7 @@ const VideoDetail = () => {
                             )}
                             {nextVideo && (
                                 <button
-                                    onClick={() => navigate(`/video/${nextVideo.id}`)}
+                                    onClick={() => navigate(`/episode/${nextVideo.episode}`)}
                                     className="px-3 py-1.5 bg-violet-500 text-white rounded-full text-sm font-medium hover:bg-violet-600 transition-colors flex items-center gap-1"
                                 >
                                     下一期
@@ -1823,7 +1823,7 @@ const VideoDetail = () => {
                                                     {vocabOccurrences[item.word.toLowerCase()].occurrences.map((occ, idx) => (
                                                         <a
                                                             key={idx}
-                                                            href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
+                                                            href={`/episode/${occ.episode}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
                                                             className="text-violet-500 hover:text-violet-500 hover:underline"
                                                         >
                                                             第{occ.episode}期
@@ -2063,7 +2063,7 @@ const VideoDetail = () => {
                                                         {vocabOccurrences[item.word.toLowerCase()].occurrences.map((occ, idx) => (
                                                             <a
                                                                 key={idx}
-                                                                href={`/video/${occ.video_id}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
+                                                                href={`/episode/${occ.episode}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`}
                                                                 className="text-violet-500 hover:text-violet-500 hover:underline"
                                                             >
                                                                 第{occ.episode}期

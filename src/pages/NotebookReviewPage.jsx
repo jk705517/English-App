@@ -288,17 +288,17 @@ function NotebookReviewPage() {
             // 句子模式：使用 index 定位到该句子
             const idx = item.sentenceIndex ?? item.index;
             if (idx !== undefined && idx !== null) {
-                navigate(`/video/${item.videoId}?mode=intensive&type=sentence&index=${idx}`);
+                navigate(`/episode/${item.episode}?mode=intensive&type=sentence&index=${idx}`);
             } else {
-                navigate(`/video/${item.videoId}?mode=intensive`);
+                navigate(`/episode/${item.episode}?mode=intensive`);
             }
         } else {
             // 词汇模式：使用 vocabIndex 定位到词汇区域
             const idx = item.vocabIndex;
             if (idx !== undefined && idx !== null && idx >= 0) {
-                navigate(`/video/${item.videoId}?mode=intensive&type=vocab&index=${idx}`);
+                navigate(`/episode/${item.episode}?mode=intensive&type=vocab&index=${idx}`);
             } else {
-                navigate(`/video/${item.videoId}?mode=intensive`);
+                navigate(`/episode/${item.episode}?mode=intensive`);
             }
         }
     }, [navigate, type]);
