@@ -750,13 +750,13 @@ const VideoDetail = () => {
     const handleToggleLearned = async () => {
         const newStatus = !isLearned;
         setIsLearned(newStatus);
-        await progressService.toggleLearnedVideoId(user, Number(id), newStatus);
+        await progressService.toggleLearnedVideoId(user, Number(videoData.id), newStatus);
     };
 
     const handleToggleFavorite = async () => {
         const newStatus = !isFavorite;
         setIsFavorite(newStatus);
-        await favoritesService.toggleFavoriteVideoId(user, Number(id), newStatus);
+        await favoritesService.toggleFavoriteVideoId(user, Number(videoData.id), newStatus);
     };
 
     // 打印字幕
@@ -869,7 +869,7 @@ const VideoDetail = () => {
         }
         // 使用字符串比较，确保类型一致
         const shouldBeFavorite = !favoriteSentenceIds.some(fid => String(fid) === String(sentenceId));
-        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(id));
+        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(videoData.id));
         setFavoriteSentenceIds((prev) =>
             shouldBeFavorite
                 ? [...prev, sentenceId]
@@ -886,7 +886,7 @@ const VideoDetail = () => {
         }
         // 使用字符串比较，确保类型一致
         const shouldBeFavorite = !favoriteVocabIds.some(fid => String(fid) === String(vocabId));
-        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(id));
+        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(videoData.id));
         setFavoriteVocabIds((prev) =>
             shouldBeFavorite
                 ? [...prev, vocabId]
@@ -1700,7 +1700,7 @@ const VideoDetail = () => {
                                 // Generate stable vocab ID (use existing or fallback)
                                 const vocabId = item.id !== undefined && item.id !== null
                                     ? item.id
-                                    : `${id}-vocab-${index}`;
+                                    : `${videoData.id}-vocab-${index}`;
                                 return (
                                     <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-violet-50 rounded-lg border border-violet-100 transition-all duration-200">
                                         {/* 收藏按钮（右上角）*/}
@@ -1726,7 +1726,7 @@ const VideoDetail = () => {
                                                 setNotebookDialogItem({
                                                     itemType: 'vocab',
                                                     itemId: vocabId,
-                                                    videoId: Number(id)
+                                                    videoId: Number(videoData.id)
                                                 });
                                                 setNotebookDialogOpen(true);
                                             }}
@@ -1930,7 +1930,7 @@ const VideoDetail = () => {
                         ) : mode === 'intensive' ? (
                             <>
                                 <IntensiveSentenceList
-                                    videoId={Number(id)}
+                                    videoId={Number(videoData.id)}
                                     transcript={videoData.transcript}
                                     currentIndex={activeIndex}
                                     visitedSet={visitedSet}
@@ -1945,7 +1945,7 @@ const VideoDetail = () => {
                                         setNotebookDialogItem({
                                             itemType: 'sentence',
                                             itemId: sentenceId,
-                                            videoId: Number(id)
+                                            videoId: Number(videoData.id)
                                         });
                                         setNotebookDialogOpen(true);
                                     }}
@@ -1957,7 +1957,7 @@ const VideoDetail = () => {
                                 // Generate stable sentence ID (use existing or fallback)
                                 const sentenceId = item.id !== undefined && item.id !== null
                                     ? item.id
-                                    : `${id}-${index}`;
+                                    : `${videoData.id}-${index}`;
                                 return (
                                     <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
                                         <SubtitleItem
@@ -1973,7 +1973,7 @@ const VideoDetail = () => {
                                             onSetIsPlaying={setIsPlaying}
                                             isFavorite={favoriteSentenceIds.some(fid => String(fid) === String(sentenceId))}
                                             onToggleFavorite={handleToggleSentenceFavorite}
-                                            videoId={Number(id)}
+                                            videoId={Number(videoData.id)}
                                         />
                                     </div>
                                 );
@@ -1988,7 +1988,7 @@ const VideoDetail = () => {
                                     // Generate stable vocab ID (use existing or fallback)
                                     const vocabId = item.id !== undefined && item.id !== null
                                         ? item.id
-                                        : `${id}-vocab-${index}`;
+                                        : `${videoData.id}-vocab-${index}`;
                                     return (
                                         <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-3 bg-white rounded-lg border border-violet-100 transition-all duration-200">
                                             {/* 收藏按钮（右上角）*/}
