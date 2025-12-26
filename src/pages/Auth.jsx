@@ -230,7 +230,7 @@ export default function Auth() {
                         )}
                         <button
                             onClick={handleLogout}
-                            className="w-full bg-red-500 text-white py-2 px-4 rounded hover:bg-red-600 transition-colors"
+                            className="w-full py-3 bg-white border-2 border-violet-400 text-violet-500 rounded-lg hover:bg-violet-50 transition-colors"
                         >
                             退出登录
                         </button>
