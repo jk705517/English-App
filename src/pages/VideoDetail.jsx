@@ -1260,6 +1260,20 @@ const VideoDetail = () => {
                                 </svg>
                                 {videoData.author}
                             </span>
+                            {videoData.youtube_url && (
+                                <a
+                                    href={videoData.youtube_url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title="跳转YouTube（需科学上网）"
+                                    className="ml-1 inline-flex items-center text-red-500 hover:text-red-600 transition-colors"
+                                    onClick={(e) => e.stopPropagation()}
+                                >
+                                    <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor">
+                                        <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z" />
+                                    </svg>
+                                </a>
+                            )}
                             <span className="flex items-center">
                                 <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
                                     <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
