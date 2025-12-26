@@ -1,5 +1,5 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
 import { videoAPI, vocabOccurrencesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
@@ -86,7 +86,8 @@ const VideoDetail = () => {
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
     const [activeIndex, setActiveIndex] = useState(-1);
-    const [allVideos, setAllVideos] = useState([]);
+    const [prevVideo, setPrevVideo] = useState(null);
+    const [nextVideo, setNextVideo] = useState(null);
     const [isPlaying, setIsPlaying] = useState(false);
     // 视频循环 - 整支视频播放完从头循环
     const [isVideoLooping, setIsVideoLooping] = useState(false);
@@ -277,6 +278,8 @@ const VideoDetail = () => {
                 const response = await videoAPI.getById(id);
                 if (response.success && response.data) {
                     setVideoData(response.data);
+                    setPrevVideo(response.data.prevVideo);
+                    setNextVideo(response.data.nextVideo);
                 } else {
                     console.error('Error fetching video: API returned success:false');
                 }
@@ -398,22 +401,7 @@ const VideoDetail = () => {
         }
     }, [scrollToParam, vocabIndexParam, videoData]);
 
-    // Fetch all videos for navigation
-    useEffect(() => {
-        const fetchAllVideos = async () => {
-            try {
-                const response = await videoAPI.getAll();
-                if (response.success && response.data) {
-                    // Sort by episode descending
-                    const sorted = [...response.data].sort((a, b) => b.episode - a.episode);
-                    setAllVideos(sorted);
-                }
-            } catch (error) {
-                console.error('Error fetching all videos:', error);
-            }
-        };
-        fetchAllVideos();
-    }, []);
+    // Note: prevVideo and nextVideo are now fetched with the video data from the API
 
     // 绉诲姩绔細鐩戝惉婊氬姩锛屽垽鏂槸鍚︽樉绀?缁х画鎾斁"灏忔潯
     useEffect(() => {
@@ -1155,29 +1143,29 @@ const VideoDetail = () => {
                 {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
                 {(!isMobile || (!isPlaying && !showMobileMiniBar)) && (
                     <div className="p-3 md:p-6 flex-shrink-0">
-                        {/* 上一期/下一期导航 - 增加足够的顶部间距避开导航栏 */}
-                        <div className="flex gap-3 mb-3 md:mb-4 pt-2 md:pt-0">
-                            {allVideos.findIndex(v => v.id === parseInt(id)) > 0 && (
-                                <Link
-                                    to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) - 1].id}`}
-                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors text-sm md:text-base"
+                        {/* 上一期/下一期导航 - 按期数顺序 */}
+                        <div className="flex gap-2 mb-2 pt-2 md:pt-0">
+                            {prevVideo && (
+                                <button
+                                    onClick={() => navigate(`/video/${prevVideo.id}`)}
+                                    className="px-3 py-1.5 bg-violet-100 text-violet-600 rounded-full text-sm font-medium hover:bg-violet-200 transition-colors flex items-center gap-1"
                                 >
-                                    <svg className="w-4 h-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                                     </svg>
                                     上一期
-                                </Link>
+                                </button>
                             )}
-                            {allVideos.findIndex(v => v.id === parseInt(id)) < allVideos.length - 1 && (
-                                <Link
-                                    to={`/video/${allVideos[allVideos.findIndex(v => v.id === parseInt(id)) + 1].id}`}
-                                    className="inline-flex items-center px-3 md:px-4 py-2 bg-violet-400 text-white rounded-lg hover:bg-violet-400 font-medium transition-colors text-sm md:text-base"
+                            {nextVideo && (
+                                <button
+                                    onClick={() => navigate(`/video/${nextVideo.id}`)}
+                                    className="px-3 py-1.5 bg-violet-500 text-white rounded-full text-sm font-medium hover:bg-violet-600 transition-colors flex items-center gap-1"
                                 >
                                     下一期
-                                    <svg className="w-4 h-4 ml-1 md:ml-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                                     </svg>
-                                </Link>
+                                </button>
                             )}
                         </div>
 

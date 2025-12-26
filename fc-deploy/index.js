@@ -687,7 +687,33 @@ app.get('/api/videos/:id', async (req, res) => {
     if (result.rows.length === 0) {
       return res.status(404).json({ success: false, error: 'Video not found' });
     }
-    res.json({ success: true, data: result.rows[0] });
+    const video = result.rows[0];
+    const currentEpisode = video.episode;
+
+    // 查询上一期（episode 比当前小的最大值）
+    const prevResult = await pool.query(
+      `SELECT id, episode, title FROM videos 
+       WHERE episode < $1 
+       ORDER BY episode DESC LIMIT 1`,
+      [currentEpisode]
+    );
+
+    // 查询下一期（episode 比当前大的最小值）
+    const nextResult = await pool.query(
+      `SELECT id, episode, title FROM videos 
+       WHERE episode > $1 
+       ORDER BY episode ASC LIMIT 1`,
+      [currentEpisode]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        ...video,
+        prevVideo: prevResult.rows[0] || null,
+        nextVideo: nextResult.rows[0] || null
+      }
+    });
   } catch (error) {
     console.error('Database error:', error);
     res.status(500).json({ success: false, error: error.message });
