@@ -1123,7 +1123,7 @@ const VideoDetail = () => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 md:h-screen md:flex md:flex-row">
+        <div className="min-h-screen bg-gray-50 xl:h-screen xl:flex xl:flex-row">
             {/* ========== 移动端：顶部"继续播放"小条 ========== */}
             {showMobileMiniBar && (
                 <div
@@ -1140,7 +1140,7 @@ const VideoDetail = () => {
             )}
 
             {/* 左侧：视频、标题、词汇 */}
-            <div className="w-full md:w-3/5 md:flex md:flex-col md:overflow-y-auto">
+            <div className="w-full xl:w-3/5 xl:flex xl:flex-col xl:overflow-y-auto">
 
                 {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
                 {(!isMobile || (!isPlaying && !showMobileMiniBar)) && (
@@ -1692,7 +1692,7 @@ const VideoDetail = () => {
                 )}
 
                 {/* 重点词汇 - 只在电脑端且非迷你模式下显示 */}
-                <div className="hidden md:block p-6 pt-6">
+                <div className="hidden xl:block p-6 pt-6">
                     <div className="p-6 bg-white rounded-xl shadow-sm">
                         <h3 className="text-xl font-bold mb-4">重点词汇</h3>
                         <div className="grid grid-cols-3 gap-4">
@@ -1844,7 +1844,7 @@ const VideoDetail = () => {
             </div>
 
             {/* Right Side Container Start */}
-            <div className="flex-1 bg-white border-t md:border-t-0 md:border-l flex flex-col relative" onClick={() => setPlayerActive(false)}>
+            <div className="flex-1 bg-white border-t xl:border-t-0 xl:border-l flex flex-col relative" onClick={() => setPlayerActive(false)}>
                 {/* PC Subtitle Tabs */}
                 {!isMobile && (
                     <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
@@ -1981,7 +1981,7 @@ const VideoDetail = () => {
                         )}
 
                         {/* 重点词汇 - 只在手机端显示 */}
-                        <div className="md:hidden mt-6 p-4 bg-violet-50 rounded-lg">
+                        <div className="xl:hidden mt-6 p-4 bg-violet-50 rounded-lg">
                             <h3 className="text-lg font-bold mb-3 text-violet-500">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => {
