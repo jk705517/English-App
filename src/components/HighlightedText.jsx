@@ -7,8 +7,24 @@ import VocabPopover from './VocabPopover';
  * @param {array} highlights - 高亮词汇数组 [{ word, phonetic, type, meaning, definition, example, exampleCn }]
  * @param {string} className - 额外样式类
  * @param {function} onPauseVideo - 暂停视频回调
+ * @param {boolean} isFavorite - 当前词汇是否已收藏
+ * @param {function} onToggleFavorite - 收藏切换回调
+ * @param {function} onAddToNotebook - 添加到本子回调
+ * @param {boolean} isLoggedIn - 用户是否登录
+ * @param {function} getVocabFavoriteStatus - 获取词汇收藏状态回调
+ * @param {function} handleVocabFavoriteToggle - 切换词汇收藏状态回调
+ * @param {function} handleVocabAddToNotebook - 添加词汇到本子回调
  */
-const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }) => {
+const HighlightedText = ({
+    text,
+    highlights = [],
+    className = '',
+    onPauseVideo,
+    getVocabFavoriteStatus,
+    handleVocabFavoriteToggle,
+    handleVocabAddToNotebook,
+    isLoggedIn = false
+}) => {
     const [activeVocab, setActiveVocab] = useState(null);
     const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
@@ -161,6 +177,10 @@ const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }
                     onClose={closePopover}
                     onPauseVideo={onPauseVideo}
                     isMobile={isMobile}
+                    isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(activeVocab.vocabInfo?.id) : false}
+                    onToggleFavorite={handleVocabFavoriteToggle ? () => handleVocabFavoriteToggle(activeVocab.vocabInfo?.id) : undefined}
+                    onAddToNotebook={handleVocabAddToNotebook ? () => handleVocabAddToNotebook(activeVocab.vocabInfo?.id) : undefined}
+                    isLoggedIn={isLoggedIn}
                 />
             )}
         </>

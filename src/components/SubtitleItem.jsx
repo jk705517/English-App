@@ -18,7 +18,12 @@ const SubtitleItem = memo(({
     isFavorite = false,
     onToggleFavorite,
     // Video ID for generating fallback sentence IDs
-    videoId
+    videoId,
+    // 词汇收藏/本子相关 props
+    favoriteVocabIds = [],
+    onToggleVocabFavorite,
+    onAddVocabToNotebook,
+    isLoggedIn = false
 }) => {
     // Helper: generate stable ID for sentence
     // Uses existing id if available, otherwise creates fallback from videoId-index
@@ -36,6 +41,25 @@ const SubtitleItem = memo(({
         if (onToggleFavorite) {
             const sentenceId = getSentenceId();
             onToggleFavorite(sentenceId);
+        }
+    };
+
+    // 获取词汇收藏状态
+    const getVocabFavoriteStatus = (vocabId) => {
+        return favoriteVocabIds.some(fid => String(fid) === String(vocabId));
+    };
+
+    // 切换词汇收藏
+    const handleVocabFavoriteToggle = (vocabId) => {
+        if (onToggleVocabFavorite) {
+            onToggleVocabFavorite(vocabId);
+        }
+    };
+
+    // 添加词汇到本子
+    const handleVocabAddToNotebook = (vocabId) => {
+        if (onAddVocabToNotebook) {
+            onAddVocabToNotebook(vocabId);
         }
     };
 
@@ -96,6 +120,10 @@ const SubtitleItem = memo(({
                                         else if (p?.pause) p.pause();
                                     }
                                 }}
+                                getVocabFavoriteStatus={getVocabFavoriteStatus}
+                                handleVocabFavoriteToggle={handleVocabFavoriteToggle}
+                                handleVocabAddToNotebook={handleVocabAddToNotebook}
+                                isLoggedIn={isLoggedIn}
                             />
                         )
                     )}

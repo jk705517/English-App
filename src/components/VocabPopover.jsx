@@ -1,5 +1,17 @@
 ﻿import { useState, useMemo, useEffect } from 'react';
 
+// TTS 发音函数 - 使用 Azure TTS API
+const speak = async (text, lang = 'en-US') => {
+    try {
+        const accent = lang === 'en-GB' ? 'uk' : 'us';
+        const url = `https://api.biubiuenglish.com/api/tts?text=${encodeURIComponent(text)}&accent=${accent}`;
+        const audio = new Audio(url);
+        audio.play();
+    } catch (error) {
+        console.error('TTS 播放失败:', error);
+    }
+};
+
 /**
  * 词汇弹窗组件 v3.0 - 手机端 Bottom Sheet + 全屏详情版本
  * @param {string} word - 单词
@@ -8,8 +20,23 @@
  * @param {object} position - 弹窗位置 { x, y }
  * @param {function} onPauseVideo - 暂停视频回调
  * @param {boolean} isMobile - 是否为手机端
+ * @param {boolean} isFavorite - 是否已收藏
+ * @param {function} onToggleFavorite - 收藏切换回调
+ * @param {function} onAddToNotebook - 添加到本子回调
+ * @param {boolean} isLoggedIn - 用户是否登录
  */
-const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobile = false }) => {
+const VocabPopover = ({
+    word,
+    vocabInfo,
+    onClose,
+    position,
+    onPauseVideo,
+    isMobile = false,
+    isFavorite = false,
+    onToggleFavorite,
+    onAddToNotebook,
+    isLoggedIn = false
+}) => {
     const [showFullDetail, setShowFullDetail] = useState(false);
 
     // 计算PC端安全的弹窗位置（防溢出）
@@ -91,7 +118,41 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                         <span>返回</span>
                     </button>
                     <h2 className="text-lg font-bold text-gray-800">{word}</h2>
-                    <div className="w-16"></div>
+                    <div className="flex items-center gap-2">
+                        {/* 本子按钮 */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (!isLoggedIn) {
+                                    alert('登录后才能使用本子功能');
+                                    return;
+                                }
+                                if (onAddToNotebook) onAddToNotebook();
+                            }}
+                            className="p-2 rounded-full transition-colors text-gray-400 hover:text-violet-500 hover:bg-violet-50"
+                            title="加入本子"
+                        >
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                            </svg>
+                        </button>
+                        {/* 收藏按钮 */}
+                        <button
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                if (onToggleFavorite) onToggleFavorite();
+                            }}
+                            className={`p-2 rounded-full transition-colors ${isFavorite
+                                ? 'text-yellow-500 hover:bg-yellow-100'
+                                : 'text-gray-400 hover:text-gray-500 hover:bg-gray-100'
+                                }`}
+                            title={isFavorite ? "取消收藏" : "收藏词汇"}
+                        >
+                            <svg className="w-5 h-5" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
 
                 {/* 词汇详情内容 */}
@@ -110,12 +171,30 @@ const VocabPopover = ({ word, vocabInfo, onClose, position, onPauseVideo, isMobi
                             <div className="flex items-center gap-3 mb-2">
                                 <span className="text-sm text-gray-500 font-medium w-8">US</span>
                                 <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_us}/</span>
+                                <button
+                                    onClick={() => speak(word, 'en-US')}
+                                    className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
+                                    title="美式发音"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    </svg>
+                                </button>
                             </div>
                         )}
                         {vocabInfo.ipa_uk && (
                             <div className="flex items-center gap-3">
                                 <span className="text-sm text-gray-500 font-medium w-8">UK</span>
                                 <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_uk}/</span>
+                                <button
+                                    onClick={() => speak(word, 'en-GB')}
+                                    className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
+                                    title="英式发音"
+                                >
+                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
+                                    </svg>
+                                </button>
                             </div>
                         )}
                         {!vocabInfo.ipa_us && !vocabInfo.ipa_uk && vocabInfo.phonetic && (
