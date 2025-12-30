@@ -103,6 +103,8 @@ const VideoDetail = () => {
     const [hasScrolledAfterPause, setHasScrolledAfterPause] = useState(false);
     // 妫€娴嬫槸鍚︿负绉诲姩绔?
     const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
+    // 检测是否为手机端（< 768px，仅手机，用于固定播放器行为）
+    const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
     // 绉诲姩绔細鏄惁鍦ㄩ〉闈㈤《閮紙鐢ㄤ簬鏍囬鍖烘樉绀烘帶鍒讹級
     const [isAtTop, setIsAtTop] = useState(true);
 
@@ -167,6 +169,7 @@ const VideoDetail = () => {
     useEffect(() => {
         const checkMobile = () => {
             setIsMobile(window.innerWidth < 1280);
+            setIsPhone(window.innerWidth < 768);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -1284,16 +1287,16 @@ const VideoDetail = () => {
 
                 {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
-                    {/* 移动端播放时的占位元素 */}
-                    {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
+                    {/* 手机端播放时的占位元素 */}
+                    {isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
                         <div style={{ paddingTop: 'calc(56.25% + 50px)' }} className="w-full" />
                     )}
-                    {/* 视频播放器 - 移动端播放时 fixed */}
+                    {/* 视频播放器 - 手机端播放时 fixed */}
                     <div
                         ref={playerContainerRef}
                         className={`
                             bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : 'relative'}
+                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : 'relative'}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
                     >
@@ -2138,49 +2141,51 @@ const VideoDetail = () => {
             />
 
             {/* Print Dialog */}
-            {showPrintDialog && (
-                <>
-                    {/* 遮罩层 */}
-                    <div
-                        className="fixed inset-0 bg-black/50 z-[200]"
-                        onClick={() => setShowPrintDialog(false)}
-                    />
-                    {/* 弹窗 */}
-                    <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-sm">
-                        <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">选择打印格式</h3>
-                        <div className="space-y-3">
+            {
+                showPrintDialog && (
+                    <>
+                        {/* 遮罩层 */}
+                        <div
+                            className="fixed inset-0 bg-black/50 z-[200]"
+                            onClick={() => setShowPrintDialog(false)}
+                        />
+                        {/* 弹窗 */}
+                        <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[201] bg-white rounded-xl shadow-2xl p-6 w-[90%] max-w-sm">
+                            <h3 className="text-lg font-bold text-gray-900 mb-4 text-center">选择打印格式</h3>
+                            <div className="space-y-3">
+                                <button
+                                    onClick={() => executePrint('dual')}
+                                    className="w-full py-3 px-4 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded-lg font-medium transition-colors text-left"
+                                >
+                                    <div className="font-medium">双语字幕</div>
+                                    <div className="text-sm text-violet-500 mt-0.5">英文 + 中文翻译</div>
+                                </button>
+                                <button
+                                    onClick={() => executePrint('en')}
+                                    className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                                >
+                                    <div className="font-medium">纯英文</div>
+                                    <div className="text-sm text-gray-500 mt-0.5">仅英文原文</div>
+                                </button>
+                                <button
+                                    onClick={() => executePrint('cn')}
+                                    className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
+                                >
+                                    <div className="font-medium">纯中文</div>
+                                    <div className="text-sm text-gray-500 mt-0.5">仅中文翻译</div>
+                                </button>
+                            </div>
                             <button
-                                onClick={() => executePrint('dual')}
-                                className="w-full py-3 px-4 bg-violet-50 hover:bg-violet-100 text-violet-500 rounded-lg font-medium transition-colors text-left"
+                                onClick={() => setShowPrintDialog(false)}
+                                className="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors"
                             >
-                                <div className="font-medium">双语字幕</div>
-                                <div className="text-sm text-violet-500 mt-0.5">英文 + 中文翻译</div>
-                            </button>
-                            <button
-                                onClick={() => executePrint('en')}
-                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
-                            >
-                                <div className="font-medium">纯英文</div>
-                                <div className="text-sm text-gray-500 mt-0.5">仅英文原文</div>
-                            </button>
-                            <button
-                                onClick={() => executePrint('cn')}
-                                className="w-full py-3 px-4 bg-gray-50 hover:bg-gray-100 text-gray-700 rounded-lg font-medium transition-colors text-left"
-                            >
-                                <div className="font-medium">纯中文</div>
-                                <div className="text-sm text-gray-500 mt-0.5">仅中文翻译</div>
+                                取消
                             </button>
                         </div>
-                        <button
-                            onClick={() => setShowPrintDialog(false)}
-                            className="w-full mt-4 py-2 text-gray-500 hover:text-gray-700 text-sm transition-colors"
-                        >
-                            取消
-                        </button>
-                    </div>
-                </>
-            )}
-        </div>
+                    </>
+                )
+            }
+        </div >
     );
 };
 
