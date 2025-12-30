@@ -102,7 +102,7 @@ const VideoDetail = () => {
     // 绉诲姩绔細鏆傚仠鍚庢槸鍚﹀凡婊氬姩锛堢敤浜庡欢杩熷垏鎹㈠皬绐楀彛妯″紡锛?
     const [hasScrolledAfterPause, setHasScrolledAfterPause] = useState(false);
     // 妫€娴嬫槸鍚︿负绉诲姩绔?
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
     // 绉诲姩绔細鏄惁鍦ㄩ〉闈㈤《閮紙鐢ㄤ簬鏍囬鍖烘樉绀烘帶鍒讹級
     const [isAtTop, setIsAtTop] = useState(true);
 
@@ -166,7 +166,7 @@ const VideoDetail = () => {
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 768);
+            setIsMobile(window.innerWidth < 1280);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);

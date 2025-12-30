@@ -11,11 +11,11 @@ import VocabPopover from './VocabPopover';
 const HighlightedText = ({ text, highlights = [], className = '', onPauseVideo }) => {
     const [activeVocab, setActiveVocab] = useState(null);
     const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
 
     // 监听窗口大小变化
     useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 768);
+        const checkMobile = () => setIsMobile(window.innerWidth < 1280);
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
