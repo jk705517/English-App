@@ -105,7 +105,7 @@ const VocabPopover = ({
     // 全屏词汇详情页（仅手机端）
     if (showFullDetail && isMobile) {
         return (
-            <div className="fixed inset-0 z-[60] bg-white overflow-y-auto animate-fade-in-scale">
+            <div className="fixed inset-0 z-[150] bg-white overflow-y-auto animate-fade-in-scale">
                 {/* 顶部导航栏 */}
                 <div className="sticky top-0 z-10 bg-white border-b px-4 py-3 flex items-center justify-between shadow-sm">
                     <button
@@ -172,7 +172,11 @@ const VocabPopover = ({
                                 <span className="text-sm text-gray-500 font-medium w-8">US</span>
                                 <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_us}/</span>
                                 <button
-                                    onClick={() => speak(word, 'en-US')}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        speak(word, 'en-US');
+                                    }}
                                     className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
                                     title="美式发音"
                                 >
@@ -187,7 +191,11 @@ const VocabPopover = ({
                                 <span className="text-sm text-gray-500 font-medium w-8">UK</span>
                                 <span className="font-mono text-lg text-violet-500">/{vocabInfo.ipa_uk}/</span>
                                 <button
-                                    onClick={() => speak(word, 'en-GB')}
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        speak(word, 'en-GB');
+                                    }}
                                     className="p-1.5 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors"
                                     title="英式发音"
                                 >
