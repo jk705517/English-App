@@ -1296,7 +1296,9 @@ const VideoDetail = () => {
                         ref={playerContainerRef}
                         className={`
                             bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : ''}
+                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 z-[80]' : ''}
+                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'left-3 right-3' : ''}
+                            ${isMobile && !isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'left-1/2 -translate-x-1/2 w-[50%] max-w-md' : ''}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
                     >
