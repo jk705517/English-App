@@ -1287,17 +1287,17 @@ const VideoDetail = () => {
 
                 {/* 视频播放器区域 */}
                 <div className="px-3 md:px-6">
-                    {/* 手机端播放时的占位元素 */}
-                    {isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
+                    {/* 移动端（手机+平板）播放时的占位元素 */}
+                    {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
                         <div style={{ paddingTop: 'calc(56.25% + 50px)' }} className="w-full" />
                     )}
-                    {/* 视频播放器 - 手机端播放时 fixed */}
+                    {/* 视频播放器 - 移动端播放时 fixed，PC端 sticky */}
                     <div
                         ref={playerContainerRef}
                         className={`
                             bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : ''}
-                            ${!isPhone ? 'sticky top-0 z-40' : ''}
+                            ${isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : ''}
+                            ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
                     >
                         <div
@@ -1686,13 +1686,9 @@ const VideoDetail = () => {
                     <div
                         className={`
                             bg-white border-b px-3 py-2 transition-all duration-300
-                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : ''}
-                            ${!isPhone ? 'sticky z-30 shadow-sm' : ''}
+                            ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
                         `}
-                        style={isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause)
-                            ? { top: 'calc((100vw - 1.5rem) * 0.5625)' }
-                            : !isPhone ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}
-                        }
+                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
                     >
                         <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
                     </div>
