@@ -165,6 +165,9 @@ const VideoDetail = () => {
     // 词汇关联期数状态
     const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
 
+    // 播放器容器实际高度（用于动态定位字幕导航栏）
+    const [playerHeight, setPlayerHeight] = useState(0);
+
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
@@ -181,6 +184,24 @@ const VideoDetail = () => {
     useEffect(() => {
         dictationStateRef.current = { isPlaying, isSeeking, dictationIndex };
     }, [isPlaying, isSeeking, dictationIndex]);
+
+    // 监听播放器容器高度变化（用于动态定位字幕导航栏）
+    useEffect(() => {
+        if (!playerContainerRef.current) return;
+
+        const updateHeight = () => {
+            if (playerContainerRef.current) {
+                setPlayerHeight(playerContainerRef.current.offsetHeight);
+            }
+        };
+
+        updateHeight();
+
+        const resizeObserver = new ResizeObserver(updateHeight);
+        resizeObserver.observe(playerContainerRef.current);
+
+        return () => resizeObserver.disconnect();
+    }, [videoData, isMobile, isPhone]);
 
     // 防止浏览器在页面重新获得焦点时自动恢复播放（用于词汇查询等场景）
     useEffect(() => {
@@ -1289,7 +1310,7 @@ const VideoDetail = () => {
                 <div className="px-3 md:px-6">
                     {/* 移动端（手机+平板）播放时的占位元素 */}
                     {isMobile && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) && (
-                        <div style={{ paddingTop: 'calc(56.25% + 50px)' }} className="w-full" />
+                        <div style={{ height: playerHeight + 50 }} className="w-full" />
                     )}
                     {/* 视频播放器 - 移动端播放时 fixed，PC端 sticky */}
                     <div
@@ -1690,7 +1711,7 @@ const VideoDetail = () => {
                             bg-white border-b px-3 py-2 transition-all duration-300
                             ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
                         `}
-                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
+                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight } : {}}
                     >
                         <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
                     </div>
