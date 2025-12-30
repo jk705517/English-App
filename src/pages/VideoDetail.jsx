@@ -1296,8 +1296,8 @@ const VideoDetail = () => {
                         ref={playerContainerRef}
                         className={`
                             bg-white rounded-xl overflow-hidden shadow-2xl transition-all duration-300
-                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : 'relative'}
-                            ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
+                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed top-0 left-3 right-3 z-[80]' : ''}
+                            ${!isPhone ? 'sticky top-0 z-40' : ''}
                         `}
                     >
                         <div
@@ -1686,9 +1686,13 @@ const VideoDetail = () => {
                     <div
                         className={`
                             bg-white border-b px-3 py-2 transition-all duration-300
-                            ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
+                            ${isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : ''}
+                            ${!isPhone ? 'sticky z-30 shadow-sm' : ''}
                         `}
-                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}}
+                        style={isPhone && !isInitialLoad && (isPlaying || !hasScrolledAfterPause)
+                            ? { top: 'calc((100vw - 1.5rem) * 0.5625)' }
+                            : !isPhone ? { top: 'calc((100vw - 1.5rem) * 0.5625)' } : {}
+                        }
                     >
                         <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
                     </div>
