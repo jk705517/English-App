@@ -152,7 +152,7 @@ export const favoritesService = {
                 // 需要先找到该收藏的 ID
                 const allFavorites = await getUserFavorites(user.id);
                 const favorite = allFavorites.find(
-                    f => f.item_type === 'video' && Number(f.video_id) === Number(videoId)
+                    f => f.item_type === 'video' && String(f.video_id) === String(videoId)
                 );
                 if (favorite) {
                     return await deleteFavorite(favorite.id);
@@ -184,7 +184,7 @@ export const favoritesService = {
                 // 需要先找到该收藏的 ID
                 const allFavorites = await getUserFavorites(user.id);
                 const favorite = allFavorites.find(
-                    f => f.item_type === 'sentence' && String(f.item_id) === String(sentenceId) && f.video_id === videoId
+                    f => f.item_type === 'sentence' && String(f.item_id) === String(sentenceId) && String(f.video_id) === String(videoId)
                 );
                 if (favorite) {
                     return await deleteFavorite(favorite.id);
@@ -216,7 +216,7 @@ export const favoritesService = {
                 // 需要先找到该收藏的 ID
                 const allFavorites = await getUserFavorites(user.id);
                 const favorite = allFavorites.find(
-                    f => f.item_type === 'vocab' && f.item_id === vocabId && f.video_id === videoId
+                    f => f.item_type === 'vocab' && String(f.item_id) === String(vocabId) && String(f.video_id) === String(videoId)
                 );
                 if (favorite) {
                     return await deleteFavorite(favorite.id);
