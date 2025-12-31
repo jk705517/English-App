@@ -10,6 +10,21 @@ import { videoAPI } from '../services/api';
 
 function Favorites() {
     const { user } = useAuth();
+
+    // 从 item_id 解析出索引
+    // item_id 可能是：纯数字(5)、"42-5"、"42-vocab-5" 等格式
+    const parseIndex = (itemId) => {
+        if (itemId === undefined || itemId === null) return 0;
+        const str = String(itemId);
+        if (str.includes('-vocab-')) {
+            return parseInt(str.split('-vocab-')[1], 10) || 0;
+        } else if (str.includes('-')) {
+            const parts = str.split('-');
+            return parseInt(parts[parts.length - 1], 10) || 0;
+        } else {
+            return parseInt(str, 10) || 0;
+        }
+    };
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const scrollContainerRef = useRef(null);
@@ -308,7 +323,10 @@ function Favorites() {
                                                 </button>
                                                 {/* 去学习按钮 */}
                                                 <button
-                                                    onClick={() => navigate(`/episode/${sentence.episode}?mode=intensive&sentenceId=${sentence.sentenceId}`)}
+                                                    onClick={() => {
+                                                        const index = parseIndex(sentence.sentenceId);
+                                                        navigate(`/episode/${sentence.episode}?mode=intensive&type=sentence&index=${index}`);
+                                                    }}
                                                     className="px-4 py-2 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习
@@ -369,7 +387,10 @@ function Favorites() {
                                                 </button>
                                                 {/* 去学习按钮 */}
                                                 <button
-                                                    onClick={() => navigate(`/episode/${vocab.episode}?mode=intensive&vocabId=${vocab.vocabId}`)}
+                                                    onClick={() => {
+                                                        const index = parseIndex(vocab.vocabId);
+                                                        navigate(`/episode/${vocab.episode}?mode=intensive&type=vocab&index=${index}`);
+                                                    }}
                                                     className="px-3 py-1 bg-violet-50 text-violet-500 rounded-lg hover:bg-violet-100 font-medium transition-colors text-sm"
                                                 >
                                                     去学习
