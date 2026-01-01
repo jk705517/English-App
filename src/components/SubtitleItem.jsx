@@ -108,6 +108,7 @@ const SubtitleItem = memo(({
                             <HighlightedText
                                 text={item.text}
                                 highlights={vocab || []}
+                                videoId={videoId}
                                 onPauseVideo={() => {
                                     console.log('⏸️ 视频暂停');
                                     onSetIsPlaying(false);

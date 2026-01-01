@@ -23,7 +23,8 @@ const HighlightedText = ({
     getVocabFavoriteStatus,
     handleVocabFavoriteToggle,
     handleVocabAddToNotebook,
-    isLoggedIn = false
+    isLoggedIn = false,
+    videoId  // 新增：用于生成 vocabId
 }) => {
     const [activeVocab, setActiveVocab] = useState(null);
     const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
@@ -37,7 +38,7 @@ const HighlightedText = ({
     }, []);
 
     // 处理词汇点击
-    const handleVocabClick = (word, vocabInfo, event) => {
+    const handleVocabClick = (word, vocabInfo, vocabIndex, event) => {
         event.stopPropagation();
         event.preventDefault();
 
@@ -55,7 +56,7 @@ const HighlightedText = ({
             x: rect.left,
             y: rect.bottom + window.scrollY
         });
-        setActiveVocab({ word, vocabInfo });
+        setActiveVocab({ word, vocabInfo, vocabIndex });
     };
 
     // 关闭弹窗
@@ -91,16 +92,18 @@ const HighlightedText = ({
 
             // 找到对应的词汇信息
             const matchedWord = match[0];
-            const vocabInfo = highlights.find(
+            const vocabIndex = highlights.findIndex(
                 h => h.word.toLowerCase() === matchedWord.toLowerCase()
             );
+            const vocabInfo = vocabIndex >= 0 ? highlights[vocabIndex] : null;
 
             // 只有有效的词汇信息才添加为高亮（有 meaning 才认为有效）
             if (vocabInfo && vocabInfo.meaning) {
                 result.push({
                     type: 'highlight',
                     content: matchedWord,
-                    vocabInfo
+                    vocabInfo,
+                    vocabIndex
                 });
             } else {
                 // 没有有效词汇数据的词仍然高亮，但标记为无数据
@@ -136,11 +139,11 @@ const HighlightedText = ({
                         return (
                             <span
                                 key={index}
-                                onClick={(e) => handleVocabClick(part.content, part.vocabInfo, e)}
+                                onClick={(e) => handleVocabClick(part.content, part.vocabInfo, part.vocabIndex, e)}
                                 onTouchEnd={(e) => {
                                     // 手机端也响应 touch 事件，避免延迟
                                     e.preventDefault();
-                                    handleVocabClick(part.content, part.vocabInfo, e);
+                                    handleVocabClick(part.content, part.vocabInfo, part.vocabIndex, e);
                                 }}
                                 className="font-bold border-b-2 border-violet-500 bg-violet-50 px-0.5 cursor-pointer hover:bg-violet-100 hover:text-violet-500 transition-colors rounded-sm"
                                 title={part.vocabInfo?.meaning || '点击查看释义'}
@@ -173,14 +176,20 @@ const HighlightedText = ({
                 <VocabPopover
                     word={activeVocab.word}
                     vocabInfo={activeVocab.vocabInfo}
-                    vocabId={activeVocab.vocabInfo?.id}
+                    vocabId={videoId && activeVocab.vocabIndex !== undefined
+                        ? `${videoId}-vocab-${activeVocab.vocabIndex}`
+                        : undefined}
                     position={popoverPosition}
                     onClose={closePopover}
                     onPauseVideo={onPauseVideo}
                     isMobile={isMobile}
-                    isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(activeVocab.vocabInfo?.id) : false}
-                    onToggleFavorite={handleVocabFavoriteToggle ? () => handleVocabFavoriteToggle(activeVocab.vocabInfo?.id) : undefined}
-                    onAddToNotebook={handleVocabAddToNotebook ? () => handleVocabAddToNotebook(activeVocab.vocabInfo?.id) : undefined}
+                    isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(activeVocab.vocabIndex) : false}
+                    onToggleFavorite={activeVocab.vocabIndex !== undefined && handleVocabFavoriteToggle
+                        ? () => handleVocabFavoriteToggle(activeVocab.vocabIndex)
+                        : undefined}
+                    onAddToNotebook={activeVocab.vocabIndex !== undefined && handleVocabAddToNotebook
+                        ? () => handleVocabAddToNotebook(activeVocab.vocabIndex)
+                        : undefined}
                     isLoggedIn={isLoggedIn}
                 />
             )}
