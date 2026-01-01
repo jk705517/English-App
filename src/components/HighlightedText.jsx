@@ -172,27 +172,32 @@ const HighlightedText = ({
             </span>
 
             {/* 词汇弹窗 */}
-            {activeVocab && (
-                <VocabPopover
-                    word={activeVocab.word}
-                    vocabInfo={activeVocab.vocabInfo}
-                    vocabId={videoId && activeVocab.vocabIndex !== undefined
-                        ? `${videoId}-vocab-${activeVocab.vocabIndex}`
-                        : undefined}
-                    position={popoverPosition}
-                    onClose={closePopover}
-                    onPauseVideo={onPauseVideo}
-                    isMobile={isMobile}
-                    isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(activeVocab.vocabIndex) : false}
-                    onToggleFavorite={activeVocab.vocabIndex !== undefined && handleVocabFavoriteToggle
-                        ? () => handleVocabFavoriteToggle(activeVocab.vocabIndex)
-                        : undefined}
-                    onAddToNotebook={activeVocab.vocabIndex !== undefined && handleVocabAddToNotebook
-                        ? () => handleVocabAddToNotebook(activeVocab.vocabIndex)
-                        : undefined}
-                    isLoggedIn={isLoggedIn}
-                />
-            )}
+            {activeVocab && (() => {
+                // 生成正确的 vocabId
+                const generatedVocabId = videoId && activeVocab.vocabIndex !== undefined 
+                    ? `${videoId}-vocab-${activeVocab.vocabIndex}` 
+                    : undefined;
+                
+                return (
+                    <VocabPopover
+                        word={activeVocab.word}
+                        vocabInfo={activeVocab.vocabInfo}
+                        vocabId={generatedVocabId}
+                        position={popoverPosition}
+                        onClose={closePopover}
+                        onPauseVideo={onPauseVideo}
+                        isMobile={isMobile}
+                        isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(generatedVocabId) : false}
+                        onToggleFavorite={generatedVocabId && handleVocabFavoriteToggle 
+                            ? () => handleVocabFavoriteToggle(generatedVocabId) 
+                            : undefined}
+                        onAddToNotebook={generatedVocabId && handleVocabAddToNotebook 
+                            ? () => handleVocabAddToNotebook(generatedVocabId) 
+                            : undefined}
+                        isLoggedIn={isLoggedIn}
+                    />
+                );
+            })()}
         </>
     );
 };
