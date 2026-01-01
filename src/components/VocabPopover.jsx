@@ -35,8 +35,11 @@ const VocabPopover = ({
     isFavorite = false,
     onToggleFavorite,
     onAddToNotebook,
-    isLoggedIn = false
+    isLoggedIn = false,
+    vocabId // 词汇ID，用于收藏和本子功能
 }) => {
+    // Debug: 打印关键 props
+    console.log('VocabPopover props:', { word, vocabId, isFavorite, hasOnToggleFavorite: !!onToggleFavorite, hasOnAddToNotebook: !!onAddToNotebook });
     const [showFullDetail, setShowFullDetail] = useState(false);
 
     // 计算PC端安全的弹窗位置（防溢出）
@@ -123,11 +126,17 @@ const VocabPopover = ({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
+                                e.preventDefault();
+                                console.log('本子点击, vocabId:', vocabId);
                                 if (!isLoggedIn) {
                                     alert('登录后才能使用本子功能');
                                     return;
                                 }
-                                if (onAddToNotebook) onAddToNotebook();
+                                if (onAddToNotebook && vocabId) {
+                                    onAddToNotebook();
+                                } else {
+                                    console.warn('缺少vocabId或onAddToNotebook');
+                                }
                             }}
                             className="p-2 rounded-full transition-colors text-gray-400 hover:text-violet-500 hover:bg-violet-50"
                             title="加入本子"
@@ -140,7 +149,13 @@ const VocabPopover = ({
                         <button
                             onClick={(e) => {
                                 e.stopPropagation();
-                                if (onToggleFavorite) onToggleFavorite();
+                                e.preventDefault();
+                                console.log('收藏点击, vocabId:', vocabId, 'isFavorite:', isFavorite);
+                                if (onToggleFavorite && vocabId) {
+                                    onToggleFavorite();
+                                } else {
+                                    console.warn('缺少vocabId或onToggleFavorite');
+                                }
                             }}
                             className={`p-2 rounded-full transition-colors ${isFavorite
                                 ? 'text-yellow-500 hover:bg-yellow-100'

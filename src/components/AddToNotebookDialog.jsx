@@ -165,7 +165,7 @@ const AddToNotebookDialog = ({
                             value={newNotebookName}
                             onChange={(e) => setNewNotebookName(e.target.value)}
                             onKeyDown={(e) => e.key === 'Enter' && handleCreateAndAdd()}
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-sm"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-violet-400 focus:border-transparent text-base" style={{ fontSize: '16px' }}
                         />
                         <button
                             onClick={handleCreateAndAdd}

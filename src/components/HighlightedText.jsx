@@ -173,6 +173,7 @@ const HighlightedText = ({
                 <VocabPopover
                     word={activeVocab.word}
                     vocabInfo={activeVocab.vocabInfo}
+                    vocabId={activeVocab.vocabInfo?.id}
                     position={popoverPosition}
                     onClose={closePopover}
                     onPauseVideo={onPauseVideo}
