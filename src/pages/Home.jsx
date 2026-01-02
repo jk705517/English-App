@@ -188,22 +188,6 @@ function Home() {
                 </div>
             )}
 
-            {/* 学习状态筛选提示条 */}
-            {studyFilter !== 'all' && (
-                <div className="flex items-center justify-between bg-violet-50 text-violet-500 px-4 py-2 rounded-lg mb-4">
-                    <span>
-                        当前显示：{studyFilter === 'learned' ? '已学习' : '未学习'}的视频
-                        ({studyFilter === 'learned' ? learnedVideos : unlearnedVideos}个)
-                    </span>
-                    <button
-                        onClick={() => setStudyFilter('all')}
-                        className="text-violet-400 hover:text-violet-500"
-                    >
-                        清除
-                    </button>
-                </div>
-            )}
-
             {/* 分类筛选 */}
             <div className="mb-3">
                 <div className="flex flex-wrap gap-3">

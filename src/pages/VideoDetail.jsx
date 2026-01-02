@@ -226,7 +226,7 @@ const VideoDetail = () => {
         if (!videoData?.id) return;
         const loadLearnedStatus = async () => {
             const learnedIds = await progressService.loadLearnedVideoIds(user);
-            setIsLearned(learnedIds.includes(Number(videoData.id)));
+            setIsLearned(learnedIds.includes(String(videoData.id)));
         };
         loadLearnedStatus();
     }, [videoData?.id, user]);
