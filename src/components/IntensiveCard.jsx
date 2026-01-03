@@ -158,6 +158,16 @@ const IntensiveCard = ({
             {showExplanations && hasAnalysis && (
                 <div className={`space-y-4 pt-4 border-t ${isActive ? 'border-violet-100' : 'border-gray-100'}`}>
 
+                    {/* 当前句子提示 - 让用户知道在分析哪句话 */}
+                    <div className="bg-gray-50 rounded-lg p-3">
+                        <p className="text-sm font-medium text-gray-800 leading-relaxed">
+                            {text}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                            {cn}
+                        </p>
+                    </div>
+
                     {/* Takeaway */}
                     {analysis.takeaway && (
                         <div className="text-sm">
