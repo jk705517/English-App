@@ -92,7 +92,7 @@ const VideoDetail = () => {
     // 视频循环 - 整支视频播放完从头循环
     const [isVideoLooping, setIsVideoLooping] = useState(false);
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
-    const [isSentenceLooping, setIsSentenceLooping] = useState(false);
+    const [isSentenceLooping, setIsSentenceLooping] = useState(true);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
