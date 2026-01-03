@@ -676,7 +676,7 @@ const VideoDetail = () => {
                                 onDone={(status) => {
                                     setClozeResults(prev => ({ ...prev, [key]: status }));
                                     // 浣滅瓟缁撴潫锛氬鏋滄槸鍥犳寲绌鸿€屾殏鍋滅殑锛屽垯鎭㈠鎾斁
-                                    if (pausedByCloze.current) {
+                                    if (status === 'correct' && pausedByCloze.current) {
                                         if (playerRef.current) playerRef.current.play();
                                         setIsPlaying(true);
                                         pausedByCloze.current = false;
