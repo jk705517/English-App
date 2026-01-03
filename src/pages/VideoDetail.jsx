@@ -92,7 +92,7 @@ const VideoDetail = () => {
     // 视频循环 - 整支视频播放完从头循环
     const [isVideoLooping, setIsVideoLooping] = useState(false);
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
-    const [isSentenceLooping, setIsSentenceLooping] = useState(true);
+    const [isSentenceLooping, setIsSentenceLooping] = useState(false);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
@@ -178,6 +178,19 @@ const VideoDetail = () => {
         window.addEventListener('resize', checkMobile);
         return () => window.removeEventListener('resize', checkMobile);
     }, []);
+
+    // 根据模式设置单句循环的默认值
+    useEffect(() => {
+        // 双语、英、中模式不默认单句循环
+        if (mode === 'dual' || mode === 'en' || mode === 'cn') {
+            setIsSentenceLooping(false);
+        }
+        // 精读、挖空模式默认单句循环
+        else if (mode === 'intensive' || mode === 'cloze') {
+            setIsSentenceLooping(true);
+        }
+        // 听写模式(dictation)不在此处理，保持原有逻辑
+    }, [mode]);
 
     // Ref for dictation state
     const dictationStateRef = useRef({ isPlaying: false, isSeeking: false, dictationIndex: 0 });
