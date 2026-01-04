@@ -18,11 +18,15 @@ import DataCheck from './pages/DataCheck';
 import Auth from './pages/Auth';
 import Activate from './pages/Activate';
 import AdminGenerateLink from './pages/AdminGenerateLink';
+import DemoPage from './pages/DemoPage';
 
 function App() {
     return (
         <BrowserRouter>
             <Routes>
+                {/* Demo 试用页面 - 不需要登录 */}
+                <Route path="/demo" element={<DemoPage />} />
+
                 <Route path="/" element={<Layout />}>
                     {/* 需要登录才能访问的页面 */}
                     <Route index element={<ProtectedRoute><Home /></ProtectedRoute>} />
