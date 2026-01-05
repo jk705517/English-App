@@ -628,31 +628,38 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             return;
         }
 
-        // 单句暂停逻辑：在当前句子即将结束时暂停（提前检测，避免播放到下一句）
+        // 单句暂停逻辑：参考单句循环，用 nextSub.start - 0.3 检测时机
         if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
+            const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 提前 0.1 秒检测，确保在当前句子结束前暂停
-            if (currentSub &&
-                state.playedSeconds >= currentSub.end - 0.1 &&
-                state.playedSeconds < currentSub.end + 0.5 &&  // 防止跳转后误触发
+            // 与单句循环相同的检测条件：下一句开始前 0.3 秒
+            if (nextSub &&
+                state.playedSeconds >= nextSub.start - 0.3 &&
                 lastPausedSentenceIndex.current !== activeIndex) {
 
                 lastPausedSentenceIndex.current = activeIndex;
 
-                const nextSub = videoData.transcript[activeIndex + 1];
                 if (playerRef.current) {
                     playerRef.current.pause();
-                    // 定位到下一句开头（如果有下一句）
-                    if (nextSub) {
-                        playerRef.current.currentTime = nextSub.start;
-                    }
+                    playerRef.current.currentTime = nextSub.start;
                 }
                 setIsPlaying(false);
-                // 高亮切换到下一句
-                if (nextSub) {
-                    setActiveIndex(activeIndex + 1);
+                setActiveIndex(activeIndex + 1);
+                return;
+            }
+
+            // 处理最后一句（没有 nextSub 的情况）
+            if (!nextSub && currentSub &&
+                state.playedSeconds >= currentSub.end - 0.1 &&
+                lastPausedSentenceIndex.current !== activeIndex) {
+
+                lastPausedSentenceIndex.current = activeIndex;
+
+                if (playerRef.current) {
+                    playerRef.current.pause();
                 }
+                setIsPlaying(false);
                 return;
             }
         }
