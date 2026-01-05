@@ -1,6 +1,7 @@
 ﻿import React, { useState, useEffect } from 'react';
 import { X, Plus, BookOpen, Check } from 'lucide-react';
 import { notebookService } from '../services/notebookService';
+import * as demoStorage from '../services/demoStorage';
 
 /**
  * 加入本子弹窗组件
@@ -16,6 +17,7 @@ const AddToNotebookDialog = ({
     isOpen,
     onClose,
     user,
+    isDemo = false,
     itemType,
     itemId,
     videoId,
@@ -30,17 +32,30 @@ const AddToNotebookDialog = ({
 
     // 加载本子列表
     useEffect(() => {
-        if (isOpen && user) {
+        if (isOpen && (user || isDemo)) {
             loadNotebooks();
         }
-    }, [isOpen, user]);
+    }, [isOpen, user, isDemo]);
 
     const loadNotebooks = async () => {
         setLoading(true);
         try {
-            const result = await notebookService.loadNotebooks(user);
-            // loadNotebooks returns { notebooks: [], summary: {} }, extract the notebooks array
-            setNotebooks(result?.notebooks || []);
+            if (isDemo) {
+                // Demo 模式：从 localStorage 读取
+                const demoNotebooks = demoStorage.getDemoNotebooks();
+                // 转换格式以匹配组件期望的结构
+                const formattedNotebooks = demoNotebooks.map(nb => ({
+                    id: nb.id,
+                    name: nb.name,
+                    sentenceCount: nb.items.filter(i => i.itemType === 'sentence').length,
+                    vocabCount: nb.items.filter(i => i.itemType === 'vocab').length
+                }));
+                setNotebooks(formattedNotebooks);
+            } else {
+                const result = await notebookService.loadNotebooks(user);
+                // loadNotebooks returns { notebooks: [], summary: {} }, extract the notebooks array
+                setNotebooks(result?.notebooks || []);
+            }
         } catch (error) {
             console.error('Error loading notebooks:', error);
             setMessage({ type: 'error', text: '加载本子列表失败，请重试' });
@@ -57,12 +72,18 @@ const AddToNotebookDialog = ({
         setMessage(null);
 
         try {
-            const success = await notebookService.addItemToNotebook(user, {
-                notebookId: notebook.id,
-                itemType,
-                itemId,
-                videoId
-            });
+            let success;
+            if (isDemo) {
+                // Demo 模式：保存到 localStorage
+                success = demoStorage.addDemoNotebookItem(notebook.id, itemType, itemId, videoId);
+            } else {
+                success = await notebookService.addItemToNotebook(user, {
+                    notebookId: notebook.id,
+                    itemType,
+                    itemId,
+                    videoId
+                });
+            }
 
             if (success) {
                 setMessage({ type: 'success', text: `已加入本子：${notebook.name}` });
@@ -91,10 +112,17 @@ const AddToNotebookDialog = ({
         setMessage(null);
 
         try {
-            // 1. 创建本子
-            const newNotebook = await notebookService.createNotebook(user, {
-                name: newNotebookName.trim()
-            });
+            let newNotebook;
+
+            if (isDemo) {
+                // Demo 模式：创建本子到 localStorage
+                newNotebook = demoStorage.createDemoNotebook(newNotebookName.trim());
+            } else {
+                // 1. 创建本子
+                newNotebook = await notebookService.createNotebook(user, {
+                    name: newNotebookName.trim()
+                });
+            }
 
             if (!newNotebook) {
                 setMessage({ type: 'error', text: '创建本子失败，请重试' });
@@ -102,12 +130,17 @@ const AddToNotebookDialog = ({
             }
 
             // 2. 添加当前条目到新本子
-            const addSuccess = await notebookService.addItemToNotebook(user, {
-                notebookId: newNotebook.id,
-                itemType,
-                itemId,
-                videoId
-            });
+            let addSuccess;
+            if (isDemo) {
+                addSuccess = demoStorage.addDemoNotebookItem(newNotebook.id, itemType, itemId, videoId);
+            } else {
+                addSuccess = await notebookService.addItemToNotebook(user, {
+                    notebookId: newNotebook.id,
+                    itemType,
+                    itemId,
+                    videoId
+                });
+            }
 
             if (!addSuccess) {
                 setMessage({ type: 'error', text: '本子已创建但添加条目失败，请重试' });

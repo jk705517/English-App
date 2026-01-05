@@ -13,6 +13,7 @@ import IntensiveSentencePanel from '../components/IntensiveSentencePanel';
 import IntensiveSentenceList from '../components/IntensiveSentenceList';
 import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { generateClozeData } from '../utils/clozeGenerator';
+import * as demoStorage from '../services/demoStorage';
 
 // TTS 发音函数 - 使用 Azure TTS API
 const speak = async (text, lang = 'en-US') => {
@@ -66,11 +67,13 @@ const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
     </div>
 );
 
-const VideoDetail = () => {
+const VideoDetail = ({ isDemo = false }) => {
     const { episode } = useParams();
     const location = useLocation();
     const navigate = useNavigate();
-    const { user } = useAuth();
+    const { user: authUser } = useAuth();
+    // Demo 模式不需要真实用户，创建一个虚拟用户对象用于本地存储
+    const user = isDemo ? { id: 'demo-user' } : authUser;
 
     // Parse query params for sentence/vocab navigation from Favorites page
     const searchParams = new URLSearchParams(location.search);
@@ -238,51 +241,84 @@ const VideoDetail = () => {
     useEffect(() => {
         if (!videoData?.id) return;
         const loadLearnedStatus = async () => {
-            const learnedIds = await progressService.loadLearnedVideoIds(user);
-            setIsLearned(learnedIds.includes(String(videoData.id)));
+            if (isDemo) {
+                // Demo 模式：从 localStorage 读取
+                setIsLearned(demoStorage.isDemoLearned(videoData.id));
+            } else {
+                const learnedIds = await progressService.loadLearnedVideoIds(user);
+                setIsLearned(learnedIds.includes(String(videoData.id)));
+            }
         };
         loadLearnedStatus();
-    }, [videoData?.id, user]);
+    }, [videoData?.id, user, isDemo]);
 
     // Load favorite status
     useEffect(() => {
         if (!videoData?.id) return;
         const loadFavoriteStatus = async () => {
-            const favoriteIds = await favoritesService.loadFavoriteVideoIds(user);
-            setIsFavorite(favoriteIds.includes(Number(videoData.id)));
+            if (isDemo) {
+                // Demo 模式：从 localStorage 读取
+                const favorites = demoStorage.getDemoFavorites();
+                setIsFavorite(favorites.videos.includes(String(videoData.id)));
+            } else {
+                const favoriteIds = await favoritesService.loadFavoriteVideoIds(user);
+                setIsFavorite(favoriteIds.includes(Number(videoData.id)));
+            }
         };
         loadFavoriteStatus();
-    }, [videoData?.id, user]);
+    }, [videoData?.id, user, isDemo]);
 
     // Load sentence favorites (filtered by current video)
     useEffect(() => {
-        if (!user || !videoData?.id) {
+        if (!videoData?.id) return;
+        if (!isDemo && !user) {
             console.log('📋 VideoDetail: No user or video, skipping sentence favorites load');
             return;
         }
         const loadSentenceFavorites = async () => {
-            console.log('📋 VideoDetail: Loading sentence favorites for video:', videoData.id, 'user:', user.id);
-            const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(videoData.id));
-            console.log('📋 VideoDetail: Loaded sentence favorite IDs:', ids);
-            setFavoriteSentenceIds(ids);
+            if (isDemo) {
+                // Demo 模式：从 localStorage 读取
+                const favorites = demoStorage.getDemoFavorites();
+                // 过滤出当前视频的句子收藏
+                const sentenceIds = favorites.sentences
+                    .filter(s => String(s.videoId) === String(videoData.id))
+                    .map(s => s.itemId);
+                setFavoriteSentenceIds(sentenceIds);
+            } else {
+                console.log('📋 VideoDetail: Loading sentence favorites for video:', videoData.id, 'user:', user.id);
+                const ids = await favoritesService.loadFavoriteSentenceIds(user, Number(videoData.id));
+                console.log('📋 VideoDetail: Loaded sentence favorite IDs:', ids);
+                setFavoriteSentenceIds(ids);
+            }
         };
         loadSentenceFavorites();
-    }, [user, videoData?.id]);
+    }, [user, videoData?.id, isDemo]);
 
     // Load vocab favorites (filtered by current video)
     useEffect(() => {
-        if (!user || !videoData?.id) {
+        if (!videoData?.id) return;
+        if (!isDemo && !user) {
             console.log('📋 VideoDetail: No user or video, skipping vocab favorites load');
             return;
         }
         const loadVocabFavorites = async () => {
-            console.log('📋 VideoDetail: Loading vocab favorites for video:', videoData.id, 'user:', user.id);
-            const ids = await favoritesService.loadFavoriteVocabIds(user, Number(videoData.id));
-            console.log('📋 VideoDetail: Loaded vocab favorite IDs:', ids);
-            setFavoriteVocabIds(ids);
+            if (isDemo) {
+                // Demo 模式：从 localStorage 读取
+                const favorites = demoStorage.getDemoFavorites();
+                // 过滤出当前视频的词汇收藏
+                const vocabIds = favorites.vocabs
+                    .filter(v => String(v.videoId) === String(videoData.id))
+                    .map(v => v.itemId);
+                setFavoriteVocabIds(vocabIds);
+            } else {
+                console.log('📋 VideoDetail: Loading vocab favorites for video:', videoData.id, 'user:', user.id);
+                const ids = await favoritesService.loadFavoriteVocabIds(user, Number(videoData.id));
+                console.log('📋 VideoDetail: Loaded vocab favorite IDs:', ids);
+                setFavoriteVocabIds(ids);
+            }
         };
         loadVocabFavorites();
-    }, [user, videoData?.id]);
+    }, [user, videoData?.id, isDemo]);
 
     // 加载所有词汇的出现记录
     const loadAllVocabOccurrences = async (vocabList, currentVideoId) => {
@@ -787,13 +823,30 @@ const VideoDetail = () => {
     const handleToggleLearned = async () => {
         const newStatus = !isLearned;
         setIsLearned(newStatus);
-        await progressService.toggleLearnedVideoId(user, Number(videoData.id), newStatus);
+        if (isDemo) {
+            // Demo 模式：保存到 localStorage
+            if (newStatus) {
+                demoStorage.addDemoProgress(videoData.id);
+            }
+            // 注意：Demo 模式暂不支持取消已学（简化处理）
+        } else {
+            await progressService.toggleLearnedVideoId(user, Number(videoData.id), newStatus);
+        }
     };
 
     const handleToggleFavorite = async () => {
         const newStatus = !isFavorite;
         setIsFavorite(newStatus);
-        await favoritesService.toggleFavoriteVideoId(user, Number(videoData.id), newStatus);
+        if (isDemo) {
+            // Demo 模式：保存到 localStorage
+            if (newStatus) {
+                demoStorage.addDemoFavorite('video', String(videoData.id), videoData.id);
+            } else {
+                demoStorage.removeDemoFavorite('video', String(videoData.id));
+            }
+        } else {
+            await favoritesService.toggleFavoriteVideoId(user, Number(videoData.id), newStatus);
+        }
     };
 
     // 打印字幕
@@ -906,7 +959,18 @@ const VideoDetail = () => {
         }
         // 使用字符串比较，确保类型一致
         const shouldBeFavorite = !favoriteSentenceIds.some(fid => String(fid) === String(sentenceId));
-        await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(videoData.id));
+
+        if (isDemo) {
+            // Demo 模式：保存到 localStorage
+            if (shouldBeFavorite) {
+                demoStorage.addDemoFavorite('sentence', String(sentenceId), videoData.id);
+            } else {
+                demoStorage.removeDemoFavorite('sentence', String(sentenceId));
+            }
+        } else {
+            await favoritesService.toggleFavoriteSentence(user, sentenceId, shouldBeFavorite, Number(videoData.id));
+        }
+
         setFavoriteSentenceIds((prev) =>
             shouldBeFavorite
                 ? [...prev, sentenceId]
@@ -923,7 +987,18 @@ const VideoDetail = () => {
         }
         // 使用字符串比较，确保类型一致
         const shouldBeFavorite = !favoriteVocabIds.some(fid => String(fid) === String(vocabId));
-        await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(videoData.id));
+
+        if (isDemo) {
+            // Demo 模式：保存到 localStorage
+            if (shouldBeFavorite) {
+                demoStorage.addDemoFavorite('vocab', String(vocabId), videoData.id);
+            } else {
+                demoStorage.removeDemoFavorite('vocab', String(vocabId));
+            }
+        } else {
+            await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(videoData.id));
+        }
+
         setFavoriteVocabIds((prev) =>
             shouldBeFavorite
                 ? [...prev, vocabId]
@@ -1182,31 +1257,33 @@ const VideoDetail = () => {
                 {/* 标题区：移动端仅在"顶部 + 未播放 + 非小窗口模式"时显示，PC端始终显示 */}
                 {(!isMobile || (!isPlaying && !showMobileMiniBar)) && (
                     <div className="p-3 md:p-6 flex-shrink-0">
-                        {/* 上一期/下一期导航 - 按期数顺序 */}
-                        <div className="flex gap-2 mb-2 pt-2 md:pt-0">
-                            {prevVideo && (
-                                <button
-                                    onClick={() => navigate(`/episode/${prevVideo.episode}`)}
-                                    className="px-3 py-1.5 bg-violet-100 text-violet-600 rounded-full text-sm font-medium hover:bg-violet-200 transition-colors flex items-center gap-1"
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                                    </svg>
-                                    上一期
-                                </button>
-                            )}
-                            {nextVideo && (
-                                <button
-                                    onClick={() => navigate(`/episode/${nextVideo.episode}`)}
-                                    className="px-3 py-1.5 bg-violet-500 text-white rounded-full text-sm font-medium hover:bg-violet-600 transition-colors flex items-center gap-1"
-                                >
-                                    下一期
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                                    </svg>
-                                </button>
-                            )}
-                        </div>
+                        {/* 上一期/下一期导航 - 按期数顺序，Demo模式隐藏 */}
+                        {!isDemo && (
+                            <div className="flex gap-2 mb-2 pt-2 md:pt-0">
+                                {prevVideo && (
+                                    <button
+                                        onClick={() => navigate(`/episode/${prevVideo.episode}`)}
+                                        className="px-3 py-1.5 bg-violet-100 text-violet-600 rounded-full text-sm font-medium hover:bg-violet-200 transition-colors flex items-center gap-1"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                                        </svg>
+                                        上一期
+                                    </button>
+                                )}
+                                {nextVideo && (
+                                    <button
+                                        onClick={() => navigate(`/episode/${nextVideo.episode}`)}
+                                        className="px-3 py-1.5 bg-violet-500 text-white rounded-full text-sm font-medium hover:bg-violet-600 transition-colors flex items-center gap-1"
+                                    >
+                                        下一期
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                                        </svg>
+                                    </button>
+                                )}
+                            </div>
+                        )}
 
                         {/* 标题区域 */}
                         <div className="flex items-start justify-between mb-2 md:mb-3">
@@ -1775,7 +1852,7 @@ const VideoDetail = () => {
                                         {/* 加入本子按钮 */}
                                         <button
                                             onClick={() => {
-                                                if (!user) {
+                                                if (!user && !isDemo) {
                                                     alert('登录后才能使用本子功能');
                                                     return;
                                                 }
@@ -1994,7 +2071,7 @@ const VideoDetail = () => {
                                     favoriteSentenceIds={favoriteSentenceIds}
                                     onToggleFavorite={handleToggleSentenceFavorite}
                                     onAddToNotebook={(sentenceId) => {
-                                        if (!user) {
+                                        if (!user && !isDemo) {
                                             alert('登录后才能使用本子功能');
                                             return;
                                         }
@@ -2033,7 +2110,7 @@ const VideoDetail = () => {
                                             favoriteVocabIds={favoriteVocabIds}
                                             onToggleVocabFavorite={handleToggleVocabFavorite}
                                             onAddVocabToNotebook={(vocabId) => {
-                                                if (!user) {
+                                                if (!user && !isDemo) {
                                                     alert('登录后才能使用本子功能');
                                                     return;
                                                 }
@@ -2078,7 +2155,7 @@ const VideoDetail = () => {
                                             {/* 加入本子按钮 */}
                                             <button
                                                 onClick={() => {
-                                                    if (!user) {
+                                                    if (!user && !isDemo) {
                                                         alert('登录后才能使用本子功能');
                                                         return;
                                                     }
@@ -2185,6 +2262,7 @@ const VideoDetail = () => {
                     setNotebookDialogItem(null);
                 }}
                 user={user}
+                isDemo={isDemo}
                 itemType={notebookDialogItem?.itemType}
                 itemId={notebookDialogItem?.itemId}
                 videoId={notebookDialogItem?.videoId}
