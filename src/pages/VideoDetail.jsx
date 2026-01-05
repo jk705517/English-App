@@ -628,21 +628,31 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             return;
         }
 
-        // 单句暂停逻辑：检测句子切换时机，精确暂停
+        // 单句暂停逻辑：在当前句子即将结束时暂停（提前检测，避免播放到下一句）
         if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
-            // 当 newIndex 变化（即将进入下一句）时触发暂停
-            if (newIndex !== -1 && newIndex > activeIndex && lastPausedSentenceIndex.current !== activeIndex) {
-                lastPausedSentenceIndex.current = activeIndex; // 标记刚结束的句子
-                const nextSub = videoData.transcript[newIndex];
+            const currentSub = videoData.transcript[activeIndex];
+
+            // 提前 0.1 秒检测，确保在当前句子结束前暂停
+            if (currentSub &&
+                state.playedSeconds >= currentSub.end - 0.1 &&
+                state.playedSeconds < currentSub.end + 0.5 &&  // 防止跳转后误触发
+                lastPausedSentenceIndex.current !== activeIndex) {
+
+                lastPausedSentenceIndex.current = activeIndex;
+
+                const nextSub = videoData.transcript[activeIndex + 1];
                 if (playerRef.current) {
                     playerRef.current.pause();
-                    // 精确定位到下一句开头，点播放后从新句子完整开始
+                    // 定位到下一句开头（如果有下一句）
                     if (nextSub) {
                         playerRef.current.currentTime = nextSub.start;
                     }
                 }
                 setIsPlaying(false);
-                setActiveIndex(newIndex); // 高亮切换到下一句
+                // 高亮切换到下一句
+                if (nextSub) {
+                    setActiveIndex(activeIndex + 1);
+                }
                 return;
             }
         }
