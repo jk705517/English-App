@@ -118,6 +118,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [clozeData, setClozeData] = useState({});
     const [clozeResults, setClozeResults] = useState({}); // { `${lineIndex}-${clozeIndex}`: 'correct' | 'revealed' }
     const pausedByCloze = useRef(false);
+    // 单句暂停：记录上次暂停的句子索引，避免同一句重复暂停
+    const lastPausedSentenceIndex = useRef(-1);
 
     // 绉诲姩绔細鏄惁涓洪娆″姞杞斤紙淇濊瘉鍒濆杩涘叆椤甸潰鏃舵樉绀烘爣棰樺尯锛?
     const [isInitialLoad, setIsInitialLoad] = useState(true);
@@ -629,7 +631,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         // 单句暂停逻辑：当前字幕句子结束时自动暂停
         if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
-            if (currentSub && state.playedSeconds >= currentSub.end - 0.1) {
+            // 增加条件：这一句还没暂停过（避免重复暂停）
+            if (currentSub && state.playedSeconds >= currentSub.end - 0.1 && lastPausedSentenceIndex.current !== activeIndex) {
+                lastPausedSentenceIndex.current = activeIndex; // 标记为已暂停
                 if (playerRef.current) {
                     playerRef.current.pause();
                 }
@@ -673,6 +677,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const handleSeek = useCallback((time) => {
         setIsSeeking(true);
         setCurrentTime(time);
+        lastPausedSentenceIndex.current = -1; // 重置单句暂停标记，允许重新触发
 
         // 🔧 修复单句循环点击问题：当开启单句循环时，点击字幕行需要更新 activeIndex
         // 这样循环目标会切换到被点击的句子，而不是停留在原来的句子
