@@ -628,17 +628,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             return;
         }
 
-        // 单句暂停逻辑：当前字幕句子结束时自动暂停
+        // 单句暂停逻辑：检测句子切换时机，精确暂停
         if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
-            const currentSub = videoData.transcript[activeIndex];
-            // 增加条件：这一句还没暂停过（避免重复暂停）
-            if (currentSub && state.playedSeconds >= currentSub.end - 0.1 && lastPausedSentenceIndex.current !== activeIndex) {
-                lastPausedSentenceIndex.current = activeIndex; // 标记为已暂停
+            // 当 newIndex 变化（即将进入下一句）时触发暂停
+            if (newIndex !== -1 && newIndex > activeIndex && lastPausedSentenceIndex.current !== activeIndex) {
+                lastPausedSentenceIndex.current = activeIndex; // 标记刚结束的句子
+                const nextSub = videoData.transcript[newIndex];
                 if (playerRef.current) {
                     playerRef.current.pause();
+                    // 精确定位到下一句开头，点播放后从新句子完整开始
+                    if (nextSub) {
+                        playerRef.current.currentTime = nextSub.start;
+                    }
                 }
                 setIsPlaying(false);
-                return; // 暂停后不再处理后续逻辑
+                setActiveIndex(newIndex); // 高亮切换到下一句
+                return;
             }
         }
 
