@@ -85,19 +85,21 @@ const DemoPage = () => {
                         </button>
                     </form>
 
-                    {/* 提示 */}
-                    <div className="mt-6 p-4 bg-violet-50 rounded-xl">
-                        <p className="text-sm text-violet-700 text-center">
-                            💡 密码可在小红书「BiuBiu英语」主页获取
+                    {/* 群聊二维码提示 */}
+                    <div className="mt-6 p-4 bg-violet-50 rounded-xl border border-violet-100">
+                        <p className="text-violet-700 text-sm mb-3 text-center">
+                            💡 试用密码可在「BiuBiu英语学习群」获取
                         </p>
-                        <a
-                            href={XIAOHONGSHU_LINK}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="block mt-3 text-center text-violet-600 font-medium hover:underline"
-                        >
-                            👉 前往小红书获取密码
-                        </a>
+                        <p className="text-gray-600 text-sm mb-3 text-center">
+                            👇 扫码加群领取密码
+                        </p>
+                        <div className="flex justify-center">
+                            <img
+                                src="/group-qr.png"
+                                alt="群聊二维码"
+                                className="w-40 h-40 rounded-lg"
+                            />
+                        </div>
                     </div>
                 </div>
             </div>
