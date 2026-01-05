@@ -67,8 +67,9 @@ const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
     </div>
 );
 
-const VideoDetail = ({ isDemo = false }) => {
-    const { episode } = useParams();
+const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
+    const { episode: urlEpisode } = useParams();
+    const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
     const navigate = useNavigate();
     const { user: authUser } = useAuth();

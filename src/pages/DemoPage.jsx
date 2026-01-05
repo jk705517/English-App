@@ -124,7 +124,7 @@ const DemoPage = () => {
 
             {/* 视频详情内容 - 使用 Demo 模式 */}
             <div className="flex-1">
-                <VideoDetail isDemo={true} />
+                <VideoDetail isDemo={true} demoEpisode={29} />
             </div>
 
             {/* 底部固定引导栏 */}
