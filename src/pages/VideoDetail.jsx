@@ -97,6 +97,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [isVideoLooping, setIsVideoLooping] = useState(false);
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
     const [isSentenceLooping, setIsSentenceLooping] = useState(false);
+    // 单句暂停 - 每句结束自动暂停，方便跟读练习
+    const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
@@ -624,6 +626,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             return;
         }
 
+        // 单句暂停逻辑：当前字幕句子结束时自动暂停
+        if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
+            const currentSub = videoData.transcript[activeIndex];
+            if (currentSub && state.playedSeconds >= currentSub.end - 0.1) {
+                if (playerRef.current) {
+                    playerRef.current.pause();
+                }
+                setIsPlaying(false);
+                return; // 暂停后不再处理后续逻辑
+            }
+        }
+
         if (newIndex !== -1 && newIndex !== activeIndex) {
 
 
@@ -653,7 +667,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 }
             }
         }
-    }, [isSeeking, mode, videoData, activeIndex, isAutoScrollEnabled, isSentenceLooping]);
+    }, [isSeeking, mode, videoData, activeIndex, isAutoScrollEnabled, isSentenceLooping, isSentencePauseEnabled]);
 
     // Handle seek
     const handleSeek = useCallback((time) => {
@@ -1729,6 +1743,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 </div>
                                             )}
                                         </div>
+
+                                        {/* 单句暂停按钮 */}
+                                        <button
+                                            onClick={() => setIsSentencePauseEnabled(!isSentencePauseEnabled)}
+                                            className={`flex items-center gap-1 p-1.5 rounded transition-colors ${isSentencePauseEnabled ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
+                                            title={isSentencePauseEnabled ? '关闭单句暂停' : '开启单句暂停（每句结束自动暂停）'}
+                                        >
+                                            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="currentColor">
+                                                <rect x="5" y="4" width="4" height="16" rx="1" />
+                                                <rect x="13" y="4" width="4" height="16" rx="1" />
+                                                <circle cx="20" cy="6" r="3" />
+                                            </svg>
+                                            <span className="text-xs md:hidden">句停</span>
+                                        </button>
 
                                         {/* 单句循环按钮 */}
                                         <button
