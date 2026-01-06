@@ -4,7 +4,6 @@ import { VitePWA } from 'vite-plugin-pwa'
 
 export default defineConfig({
   server: {
-    // Allow Cloudflare Tunnel host (Quick Tunnel domain)
     allowedHosts: [
       'yoga-garage-newton-transmitted.trycloudflare.com',
     ],
@@ -18,10 +17,52 @@ export default defineConfig({
         name: 'BiuBiu English',
         short_name: 'BiuBiu',
         description: 'Learn English with BiuBiu Robot',
-        theme_color: '#ffffff',
+        theme_color: '#A78BFA',
+        background_color: '#F5F3FF',
         icons: [
           { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/logo-512.png', sizes: '512x512', type: 'image/png' }
+        ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        runtimeCaching: [
+          {
+            urlPattern: /^https:\/\/api\.biubiuenglish\.com\/.*/i,
+            handler: 'NetworkFirst',
+            options: {
+              cacheName: 'api-cache',
+              networkTimeoutSeconds: 3,
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /^https:\/\/.*\.oss.*\.aliyuncs\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'oss-cache',
+              expiration: {
+                maxEntries: 100,
+                maxAgeSeconds: 60 * 60 * 24 * 7
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
+              }
+            }
+          },
+          {
+            urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp)$/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'image-cache',
+              expiration: {
+                maxEntries: 50,
+                maxAgeSeconds: 60 * 60 * 24 * 30
+              }
+            }
+          }
         ]
       }
     })

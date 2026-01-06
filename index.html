@@ -6,11 +6,77 @@
   <link rel="icon" type="image/png" href="/logo-32.png" />
   <link rel="apple-touch-icon" href="/logo-180.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#A78BFA" />
   <title>BiuBiu English｜刷视频学英语</title>
+  <style>
+    .app-loading {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+      background: linear-gradient(135deg, #F5F3FF 0%, #EDE9FE 100%);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    }
+
+    .app-loading img {
+      width: 80px;
+      height: 80px;
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+
+    .app-loading p {
+      margin-top: 20px;
+      color: #A78BFA;
+      font-size: 16px;
+    }
+
+    .loading-dots::after {
+      content: '';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes pulse {
+
+      0%,
+      100% {
+        transform: scale(1);
+        opacity: 1;
+      }
+
+      50% {
+        transform: scale(0.95);
+        opacity: 0.7;
+      }
+    }
+
+    @keyframes dots {
+      0% {
+        content: '';
+      }
+
+      25% {
+        content: '.';
+      }
+
+      50% {
+        content: '..';
+      }
+
+      75% {
+        content: '...';
+      }
+    }
+  </style>
 </head>
 
 <body>
-  <div id="root"></div>
+  <div id="root">
+    <div class="app-loading">
+      <img src="/logo-192.png" alt="BiuBiu English" />
+      <p>加载中<span class="loading-dots"></span></p>
+    </div>
+  </div>
   <script type="module" src="/src/main.jsx"></script>
 </body>
 
