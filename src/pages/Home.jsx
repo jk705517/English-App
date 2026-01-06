@@ -83,9 +83,10 @@ function Home() {
         if (authorFromUrl) {
             setFilters(prev => ({ ...prev, author: authorFromUrl }));
             // 清除 URL 参数，保持 URL 干净
-            setSearchParams({}, { replace: true });
+            searchParams.delete('author');
+            setSearchParams(searchParams, { replace: true });
         }
-    }, []); // 仅在组件首次加载时执行
+    }, [searchParams, setSearchParams]);
 
     // 处理筛选变化
     const handleFilterChange = (key, value) => {
