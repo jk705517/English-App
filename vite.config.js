@@ -39,10 +39,10 @@ export default defineConfig({
             }
           },
           {
-            urlPattern: /^https:\/\/.*\.oss.*\.aliyuncs\.com\/.*/i,
+            urlPattern: /^https:\/\/.*\.oss.*\.aliyuncs\.com\/.*\.(?:png|jpg|jpeg|gif|webp)$/i,
             handler: 'CacheFirst',
             options: {
-              cacheName: 'oss-cache',
+              cacheName: 'oss-image-cache',
               expiration: {
                 maxEntries: 100,
                 maxAgeSeconds: 60 * 60 * 24 * 7
