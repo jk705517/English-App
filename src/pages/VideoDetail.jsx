@@ -738,6 +738,34 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         }
     }, [mode, isSentenceLooping, videoData, activeIndex]);
 
+    // 词汇收藏切换 (moved before renderClozeText to fix initialization order)
+    const handleToggleVocabFavorite = async (vocabId) => {
+        // 防止 vocabId 为 undefined 导致所有卡片一起变色
+        if (vocabId === undefined || vocabId === null) {
+            console.warn('⚠️ handleToggleVocabFavorite: vocabId is missing! Please run migration script to add IDs to vocab data.');
+            return;
+        }
+        // 使用字符串比较，确保类型一致
+        const shouldBeFavorite = !favoriteVocabIds.some(fid => String(fid) === String(vocabId));
+
+        if (isDemo) {
+            // Demo 模式：保存到 localStorage
+            if (shouldBeFavorite) {
+                demoStorage.addDemoFavorite('vocab', String(vocabId), videoData.id);
+            } else {
+                demoStorage.removeDemoFavorite('vocab', String(vocabId));
+            }
+        } else {
+            await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(videoData.id));
+        }
+
+        setFavoriteVocabIds((prev) =>
+            shouldBeFavorite
+                ? [...prev, vocabId]
+                : prev.filter(fid => String(fid) !== String(vocabId))
+        );
+    };
+
     // Render cloze text
     const renderClozeText = useCallback((text, lineIndex) => {
         const segments = clozeData[lineIndex];
@@ -1049,33 +1077,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         );
     };
 
-    // 词汇收藏切换
-    const handleToggleVocabFavorite = async (vocabId) => {
-        // 防止 vocabId 为 undefined 导致所有卡片一起变色
-        if (vocabId === undefined || vocabId === null) {
-            console.warn('⚠️ handleToggleVocabFavorite: vocabId is missing! Please run migration script to add IDs to vocab data.');
-            return;
-        }
-        // 使用字符串比较，确保类型一致
-        const shouldBeFavorite = !favoriteVocabIds.some(fid => String(fid) === String(vocabId));
 
-        if (isDemo) {
-            // Demo 模式：保存到 localStorage
-            if (shouldBeFavorite) {
-                demoStorage.addDemoFavorite('vocab', String(vocabId), videoData.id);
-            } else {
-                demoStorage.removeDemoFavorite('vocab', String(vocabId));
-            }
-        } else {
-            await favoritesService.toggleFavoriteVocab(user, vocabId, shouldBeFavorite, Number(videoData.id));
-        }
-
-        setFavoriteVocabIds((prev) =>
-            shouldBeFavorite
-                ? [...prev, vocabId]
-                : prev.filter(fid => String(fid) !== String(vocabId))
-        );
-    };
 
     // 绉诲姩绔細鐐瑰嚮"缁х画鎾斁"锛屾粴鍔ㄥ埌鎾斁鍣ㄥ苟缁х画鎾斁
     const handleMobileResume = () => {
