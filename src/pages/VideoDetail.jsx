@@ -748,13 +748,33 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 {segments.map((segment, i) => {
                     if (segment.type === 'cloze') {
                         const key = `${lineIndex}-${i}`;
+                        const vocabId = segment.vocabInfo?.id !== undefined
+                            ? segment.vocabInfo.id
+                            : `${videoData.id}-vocab-${segment.vocabInfo?.word || i}`;
                         return (
                             <ClozeInput
                                 key={i}
                                 answer={segment.content}
                                 vocabInfo={segment.vocabInfo}
+                                isMobile={isMobile}
+                                isLoggedIn={!!user}
+                                videoId={Number(videoData.id)}
+                                vocabId={vocabId}
+                                isFavorite={favoriteVocabIds.some(fid => String(fid) === String(vocabId))}
+                                onToggleFavorite={() => handleToggleVocabFavorite(vocabId)}
+                                onAddToNotebook={() => {
+                                    if (!user && !isDemo) {
+                                        alert('登录后才能使用本子功能');
+                                        return;
+                                    }
+                                    setNotebookDialogItem({
+                                        itemType: 'vocab',
+                                        itemId: vocabId,
+                                        videoId: Number(videoData.id)
+                                    });
+                                    setNotebookDialogOpen(true);
+                                }}
                                 onStartAnswer={() => {
-                                    // 鐢ㄦ埛寮€濮嬩綔绛旓細濡傛灉姝ｅ湪鎾斁锛屽垯鏆傚仠骞舵爣璁?
                                     if (isPlaying) {
                                         if (playerRef.current) playerRef.current.pause();
                                         setIsPlaying(false);
@@ -763,7 +783,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 }}
                                 onDone={(status) => {
                                     setClozeResults(prev => ({ ...prev, [key]: status }));
-                                    // 浣滅瓟缁撴潫锛氬鏋滄槸鍥犳寲绌鸿€屾殏鍋滅殑锛屽垯鎭㈠鎾斁
                                     if (status === 'correct' && pausedByCloze.current) {
                                         if (playerRef.current) playerRef.current.play();
                                         setIsPlaying(true);
@@ -777,7 +796,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 })}
             </span>
         );
-    }, [clozeData, isPlaying, videoData]);
+    }, [clozeData, isPlaying, videoData, isMobile, user, isDemo, favoriteVocabIds, handleToggleVocabFavorite]);
 
     // Dictation handlers
     const handleNextDictation = () => {

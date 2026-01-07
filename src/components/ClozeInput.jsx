@@ -9,7 +9,21 @@ import VocabPopover from './VocabPopover';
  * @param {function} onFocus - 聚焦回调 (用于暂停视频)
  * @param {boolean} disabled - 是否禁用
  */
-const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disabled }) => {
+const ClozeInput = ({
+    answer,
+    vocabInfo,
+    onDone,
+    onFocus,
+    onStartAnswer,
+    disabled,
+    isMobile = false,
+    isLoggedIn = false,
+    videoId,
+    vocabId,
+    isFavorite = false,
+    onToggleFavorite,
+    onAddToNotebook
+}) => {
     const [value, setValue] = useState('');
     const [status, setStatus] = useState('idle'); // idle, error, correct, revealed
     const [attempts, setAttempts] = useState(0);
@@ -17,14 +31,6 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
     const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
     const inputRef = useRef(null);
     const [width, setWidth] = useState(0);
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
-
-    // 检测移动端
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 1280);
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
 
     // 计算大致宽度
     useEffect(() => {
@@ -125,7 +131,20 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                             onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
-                                setShowVocab(true);
+                                if (isMobile) {
+                                    // 手机端：弹出全屏词汇详情
+                                    setShowVocab(true);
+                                } else {
+                                    // PC端：滚动到重点词汇区域的对应卡片
+                                    const vocabElement = document.querySelector(`[data-vocab-word="${vocabInfo?.word}"]`);
+                                    if (vocabElement) {
+                                        vocabElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                        vocabElement.classList.add('ring-2', 'ring-violet-400');
+                                        setTimeout(() => {
+                                            vocabElement.classList.remove('ring-2', 'ring-violet-400');
+                                        }, 2000);
+                                    }
+                                }
                             }}
                             className="ml-1 text-violet-400 hover:text-violet-500 transition-colors"
                             title="查看完整卡片"
@@ -141,9 +160,14 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                                 vocabInfo={vocabInfo}
                                 position={popoverPos}
                                 onClose={() => setShowVocab(false)}
-                                onPauseVideo={onFocus} // 复用 onFocus (暂停视频)
+                                onPauseVideo={onFocus}
                                 isMobile={isMobile}
                                 autoShowFull={true}
+                                isLoggedIn={isLoggedIn}
+                                vocabId={vocabId}
+                                isFavorite={isFavorite}
+                                onToggleFavorite={onToggleFavorite}
+                                onAddToNotebook={onAddToNotebook}
                             />
                         )}
                     </>
