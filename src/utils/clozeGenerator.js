@@ -42,6 +42,9 @@ export const generateClozeData = (transcript, vocabList) => {
         // 全词匹配正则
         const regex = new RegExp(`\\b${escapedVocab}\\b`, 'gi');
 
+        // 找到该词汇在原始 vocabList 中的索引（用于生成与 HighlightedText 一致的 vocabId）
+        const vocabIndex = vocabList.findIndex(v => v.word.toLowerCase() === lowerVocab);
+
         // 在 transcript 中寻找第一次出现
         for (let i = 0; i < transcript.length; i++) {
             const line = transcript[i];
@@ -68,7 +71,8 @@ export const generateClozeData = (transcript, vocabList) => {
                         start,
                         end,
                         text: match[0], // 保留原文大小写
-                        vocabInfo: vocab
+                        vocabInfo: vocab,
+                        vocabIndex  // 新增：保存词汇在 vocabList 中的原始索引
                     });
 
                     // 标记该行此区间被占用
@@ -121,7 +125,8 @@ export const generateClozeData = (transcript, vocabList) => {
             segments.push({
                 type: 'cloze',
                 content: cloze.text,
-                vocabInfo: cloze.vocabInfo
+                vocabInfo: cloze.vocabInfo,
+                vocabIndex: cloze.vocabIndex  // 新增：传递词汇索引
             });
 
             currentIndex = cloze.end;

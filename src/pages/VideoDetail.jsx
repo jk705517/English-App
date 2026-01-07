@@ -776,8 +776,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 {segments.map((segment, i) => {
                     if (segment.type === 'cloze') {
                         const key = `${lineIndex}-${i}`;
-                        const vocabId = segment.vocabInfo?.id !== undefined
-                            ? segment.vocabInfo.id
+                        // 使用 vocabIndex 生成与 HighlightedText 一致的 vocabId 格式
+                        const vocabId = segment.vocabIndex !== undefined
+                            ? `${videoData.id}-vocab-${segment.vocabIndex}`
                             : `${videoData.id}-vocab-${segment.vocabInfo?.word || i}`;
                         return (
                             <ClozeInput
