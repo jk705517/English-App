@@ -36,11 +36,12 @@ const VocabPopover = ({
     onToggleFavorite,
     onAddToNotebook,
     isLoggedIn = false,
-    vocabId // 词汇ID，用于收藏和本子功能
+    vocabId, // 词汇ID，用于收藏和本子功能
+    autoShowFull = false // 是否自动显示全屏详情（跳过小弹窗）
 }) => {
     // Debug: 打印关键 props
     console.log('VocabPopover props:', { word, vocabId, isFavorite, hasOnToggleFavorite: !!onToggleFavorite, hasOnAddToNotebook: !!onAddToNotebook });
-    const [showFullDetail, setShowFullDetail] = useState(false);
+    const [showFullDetail, setShowFullDetail] = useState(autoShowFull && isMobile);
 
     // 计算PC端安全的弹窗位置（防溢出）
     const safePosition = useMemo(() => {

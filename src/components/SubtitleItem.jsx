@@ -66,6 +66,7 @@ const SubtitleItem = memo(({
     return (
         <div
             onClick={() => onSeek(item.start)}
+            data-subtitle-index={index}
             className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-violet-50' : 'hover:bg-gray-50'
                 }`}
         >

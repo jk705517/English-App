@@ -549,7 +549,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 setTimeout(() => setIsSeeking(false), 200);
             }, 200);
         }
-    }, [mode, videoData]);
+
+        // 新增：挖空模式滚动到当前句子
+        if (mode === 'cloze' && videoData?.transcript) {
+            setTimeout(() => {
+                const activeElement = document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
+                if (activeElement) {
+                    activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }, 100);
+        }
+    }, [mode, videoData, activeIndex]);
 
     // Calculate cloze data
     useEffect(() => {

@@ -110,27 +110,14 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                     {answer}
                 </span>
 
-                {/* 词汇卡片入口图标 */}
+                {/* 词汇卡片入口按钮 */}
                 {vocabInfo && (
                     <>
                         <button
-                            className="outline-none text-violet-400 hover:text-violet-500 transition-colors ml-1"
-                            onClick={(e) => {
-                                e.stopPropagation();
-                                const rect = e.currentTarget.getBoundingClientRect();
-                                // VocabPopover 使用 fixed 定位，需要视口坐标
-                                // 注意：HighlightedText 中加了 scrollY，但 VocabPopover 是 fixed，理论上不应加 scrollY
-                                // 这里我们直接传 rect.bottom (视口坐标)
-                                setPopoverPos({
-                                    x: rect.left,
-                                    y: rect.bottom
-                                });
-                                setShowVocab(true);
-                            }}
+                            onClick={() => setShowVocab(true)}
+                            className="text-xs text-violet-500 hover:text-violet-600 font-medium ml-2"
                         >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                            </svg>
+                            查看完整卡片 →
                         </button>
 
                         {showVocab && (
@@ -140,6 +127,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                                 position={popoverPos}
                                 onClose={() => setShowVocab(false)}
                                 onPauseVideo={onFocus} // 复用 onFocus (暂停视频)
+                                autoShowFull={true}
                             />
                         )}
                     </>
