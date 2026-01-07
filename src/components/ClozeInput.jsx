@@ -164,6 +164,7 @@ const ClozeInput = ({
                                 isMobile={isMobile}
                                 autoShowFull={true}
                                 isLoggedIn={isLoggedIn}
+                                videoId={videoId}
                                 vocabId={vocabId}
                                 isFavorite={isFavorite}
                                 onToggleFavorite={onToggleFavorite}
