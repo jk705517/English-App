@@ -17,6 +17,14 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
     const [popoverPos, setPopoverPos] = useState({ x: 0, y: 0 });
     const inputRef = useRef(null);
     const [width, setWidth] = useState(0);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
+
+    // 检测移动端
+    useEffect(() => {
+        const checkMobile = () => setIsMobile(window.innerWidth < 1280);
+        window.addEventListener('resize', checkMobile);
+        return () => window.removeEventListener('resize', checkMobile);
+    }, []);
 
     // 计算大致宽度
     useEffect(() => {
@@ -114,10 +122,17 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                 {vocabInfo && (
                     <>
                         <button
-                            onClick={() => setShowVocab(true)}
-                            className="text-xs text-violet-500 hover:text-violet-600 font-medium ml-2"
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                setShowVocab(true);
+                            }}
+                            className="ml-1 text-violet-400 hover:text-violet-500 transition-colors"
+                            title="查看完整卡片"
                         >
-                            查看完整卡片 →
+                            <svg className="w-4 h-4 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                            </svg>
                         </button>
 
                         {showVocab && (
@@ -127,6 +142,7 @@ const ClozeInput = ({ answer, vocabInfo, onDone, onFocus, onStartAnswer, disable
                                 position={popoverPos}
                                 onClose={() => setShowVocab(false)}
                                 onPauseVideo={onFocus} // 复用 onFocus (暂停视频)
+                                isMobile={isMobile}
                                 autoShowFull={true}
                             />
                         )}
