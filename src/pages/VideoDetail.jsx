@@ -38,14 +38,14 @@ const renderLevel = (level) => {
 // 字幕导航组件
 const SubtitleTabs = ({ mode, setMode, onPrint, className = "", isMobileStyle = false }) => (
     <div className={`flex items-center justify-between ${isMobileStyle ? 'overflow-hidden' : ''} ${className}`}>
-        <h2 className={`font-bold flex items-center shrink-0 ${isMobileStyle ? 'text-sm' : 'text-base md:text-lg'}`}>📖 字幕</h2>
+        <h2 className={`font-bold flex items-center shrink-0 ${isMobileStyle ? 'text-sm' : 'text-base md:text-lg'}`}>{isMobileStyle ? '字幕' : '📖 字幕'}</h2>
         <div className={`flex items-center ${isMobileStyle ? 'flex-1 justify-end ml-2' : 'gap-1 md:gap-2'}`}>
             <div className={`flex bg-gray-50 p-1 rounded-full ${isMobileStyle ? 'gap-1' : 'gap-1 md:gap-2 overflow-x-auto'}`}>
                 {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
                     <button
                         key={m}
                         onClick={() => setMode(m)}
-                        className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap ${isMobileStyle ? 'px-2 py-1 text-xs' : 'px-2 md:px-3 py-1 text-xs md:text-sm'} ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap ${isMobileStyle ? 'px-3 py-1 text-xs' : 'px-2 md:px-3 py-1 text-xs md:text-sm'} ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                         {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                     </button>
@@ -1903,10 +1903,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 {isMobile && (
                     <div
                         className={`
-                            bg-white border-b border-t border-gray-200 px-2 py-2 transition-all duration-300 overflow-hidden
+                            bg-white border-b border-t border-gray-200 px-2 pt-3 pb-2 transition-all duration-300 overflow-hidden
                             ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
                         `}
-                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight + 12 } : { marginTop: 12 }}
+                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight } : {}}
                     >
                         <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} isMobileStyle={true} />
                     </div>
