@@ -627,8 +627,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 参考单句暂停的修复：使用 nextSub.start - 0.3 作为检测时机
-            if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
+            // 参考单句暂停的修复：使用 nextSub.start - 0.4 作为检测时机
+            if (nextSub && state.playedSeconds >= nextSub.start - 0.4) {
                 if (playerRef.current) {
                     playerRef.current.currentTime = currentSub.start;
                     playerRef.current.play();
@@ -649,14 +649,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             return;
         }
 
-        // 单句暂停逻辑：参考单句循环，用 nextSub.start - 0.3 检测时机
+        // 单句暂停逻辑：参考单句循环，用 nextSub.start - 0.4 检测时机
         if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
             // 与单句循环相同的检测条件：下一句开始前 0.3 秒
             if (nextSub &&
-                state.playedSeconds >= nextSub.start - 0.3 &&
+                state.playedSeconds >= nextSub.start - 0.4 &&
                 lastPausedSentenceIndex.current !== activeIndex) {
 
                 lastPausedSentenceIndex.current = activeIndex;
@@ -708,7 +708,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 return;
             }
 
-            if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
+            if (nextSub && state.playedSeconds >= nextSub.start - 0.4) {
                 if (playerRef.current) {
                     playerRef.current.currentTime = currentSub.start;
                 }
