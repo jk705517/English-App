@@ -625,12 +625,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         // Intensive Mode Loop Logic - High Priority (单句循环)
         if (mode === 'intensive' && isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
-            if (currentSub && state.playedSeconds >= currentSub.end - 0.1) {
+            const nextSub = videoData.transcript[activeIndex + 1];
+
+            // 参考单句暂停的修复：使用 nextSub.start - 0.3 作为检测时机
+            if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
                 if (playerRef.current) {
                     playerRef.current.currentTime = currentSub.start;
                     playerRef.current.play();
                 }
             }
+            // 处理最后一句（没有 nextSub 的情况）
+            if (!nextSub && currentSub && state.playedSeconds >= currentSub.end - 0.1) {
+                if (playerRef.current) {
+                    playerRef.current.currentTime = currentSub.start;
+                    playerRef.current.play();
+                }
+            }
+
             // Always mark current sentence as visited when playing in intensive mode
             if (!visitedSet.has(activeIndex)) {
                 setVisitedSet(prev => new Set(prev).add(activeIndex));
@@ -698,6 +709,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
 
             if (nextSub && state.playedSeconds >= nextSub.start - 0.3) {
+                if (playerRef.current) {
+                    playerRef.current.currentTime = currentSub.start;
+                }
+            }
+            // 处理最后一句（没有 nextSub 的情况）
+            if (!nextSub && currentSub && state.playedSeconds >= currentSub.end - 0.1) {
                 if (playerRef.current) {
                     playerRef.current.currentTime = currentSub.start;
                 }
