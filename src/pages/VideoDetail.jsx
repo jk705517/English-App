@@ -36,27 +36,27 @@ const renderLevel = (level) => {
 };
 
 // 字幕导航组件
-const SubtitleTabs = ({ mode, setMode, onPrint, className = "" }) => (
+const SubtitleTabs = ({ mode, setMode, onPrint, className = "", isMobileStyle = false }) => (
     <div className={`flex items-center justify-between ${className}`}>
-        <h2 className="text-base md:text-lg font-bold flex items-center">📖 字幕</h2>
-        <div className="flex items-center gap-1 md:gap-2">
-            <div className="flex gap-1 md:gap-2 bg-gray-50 p-1 rounded-full overflow-x-auto">
+        <h2 className={`font-bold flex items-center ${isMobileStyle ? 'text-base shrink-0' : 'text-base md:text-lg'}`}>📖 字幕</h2>
+        <div className={`flex items-center ${isMobileStyle ? 'gap-2 ml-2' : 'gap-1 md:gap-2'}`}>
+            <div className={`flex bg-gray-50 p-1 rounded-full overflow-x-auto ${isMobileStyle ? 'gap-1.5' : 'gap-1 md:gap-2'}`}>
                 {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
                     <button
                         key={m}
                         onClick={() => setMode(m)}
-                        className={`px-2 md:px-3 py-1 rounded-full text-xs md:text-sm font-medium transition-all duration-200 whitespace-nowrap ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap ${isMobileStyle ? 'px-3 py-1.5 text-xs' : 'px-2 md:px-3 py-1 text-xs md:text-sm'} ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                         {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                     </button>
                 ))}
             </div>
             {/* 分隔线 */}
-            <div className="h-6 w-px bg-gray-300 mx-1"></div>
+            <div className="h-6 w-px bg-gray-300 mx-1 shrink-0"></div>
             {/* 打印按钮 */}
             <button
                 onClick={onPrint}
-                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="p-2 rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0"
                 title="打印字幕"
             >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -1903,12 +1903,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 {isMobile && (
                     <div
                         className={`
-                            bg-white border-b px-3 py-2 transition-all duration-300
+                            bg-white border-b border-t border-gray-200 px-3 py-2 transition-all duration-300
                             ${!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
                         `}
-                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight } : {}}
+                        style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight + 12 } : { marginTop: 12 }}
                     >
-                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
+                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} isMobileStyle={true} />
                     </div>
                 )}
 
