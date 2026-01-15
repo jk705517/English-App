@@ -681,36 +681,36 @@ app.get('/api/vocab/occurrences', async (req, res) => {
 app.get('/api/videos/episode/:episode', async (req, res) => {
   try {
     const { episode } = req.params;
-    
+
     const videoResult = await pool.query(
       `SELECT id, title, video_url, cover, category, author, level, duration, 
               accent, gender, episode, transcript, vocab, has_deep_reading, 
-              audio_url, youtube_url
+              audio_url, youtube_url, podcast_url
        FROM videos WHERE episode = $1`,
       [episode]
     );
-    
+
     if (videoResult.rows.length === 0) {
       return res.status(404).json({ success: false, message: '视频不存在' });
     }
-    
+
     const video = videoResult.rows[0];
     const currentEpisode = video.episode;
-    
+
     const prevResult = await pool.query(
       `SELECT id, episode, title FROM videos 
        WHERE episode < $1 
        ORDER BY episode DESC LIMIT 1`,
       [currentEpisode]
     );
-    
+
     const nextResult = await pool.query(
       `SELECT id, episode, title FROM videos 
        WHERE episode > $1 
        ORDER BY episode ASC LIMIT 1`,
       [currentEpisode]
     );
-    
+
     res.json({
       success: true,
       data: {
@@ -730,7 +730,7 @@ app.get('/api/videos/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const result = await pool.query(
-      'SELECT id, episode, title, transcript, vocab, cover, video_url, audio_url, category, author, level, duration, accent, gender, youtube_url FROM videos WHERE id = $1',
+      'SELECT id, episode, title, transcript, vocab, cover, video_url, audio_url, category, author, level, duration, accent, gender, youtube_url, podcast_url FROM videos WHERE id = $1',
       [id]
     );
     if (result.rows.length === 0) {
