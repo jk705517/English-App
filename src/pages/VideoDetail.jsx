@@ -197,6 +197,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // 播客模式状态
     const [showPodcast, setShowPodcast] = useState(false);
+    const [podcastSpeed, setPodcastSpeed] = useState(1.0);
+    const podcastAudioRef = useRef(null);
 
     // PC端键盘快捷键 - 播放器激活状态
     const [playerActive, setPlayerActive] = useState(false);
@@ -969,7 +971,35 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // 播客按钮点击处理
     const handlePodcastClick = () => {
+        if (!showPodcast) {
+            // 进入播客模式时，切换到 dual 模式以隐藏挖空/听写的统计UI
+            setMode('dual');
+        }
         setShowPodcast(!showPodcast);
+    };
+
+    // 播客倍速切换
+    const handlePodcastSpeedChange = () => {
+        const speeds = [1.0, 1.25, 1.5, 2.0];
+        const currentIndex = speeds.indexOf(podcastSpeed);
+        const nextIndex = (currentIndex + 1) % speeds.length;
+        const newSpeed = speeds[nextIndex];
+        setPodcastSpeed(newSpeed);
+        if (podcastAudioRef.current) {
+            podcastAudioRef.current.playbackRate = newSpeed;
+        }
+    };
+
+    // 播客下载
+    const handlePodcastDownload = () => {
+        if (videoData?.podcast_url) {
+            const link = document.createElement('a');
+            link.href = videoData.podcast_url;
+            link.download = `播客-第${videoData.episode}期.mp3`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
     };
 
     // 模式切换处理 - 关闭播客
@@ -2198,15 +2228,37 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         {showPodcast ? (
                             <div className="flex flex-col items-center justify-center p-8 bg-violet-50 rounded-lg mx-4 my-8">
                                 <div className="text-4xl mb-4">🎙️</div>
-                                <h3 className="text-lg font-medium text-gray-800 mb-2">AI 播客</h3>
+                                <h3 className="text-lg font-medium text-gray-800 mb-2">播客</h3>
                                 <p className="text-sm text-gray-500 mb-6 text-center">
-                                    两位 AI 主播带你轻松回顾本期内容
+                                    两位主播带你轻松回顾本期内容
                                 </p>
                                 <audio
+                                    ref={podcastAudioRef}
                                     controls
                                     src={videoData.podcast_url}
                                     className="w-full max-w-md"
                                 />
+                                {/* 手机端额外功能按钮：倍速 + 下载 */}
+                                <div className="flex items-center gap-4 mt-4">
+                                    <button
+                                        onClick={handlePodcastSpeedChange}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-white border border-violet-200 rounded-full text-violet-600 hover:bg-violet-100 transition-colors text-sm font-medium"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                                        </svg>
+                                        {podcastSpeed}x
+                                    </button>
+                                    <button
+                                        onClick={handlePodcastDownload}
+                                        className="flex items-center gap-1.5 px-4 py-2 bg-white border border-violet-200 rounded-full text-violet-600 hover:bg-violet-100 transition-colors text-sm font-medium"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                        </svg>
+                                        下载音频
+                                    </button>
+                                </div>
                                 <button
                                     onClick={() => setShowPodcast(false)}
                                     className="mt-6 text-sm text-violet-600 hover:text-violet-800"
