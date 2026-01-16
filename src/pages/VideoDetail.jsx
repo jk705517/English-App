@@ -36,33 +36,61 @@ const renderLevel = (level) => {
 };
 
 // 字幕导航组件
-const SubtitleTabs = ({ mode, setMode, onPrint, className = "", isMobileStyle = false }) => (
+const SubtitleTabs = ({ mode, onSetMode, onPrint, showPodcast, onPodcastClick, hasPodcast, className = "", isMobileStyle = false }) => (
     <div className={`flex items-center justify-between ${isMobileStyle ? 'overflow-hidden' : ''} ${className}`}>
-        <h2 className={`font-bold flex items-center shrink-0 ${isMobileStyle ? 'text-sm' : 'text-base md:text-lg'}`}>{isMobileStyle ? '字幕' : '📖 字幕'}</h2>
-        <div className={`flex items-center ${isMobileStyle ? 'flex-1 justify-end ml-2' : 'gap-1 md:gap-2'}`}>
+        {/* PC端显示书籍图标+字幕，手机端不显示文字 */}
+        {!isMobileStyle && <h2 className="font-bold flex items-center shrink-0 text-base md:text-lg">📖 字幕</h2>}
+        <div className={`flex items-center ${isMobileStyle ? 'flex-1 justify-between' : 'gap-1 md:gap-2'}`}>
             <div className={`flex bg-gray-50 p-1 rounded-full ${isMobileStyle ? 'gap-1' : 'gap-1 md:gap-2 overflow-x-auto'}`}>
                 {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
                     <button
                         key={m}
-                        onClick={() => setMode(m)}
+                        onClick={() => onSetMode(m)}
                         className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap ${isMobileStyle ? 'px-3 py-1 text-xs' : 'px-2 md:px-3 py-1 text-xs md:text-sm'} ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                         {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                     </button>
                 ))}
             </div>
-            {/* 分隔线 */}
-            <div className={`h-6 w-px bg-gray-300 shrink-0 ${isMobileStyle ? 'mx-1.5' : 'mx-1'}`}></div>
-            {/* 打印按钮 */}
-            <button
-                onClick={onPrint}
-                className={`rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 ${isMobileStyle ? 'p-1.5' : 'p-2'}`}
-                title="打印字幕"
-            >
-                <svg className={`${isMobileStyle ? 'w-4 h-4' : 'w-5 h-5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-            </button>
+            <div className="flex items-center gap-1">
+                {/* 播客按钮 - 仅在有 podcast_url 时显示 */}
+                {hasPodcast && (
+                    <>
+                        {/* 分隔线 */}
+                        <div className={`h-6 w-px bg-gray-300 shrink-0 ${isMobileStyle ? 'mx-1' : 'mx-1'}`}></div>
+                        <button
+                            onClick={onPodcastClick}
+                            className={`rounded-full transition-all duration-200 shrink-0 ${showPodcast ? 'bg-violet-500 text-white shadow-md' : 'text-violet-500 hover:bg-violet-50'} ${isMobileStyle ? 'p-1.5' : 'px-3 py-1'}`}
+                            title="AI播客"
+                        >
+                            {isMobileStyle ? (
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" />
+                                </svg>
+                            ) : (
+                                <span className="flex items-center gap-1 text-sm font-medium whitespace-nowrap">
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" />
+                                    </svg>
+                                    播客
+                                </span>
+                            )}
+                        </button>
+                    </>
+                )}
+                {/* 分隔线 */}
+                <div className={`h-6 w-px bg-gray-300 shrink-0 ${isMobileStyle ? 'mx-1' : 'mx-1'}`}></div>
+                {/* 打印按钮 */}
+                <button
+                    onClick={onPrint}
+                    className={`rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 ${isMobileStyle ? 'p-1.5' : 'p-2'}`}
+                    title="打印字幕"
+                >
+                    <svg className={`${isMobileStyle ? 'w-4 h-4' : 'w-5 h-5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                    </svg>
+                </button>
+            </div>
         </div>
     </div>
 );
@@ -166,6 +194,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // 打印弹窗状态
     const [showPrintDialog, setShowPrintDialog] = useState(false);
+
+    // 播客模式状态
+    const [showPodcast, setShowPodcast] = useState(false);
 
     // PC端键盘快捷键 - 播放器激活状态
     const [playerActive, setPlayerActive] = useState(false);
@@ -934,6 +965,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         if (!videoData?.transcript) return;
         const newIndex = Math.min(videoData.transcript.length - 1, activeIndex + 1);
         handleIntensiveSelect(newIndex);
+    };
+
+    // 播客按钮点击处理
+    const handlePodcastClick = () => {
+        setShowPodcast(!showPodcast);
+    };
+
+    // 模式切换处理 - 关闭播客
+    const handleModeChange = (newMode) => {
+        setMode(newMode);
+        setShowPodcast(false);
     };
 
     // Toggle handlers
@@ -1925,7 +1967,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         `}
                         style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight } : {}}
                     >
-                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} isMobileStyle={true} />
+                        <SubtitleTabs
+                            mode={mode}
+                            onSetMode={handleModeChange}
+                            onPrint={handlePrint}
+                            showPodcast={showPodcast}
+                            onPodcastClick={handlePodcastClick}
+                            hasPodcast={!!videoData.podcast_url}
+                            isMobileStyle={true}
+                        />
                     </div>
                 )}
 
@@ -2086,7 +2136,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 {/* PC Subtitle Tabs */}
                 {!isMobile && (
                     <div className="sticky top-0 z-10 p-3 md:p-4 border-b bg-white">
-                        <SubtitleTabs mode={mode} setMode={setMode} onPrint={handlePrint} />
+                        <SubtitleTabs
+                            mode={mode}
+                            onSetMode={handleModeChange}
+                            onPrint={handlePrint}
+                            showPodcast={showPodcast}
+                            onPodcastClick={handlePodcastClick}
+                            hasPodcast={!!videoData.podcast_url}
+                        />
                     </div>
                 )}
 
@@ -2138,7 +2195,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                     )}
 
                     <div className="p-3 md:p-4 space-y-2 md:space-y-3">
-                        {mode === 'dictation' ? (
+                        {showPodcast ? (
+                            <div className="flex flex-col items-center justify-center p-8 bg-violet-50 rounded-lg mx-4 my-8">
+                                <div className="text-4xl mb-4">🎙️</div>
+                                <h3 className="text-lg font-medium text-gray-800 mb-2">AI 播客</h3>
+                                <p className="text-sm text-gray-500 mb-6 text-center">
+                                    两位 AI 主播带你轻松回顾本期内容
+                                </p>
+                                <audio
+                                    controls
+                                    src={videoData.podcast_url}
+                                    className="w-full max-w-md"
+                                />
+                                <button
+                                    onClick={() => setShowPodcast(false)}
+                                    className="mt-6 text-sm text-violet-600 hover:text-violet-800"
+                                >
+                                    返回字幕
+                                </button>
+                            </div>
+                        ) : mode === 'dictation' ? (
                             <div className="bg-violet-50 p-6 rounded-lg border-2 border-violet-200">
                                 <DictationInput
                                     correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
