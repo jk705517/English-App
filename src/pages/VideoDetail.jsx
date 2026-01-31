@@ -15,7 +15,7 @@ import AddToNotebookDialog from '../components/AddToNotebookDialog';
 import { generateClozeData } from '../utils/clozeGenerator';
 import * as demoStorage from '../services/demoStorage';
 
-// TTS 发音函数 - 使用 Azure TTS API
+// TTS 发音函数 - 使用 Azure TTS API，失败时回退到浏览器原生语音合成
 const speak = async (text, lang = 'en-US') => {
     try {
         // 将浏览器的 lang 参数转换为 API 的 accent 参数
@@ -23,9 +23,37 @@ const speak = async (text, lang = 'en-US') => {
         const url = `https://api.biubiuenglish.com/api/tts?text=${encodeURIComponent(text)}&accent=${accent}`;
 
         const audio = new Audio(url);
-        audio.play();
+
+        // 添加错误处理：如果 API 失败，回退到浏览器原生语音合成
+        audio.onerror = () => {
+            console.warn('Azure TTS 失败，使用浏览器原生语音合成');
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        };
+
+        audio.play().catch(() => {
+            // play() 返回 Promise，如果失败也回退
+            console.warn('Azure TTS 播放失败，使用浏览器原生语音合成');
+            if ('speechSynthesis' in window) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.lang = lang;
+                utterance.rate = 0.9;
+                window.speechSynthesis.speak(utterance);
+            }
+        });
     } catch (error) {
         console.error('TTS 播放失败:', error);
+        // 最后的兜底：使用浏览器原生语音合成
+        if ('speechSynthesis' in window) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = lang;
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
     }
 };
 
