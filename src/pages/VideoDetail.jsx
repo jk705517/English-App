@@ -175,6 +175,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const indexFromQuery = searchParams.get('index');
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
+    const tabBarRef = useRef(null);
     const transcriptRefs = useRef([]);
     const [currentTime, setCurrentTime] = useState(0);
     const [videoData, setVideoData] = useState(null);
@@ -190,6 +191,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
+    const [showMobileSpeedPanel, setShowMobileSpeedPanel] = useState(false);
     const [isVideoHidden, setIsVideoHidden] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
@@ -270,6 +272,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // 播放器容器实际高度（用于动态定位字幕导航栏）
     const [playerHeight, setPlayerHeight] = useState(0);
+    // 字幕Tab栏实际高度（手机端fixed布局占位用）
+    const [tabBarHeight, setTabBarHeight] = useState(46);
 
     // A/B点循环
     const [abMode, setAbMode] = useState(0); // 0=off, 1=A set, 2=A+B looping
@@ -377,6 +381,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
         return () => resizeObserver.disconnect();
     }, [videoData, isMobile, isPhone]);
+
+    // 监听字幕Tab栏高度（手机端fixed布局，需要占位高度）
+    useEffect(() => {
+        if (!tabBarRef.current) return;
+        const updateTabBarHeight = () => {
+            if (tabBarRef.current) setTabBarHeight(tabBarRef.current.offsetHeight);
+        };
+        updateTabBarHeight();
+        const observer = new ResizeObserver(updateTabBarHeight);
+        observer.observe(tabBarRef.current);
+        return () => observer.disconnect();
+    }, [isMobile, isPhone]);
 
     // 防止浏览器在页面重新获得焦点时自动恢复播放（用于词汇查询等场景）
     useEffect(() => {
@@ -1603,16 +1619,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
                 {/* 视频播放器区域 */}
                 <div className={isPhone ? '' : 'px-3 md:px-6 xl:pt-4'}>
-                    {/* 平板播放时的占位元素（手机sticky无需占位） */}
+                    {/* 手机端：播放器fixed固定顶部，占位元素保持文档流高度 */}
+                    {isPhone && (
+                        <div className="w-full" style={{ paddingTop: '56.25%' }} />
+                    )}
+                    {/* 平板播放时的占位元素 */}
                     {!isPhone && isMobile && isPlaying && (
                         <div style={{ height: playerHeight + 50 }} className="w-full" />
                     )}
-                    {/* 视频播放器 - 手机端sticky固定顶部，平板播放时fixed，PC端sticky */}
+                    {/* 视频播放器 - 手机端fixed固定顶部，平板播放时fixed，PC端sticky */}
                     <div
                         ref={playerContainerRef}
                         className={`
                             overflow-hidden shadow-2xl transition-all duration-300
-                            ${isPhone ? 'sticky top-0 z-[80] w-full bg-black' : 'bg-white rounded-xl'}
+                            ${isPhone ? 'fixed top-0 left-0 right-0 z-[80] bg-black' : 'bg-white rounded-xl'}
                             ${!isPhone && isMobile && isPlaying ? 'fixed top-0 left-1/2 -translate-x-1/2 w-[50%] max-w-md z-[80]' : ''}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
@@ -2064,24 +2084,28 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                     )}
                 </div>
 
-                {/* 移动端：字幕导航条（独立于播放器，吸顶时紧贴播放器下方） */}
+                {/* 移动端：字幕导航条（手机端fixed紧贴播放器下方，平板sticky） */}
                 {isMobile && (
-                    <div
-                        className={`
-                            bg-white border-b border-t border-gray-200 px-2 pt-3 pb-2 transition-all duration-300 overflow-hidden
-                            ${isPlaying ? 'fixed left-0 right-0 z-[79] shadow-sm' : 'relative'}
-                        `}
-                        style={isPlaying ? { top: playerHeight } : {}}
-                    >
-                        <MobileSubtitleTabs
-                            mode={mode}
-                            onSetMode={handleModeChange}
-                            onPrint={handlePrint}
-                            showPodcast={showPodcast}
-                            onPodcastClick={handlePodcastClick}
-                            hasPodcast={!!videoData.podcast_url}
-                        />
-                    </div>
+                    <>
+                        <div
+                            ref={tabBarRef}
+                            className={`bg-white border-b border-t border-gray-200 px-2 pt-3 pb-2 z-[79] shadow-sm ${
+                                isPhone ? 'fixed left-0 right-0' : 'sticky'
+                            }`}
+                            style={{ top: playerHeight }}
+                        >
+                            <MobileSubtitleTabs
+                                mode={mode}
+                                onSetMode={handleModeChange}
+                                onPrint={handlePrint}
+                                showPodcast={showPodcast}
+                                onPodcastClick={handlePodcastClick}
+                                hasPodcast={!!videoData.podcast_url}
+                            />
+                        </div>
+                        {/* 手机端：Tab栏fixed脱离文档流，占位保持布局高度 */}
+                        {isPhone && <div style={{ height: tabBarHeight }} />}
+                    </>
                 )}
 
 
@@ -2568,10 +2592,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
             {/* 手机端底部控制条（替换底部导航栏） */}
             {isMobile && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 z-[51] bg-gray-900 border-t border-gray-700">
+                <div className="md:hidden fixed bottom-0 left-0 right-0 z-[51] bg-white border-t border-gray-200">
                     {/* 进度条 */}
                     <div
-                        className="relative w-full h-1 bg-white/20 cursor-pointer"
+                        className="relative w-full h-1 bg-gray-200 cursor-pointer"
                         onClick={handleProgressClick}
                     >
                         <div
@@ -2584,15 +2608,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         {/* 左组：倍速 / 隐藏 */}
                         <div className="flex items-center gap-1 w-20">
                             <button
-                                onClick={() => setShowMobileSettings(true)}
-                                className="flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg text-white/80 min-w-[40px]"
+                                onClick={() => setShowMobileSpeedPanel(true)}
+                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${playbackRate !== 1 ? 'text-violet-500' : 'text-gray-600'}`}
                             >
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
                                 <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
                             </button>
                             <button
                                 onClick={() => setIsVideoHidden(v => !v)}
-                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${isVideoHidden ? 'text-violet-400' : 'text-white/80'}`}
+                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${isVideoHidden ? 'text-violet-500' : 'text-gray-600'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
                                 <span className="text-[10px] leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
@@ -2601,39 +2625,39 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         {/* 中组：上一句 / ▶播放 / 下一句 */}
                         <div className="flex-1 flex items-center justify-center gap-5">
                             <button onClick={handleMobilePrevSentence} className="flex flex-col items-center gap-0.5">
-                                <span className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white">
+                                <span className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                                 </span>
-                                <span className="text-white/60 text-[9px] leading-none mt-0.5">上一句</span>
+                                <span className="text-gray-500 text-[9px] leading-none mt-0.5">上一句</span>
                             </button>
                             <button onClick={handleTogglePlay}>
-                                <span className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-lg">
+                                <span className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
                                     {isPlaying ? (
-                                        <svg className="w-5 h-5 text-gray-900" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
                                     ) : (
-                                        <svg className="w-5 h-5 ml-0.5 text-gray-900" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                        <svg className="w-5 h-5 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                     )}
                                 </span>
                             </button>
                             <button onClick={handleMobileNextSentence} className="flex flex-col items-center gap-0.5">
-                                <span className="w-9 h-9 rounded-full bg-white/15 flex items-center justify-center text-white">
+                                <span className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-700">
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                                 </span>
-                                <span className="text-white/60 text-[9px] leading-none mt-0.5">下一句</span>
+                                <span className="text-gray-500 text-[9px] leading-none mt-0.5">下一句</span>
                             </button>
                         </div>
                         {/* 右组：A/B点 / 精听 */}
                         <div className="flex items-center gap-1 w-20 justify-end">
                             <button
                                 onClick={handleAbClick}
-                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${abMode === 0 ? 'text-white/80' : abMode === 1 ? 'text-yellow-400' : 'text-green-400'}`}
+                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${abMode === 0 ? 'text-gray-600' : abMode === 1 ? 'text-yellow-500' : 'text-green-500'}`}
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                                 <span className="text-[10px] leading-none font-medium">{abMode === 0 ? 'A/B点' : abMode === 1 ? 'A●' : 'A↔B'}</span>
                             </button>
                             <button
                                 onClick={() => setShowJingTingPanel(true)}
-                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${(isSentenceLooping || isSentencePauseEnabled) ? 'text-violet-400' : 'text-white/80'}`}
+                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${(isSentenceLooping || isSentencePauseEnabled) ? 'text-violet-500' : 'text-gray-600'}`}
                             >
                                 <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd"/></svg>
                                 <span className="text-[10px] leading-none">精听</span>
@@ -2643,6 +2667,38 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 </div>
             )}
 
+            {/* 手机端倍速选择面板 - 仅显示倍速选项，方格网格 */}
+            {isMobile && showMobileSpeedPanel && (
+                <>
+                    <div
+                        className="fixed inset-0 bg-black/50 z-[100]"
+                        onClick={() => setShowMobileSpeedPanel(false)}
+                    />
+                    <div className="fixed bottom-0 left-0 right-0 z-[101] bg-white rounded-t-2xl px-4 pt-4 pb-8 animate-slide-up">
+                        <div className="w-12 h-1 bg-gray-300 rounded-full mx-auto mb-4" />
+                        <div className="text-gray-700 text-sm font-medium mb-3">播放速度</div>
+                        <div className="grid grid-cols-4 gap-2">
+                            {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
+                                <button
+                                    key={rate}
+                                    onClick={() => {
+                                        handleSetPlaybackRate(rate);
+                                        setShowMobileSpeedPanel(false);
+                                    }}
+                                    className={`aspect-square flex items-center justify-center rounded-xl text-sm font-medium transition-colors ${
+                                        playbackRate === rate
+                                            ? 'bg-violet-500 text-white shadow-md'
+                                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    }`}
+                                >
+                                    {rate === 1 ? '正常' : `${rate}x`}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                </>
+            )}
+
             {/* 精听设置面板 - 手机端底部弹窗 */}
             {isMobile && showJingTingPanel && (
                 <>
@@ -2650,7 +2706,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         className="fixed inset-0 bg-black/50 z-[60]"
                         onClick={() => setShowJingTingPanel(false)}
                     />
-                    <div className="fixed bottom-0 left-0 right-0 z-[61] bg-gray-900 rounded-t-2xl px-5 pt-4 pb-8 animate-slide-up">
+                    <div
+                        className="fixed bottom-0 left-0 right-0 w-full z-[61] bg-gray-900 rounded-t-2xl pl-4 pt-4 pb-8 animate-slide-up"
+                        style={{ paddingRight: '24px', boxSizing: 'border-box' }}
+                    >
                         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
                         <div className="flex items-center justify-between mb-5">
                             <h3 className="text-white font-semibold text-base">精听设置</h3>
@@ -2663,32 +2722,32 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         </div>
                         {/* 单句循环 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm mr-4">单句循环</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">单句循环</span>
                             <button
                                 onClick={() => setIsSentenceLooping(v => !v)}
                                 className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${isSentenceLooping ? 'bg-violet-500' : 'bg-gray-600'}`}
                             >
-                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isSentenceLooping ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isSentenceLooping ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
                         {/* 隐藏动态字幕 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm mr-4">隐藏动态字幕</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">隐藏动态字幕</span>
                             <button
                                 onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
                                 className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.hideSubtitles ? 'bg-violet-500' : 'bg-gray-600'}`}
                             >
-                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.hideSubtitles ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.hideSubtitles ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
                         {/* 循环完当前句后暂停 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm mr-4">循环完后暂停</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">循环完后暂停</span>
                             <button
                                 onClick={() => setJingTingSettings(s => ({ ...s, pauseAfterLoop: !s.pauseAfterLoop }))}
                                 className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.pauseAfterLoop ? 'bg-violet-500' : 'bg-gray-600'}`}
                             >
-                                <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.pauseAfterLoop ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.pauseAfterLoop ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
                         {/* 循环间隔 */}
