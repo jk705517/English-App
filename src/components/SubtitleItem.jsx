@@ -98,7 +98,7 @@ const SubtitleItem = memo(({
 
             {/* 单句循环倒计时 */}
             {loopCountdown !== null && (
-                <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full tabular-nums z-10">
+                <span className="absolute right-10 top-1/2 -translate-y-1/2 text-4xl font-bold text-violet-600 bg-violet-100 px-3 py-1 rounded-2xl tabular-nums z-10 shadow-sm">
                     {loopCountdown}s
                 </span>
             )}

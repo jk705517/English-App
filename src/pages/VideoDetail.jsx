@@ -64,7 +64,7 @@ const renderLevel = (level) => {
 };
 
 // 手机端字幕导航（含更多下拉，独立组件以使用 useState）
-function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasPodcast, onPrint }) {
+function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasPodcast }) {
     const [showMore, setShowMore] = useState(false);
     const moreActive = ['en', 'cn', 'cloze'].includes(mode);
     const pick = (m) => { onSetMode(m); setShowMore(false); };
@@ -97,10 +97,6 @@ function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasP
                         </button>
                     </>
                 )}
-                <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
-                <button onClick={onPrint} className="rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 p-1.5" title="打印字幕">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
-                </button>
             </div>
         </div>
     );
@@ -1779,28 +1775,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     <div className="md:hidden fixed bottom-0 left-0 right-0 z-[101] bg-gray-900 rounded-t-2xl py-4 px-4 max-h-[70vh] overflow-y-auto">
                                         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
 
-                                        {/* 倍速设置 */}
-                                        <div className="mb-6">
-                                            <div className="text-white/70 text-sm mb-3">播放速度</div>
-                                            <div className="flex flex-wrap gap-2">
-                                                {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
-                                                    <button
-                                                        key={rate}
-                                                        onClick={() => {
-                                                            handleSetPlaybackRate(rate);
-                                                            setShowMobileSettings(false);
-                                                        }}
-                                                        className={`px-4 py-2 rounded-lg text-sm transition-colors ${playbackRate === rate
-                                                            ? 'bg-violet-400 text-white font-medium'
-                                                            : 'bg-white/10 text-white hover:bg-white/20'
-                                                            }`}
-                                                    >
-                                                        {rate === 1 ? '正常' : `${rate}x`}
-                                                    </button>
-                                                ))}
-                                            </div>
-                                        </div>
-
                                         {/* 视频循环开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <span className="text-white text-sm">视频循环</span>
@@ -1834,7 +1808,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                         {/* 单句暂停开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <div>
-                                                <span className="text-white text-sm block">单句暂停</span>
+                                                <span className="text-white text-sm block">逐句暂停</span>
                                                 <span className="text-white/40 text-[10px]">每句结束自动暂停</span>
                                             </div>
                                             <button
@@ -1876,6 +1850,21 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${showOverlaySubtitles ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
                                             >
                                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${showOverlaySubtitles ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* 打印字幕 */}
+                                        <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                            <span className="text-white text-sm">打印字幕</span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setShowMobileSettings(false);
+                                                    handlePrint();
+                                                }}
+                                                className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors"
+                                            >
+                                                打印
                                             </button>
                                         </div>
 
@@ -1970,10 +1959,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
                     {/* PC端控制条 - 视频下方独立一行（仅xl+） */}
                     {!isMobile && (
-                        <div className="hidden xl:flex flex-col bg-gray-50 border border-gray-200 rounded-b-xl px-4 pt-2 pb-3 shadow-xl -mt-1">
+                        <div className="hidden xl:flex flex-col bg-gray-50 border border-gray-200 rounded-b-xl px-4 pt-1.5 pb-2 shadow-xl -mt-1">
                             {/* 进度条 */}
                             <div
-                                className="relative w-full h-1 bg-gray-200 rounded cursor-pointer mb-3 group"
+                                className="relative w-full h-1 bg-gray-200 rounded cursor-pointer mb-2 group"
                                 onClick={handleProgressClick}
                             >
                                 <div
@@ -1987,17 +1976,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 </span>
                             </div>
                             {/* 按钮行：左组 | 中组 | 右组 */}
-                            <div className="flex items-center justify-center gap-6">
+                            <div className="flex items-center justify-center gap-10">
                                 {/* 左组：倍速 / 隐藏 / 全屏 */}
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-3">
                                     {/* 倍速 */}
                                     <div className="relative">
                                         <button
                                             onClick={() => setShowSpeedPanel(p => !p)}
-                                            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors min-w-[44px]"
+                                            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors min-w-[48px]"
                                         >
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
-                                            <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+                                            <span className="text-xs leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
                                         </button>
                                         {showSpeedPanel && (
                                             <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-xl shadow-xl p-2 z-10 w-[200px]">
@@ -2018,35 +2007,35 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     {/* 隐藏视频 */}
                                     <button
                                         onClick={() => setIsVideoHidden(v => !v)}
-                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${isVideoHidden ? 'text-violet-500 bg-gray-200' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${isVideoHidden ? 'text-violet-500 bg-gray-200' : 'text-gray-600 hover:bg-gray-200'}`}
                                     >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
-                                        <span className="text-[10px] leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
+                                        <span className="text-xs leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
                                     </button>
                                     {/* 全屏 */}
                                     {document.fullscreenEnabled && (
                                         <button
                                             onClick={handleToggleFullscreen}
-                                            className="flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors min-w-[44px]"
+                                            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors min-w-[48px]"
                                         >
                                             {isFullscreen ? (
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
                                             ) : (
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
                                             )}
-                                            <span className="text-[10px] leading-none">{isFullscreen ? '退出' : '全屏'}</span>
+                                            <span className="text-xs leading-none">{isFullscreen ? '退出' : '全屏'}</span>
                                         </button>
                                     )}
                                 </div>
                                 {/* 分隔线 */}
                                 <div className="h-8 w-px bg-gray-200" />
                                 {/* 中组：上一句 / ▶播放 / 下一句 */}
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-5">
                                     <button onClick={handleMobilePrevSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
-                                        <span className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                                        <span className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                                         </span>
-                                        <span className="text-[10px] leading-none">上一句</span>
+                                        <span className="text-xs leading-none">上一句</span>
                                     </button>
                                     <button onClick={handleTogglePlay} className="flex flex-col items-center gap-0.5">
                                         <span className="w-11 h-11 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
@@ -2056,26 +2045,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 <svg className="w-5 h-5 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
                                             )}
                                         </span>
-                                        <span className="text-[10px] leading-none text-gray-600">{isPlaying ? '暂停' : '播放'}</span>
+                                        <span className="text-xs leading-none text-gray-600">{isPlaying ? '暂停' : '播放'}</span>
                                     </button>
                                     <button onClick={handleMobileNextSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
-                                        <span className="w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center">
-                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                                        <span className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
+                                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                                         </span>
-                                        <span className="text-[10px] leading-none">下一句</span>
+                                        <span className="text-xs leading-none">下一句</span>
                                     </button>
                                 </div>
                                 {/* 分隔线 */}
                                 <div className="h-8 w-px bg-gray-200" />
                                 {/* 右组：A/B点 / 单句循环 / 间隔Xs / 单句暂停 */}
-                                <div className="flex items-center gap-1">
+                                <div className="flex items-center gap-3">
                                     {/* A/B点 */}
                                     <button
                                         onClick={handleAbClick}
-                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${abMode === 0 ? 'text-gray-600 hover:bg-gray-200' : abMode === 1 ? 'text-yellow-500 bg-yellow-50' : abMode === 2 ? 'text-orange-500 bg-orange-50' : 'text-green-500 bg-green-50'}`}
+                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${abMode === 0 ? 'text-gray-600 hover:bg-gray-200' : abMode === 1 ? 'text-yellow-500 bg-yellow-50' : abMode === 2 ? 'text-orange-500 bg-orange-50' : 'text-green-500 bg-green-50'}`}
                                     >
-                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                                        <span className="text-[10px] leading-none font-medium">
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                        <span className="text-xs leading-none font-medium">
                                             {abMode === 0 ? 'A/B点' : abMode === 1 ? 'A?' : abMode === 2 ? 'A●' : 'A↔B'}
                                         </span>
                                     </button>
@@ -2086,17 +2075,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 if (!isSentenceLooping) setIsSentenceLooping(true);
                                                 setShowLoopTimesPanel(p => !p);
                                             }}
-                                            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${isSentenceLooping ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
+                                            className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${isSentenceLooping ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
                                         >
-                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/></svg>
-                                            <span className="text-[10px] leading-none">
+                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/></svg>
+                                            <span className="text-xs leading-none">
                                                 {isSentenceLooping
                                                     ? (jingTingSettings.loopCount === null ? '循环 ∞' : `循环 ${jingTingSettings.loopCount}×`)
                                                     : '单句循环'}
                                             </span>
                                         </button>
                                         {showLoopTimesPanel && (
-                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-xl shadow-xl p-2 z-10 w-[160px]">
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-xl shadow-xl p-2 z-[200] w-[200px]">
                                                 <div className="grid grid-cols-4 gap-1 mb-1">
                                                     {[1, 2, 3, 5, 10, 50, 100, null].map(count => (
                                                         <button
@@ -2123,22 +2112,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     </div>
                                     {/* 间隔Xs - only when sentence looping is on */}
                                     {isSentenceLooping && (
-                                        <div className="flex flex-col items-center gap-0.5 px-1 py-1.5">
+                                        <div className="flex flex-col items-center gap-0.5 px-1 py-1">
                                             <div className="flex items-center gap-0.5">
                                                 <button onClick={() => setJingTingSettings(s => ({ ...s, intervalSec: Math.max(0, s.intervalSec - 1) }))} className="w-5 h-5 rounded bg-gray-200 text-gray-600 text-xs flex items-center justify-center hover:bg-gray-100">-</button>
                                                 <span className="text-gray-600 text-xs font-medium w-8 text-center">{jingTingSettings.intervalSec}s</span>
                                                 <button onClick={() => setJingTingSettings(s => ({ ...s, intervalSec: Math.min(10, s.intervalSec + 1) }))} className="w-5 h-5 rounded bg-gray-200 text-gray-600 text-xs flex items-center justify-center hover:bg-gray-100">+</button>
                                             </div>
-                                            <span className="text-[10px] text-gray-500 leading-none">间隔</span>
+                                            <span className="text-xs text-gray-500 leading-none">间隔</span>
                                         </div>
                                     )}
                                     {/* 单句暂停 */}
                                     <button
                                         onClick={() => setIsSentencePauseEnabled(v => !v)}
-                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${isSentencePauseEnabled ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${isSentencePauseEnabled ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
                                     >
-                                        <svg className="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="13" y="4" width="4" height="16" rx="1"/><circle cx="20" cy="6" r="3"/></svg>
-                                        <span className="text-[10px] leading-none">单句暂停</span>
+                                        <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="13" y="4" width="4" height="16" rx="1"/><circle cx="20" cy="6" r="3"/></svg>
+                                        <span className="text-xs leading-none">逐句暂停</span>
                                     </button>
                                 </div>
                             </div>
@@ -2159,7 +2148,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             <MobileSubtitleTabs
                                 mode={mode}
                                 onSetMode={handleModeChange}
-                                onPrint={handlePrint}
                                 showPodcast={showPodcast}
                                 onPodcastClick={handlePodcastClick}
                                 hasPodcast={!!videoData.podcast_url}
@@ -2234,6 +2222,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         </div>
                     )}
 
+                    <div className="relative">
+                        <div className={jingTingSettings.hideSubtitles ? 'blur-sm pointer-events-none select-none' : ''}>
                     <div className="p-3 md:p-4 space-y-2 md:space-y-3">
                         {showPodcast ? (
                             <div className="flex flex-col items-center justify-center p-8 bg-violet-50 rounded-lg mx-4 my-8">
@@ -2584,9 +2574,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 })}
                             </div>
                         </div>
-                    </div>
-                </div>
+                    </div>{/* closes p-3 md:p-4 */}
+                        </div>{/* closes blur wrapper */}
+                    </div>{/* closes relative wrapper */}
+                </div>{/* closes overflow-y-auto */}
 
+                {/* 隐藏字幕 overlay - fixed在视口中央，pointer-events-none不遮挡其他交互 */}
+                {jingTingSettings.hideSubtitles && (
+                    <div className="fixed inset-0 z-[45] flex items-center justify-center pointer-events-none">
+                        <button
+                            className="pointer-events-auto inline-flex items-center gap-2 bg-white/90 backdrop-blur-sm border border-gray-200 px-5 py-3 rounded-2xl text-gray-700 font-medium shadow-lg text-sm"
+                            onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: false }))}
+                        >
+                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            字幕已隐藏，点击显示
+                        </button>
+                    </div>
+                )}
 
             </div>
             </div>{/* closes xl:flex-row wrapper */}
@@ -2793,9 +2797,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isSentenceLooping ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
-                        {/* 隐藏动态字幕 */}
+                        {/* 隐藏字幕 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">隐藏动态字幕</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">隐藏字幕</span>
                             <button
                                 onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
                                 className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.hideSubtitles ? 'bg-violet-500' : 'bg-gray-600'}`}
@@ -2803,14 +2807,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.hideSubtitles ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
-                        {/* 循环完当前句后暂停 */}
+                        {/* 逐句暂停 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">循环完后暂停</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">逐句暂停</span>
                             <button
-                                onClick={() => setJingTingSettings(s => ({ ...s, pauseAfterLoop: !s.pauseAfterLoop }))}
-                                className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.pauseAfterLoop ? 'bg-violet-500' : 'bg-gray-600'}`}
+                                onClick={() => setIsSentencePauseEnabled(v => !v)}
+                                className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${isSentencePauseEnabled ? 'bg-violet-500' : 'bg-gray-600'}`}
                             >
-                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.pauseAfterLoop ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isSentencePauseEnabled ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
                         {/* 循环间隔 */}
