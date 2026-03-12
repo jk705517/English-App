@@ -279,6 +279,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [abMode, setAbMode] = useState(0); // 0=off, 1=A set, 2=A+B looping
     const [abPointA, setAbPointA] = useState(0);
     const [abPointB, setAbPointB] = useState(0);
+    const [abIndexA, setAbIndexA] = useState(-1);
+    const [abIndexB, setAbIndexB] = useState(-1);
+    const [showLoopTimesPanel, setShowLoopTimesPanel] = useState(false);
 
     // 单句循环倒计时
     const [loopCountdown, setLoopCountdown] = useState(null);
@@ -874,7 +877,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
         }
         // A/B点循环
-        if (abMode === 2 && abPointB > abPointA) {
+        if (abMode === 3 && abPointB > abPointA) {
             if (state.playedSeconds >= abPointB) {
                 if (playerRef.current) {
                     playerRef.current.currentTime = abPointA;
@@ -887,23 +890,42 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const handleAbClick = (e) => {
         if (e) e.stopPropagation();
         if (abMode === 0) {
-            // Set A point
-            setAbPointA(currentTime);
+            // Activate: pause video, wait for A selection
             setAbMode(1);
-        } else if (abMode === 1) {
-            // Set B point, start loop
-            const bTime = currentTime;
-            if (bTime > abPointA) {
-                setAbPointB(bTime);
-                setAbMode(2);
+            if (playerRef.current) {
+                playerRef.current.pause();
             }
+            setIsPlaying(false);
         } else {
-            // Cancel
+            // Cancel: reset all
             setAbMode(0);
             setAbPointA(0);
             setAbPointB(0);
+            setAbIndexA(-1);
+            setAbIndexB(-1);
         }
     };
+
+    // A/B点：点击字幕行设置点位
+    const handleSetAbPoint = useCallback((time, index) => {
+        if (abMode === 1) {
+            setAbPointA(time);
+            setAbIndexA(index);
+            setAbMode(2);
+        } else if (abMode === 2) {
+            if (index !== abIndexA) {
+                const bTime = time > abPointA ? time : abPointA + 0.1;
+                setAbPointB(bTime);
+                setAbIndexB(index);
+                setAbMode(3);
+                if (playerRef.current) {
+                    playerRef.current.currentTime = abPointA;
+                    playerRef.current.play();
+                }
+                setIsPlaying(true);
+            }
+        }
+    }, [abMode, abIndexA, abPointA]);
 
     // Handle seek
     const handleSeek = useCallback((time) => {
@@ -1965,7 +1987,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 </span>
                             </div>
                             {/* 按钮行：左组 | 中组 | 右组 */}
-                            <div className="flex items-center justify-between">
+                            <div className="flex items-center justify-center gap-6">
                                 {/* 左组：倍速 / 隐藏 / 全屏 */}
                                 <div className="flex items-center gap-1">
                                     {/* 倍速 */}
@@ -1978,12 +2000,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
                                         </button>
                                         {showSpeedPanel && (
-                                            <div className="absolute bottom-full mb-2 left-0 bg-gray-800 rounded-lg shadow-xl py-2 min-w-[80px] z-10">
-                                                {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
-                                                    <button key={rate} onClick={() => { handleSetPlaybackRate(rate); setShowSpeedPanel(false); }} className={`block w-full px-4 py-1.5 text-left text-sm transition-colors ${playbackRate === rate ? 'text-violet-400 bg-violet-500/20' : 'text-white hover:bg-white/10'}`}>
-                                                        {rate === 1 ? '正常' : `${rate}x`}
-                                                    </button>
-                                                ))}
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-xl shadow-xl p-2 z-10 w-[200px]">
+                                                <div className="grid grid-cols-4 gap-1">
+                                                    {[0.3, 0.4, 0.5, 0.6, 0.7, 0.75, 0.8, 0.9, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                                        <button
+                                                            key={rate}
+                                                            onClick={() => { handleSetPlaybackRate(rate); setShowSpeedPanel(false); }}
+                                                            className={`aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${playbackRate === rate ? 'bg-violet-500 text-white' : 'text-white hover:bg-white/15'}`}
+                                                        >
+                                                            {rate === 1 ? '正常' : `${rate}x`}
+                                                        </button>
+                                                    ))}
+                                                </div>
                                             </div>
                                         )}
                                     </div>
@@ -2011,7 +2039,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     )}
                                 </div>
                                 {/* 分隔线 */}
-                                <div className="h-8 w-px bg-gray-300" />
+                                <div className="h-8 w-px bg-gray-200" />
                                 {/* 中组：上一句 / ▶播放 / 下一句 */}
                                 <div className="flex items-center gap-3">
                                     <button onClick={handleMobilePrevSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
@@ -2038,27 +2066,61 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     </button>
                                 </div>
                                 {/* 分隔线 */}
-                                <div className="h-8 w-px bg-gray-300" />
+                                <div className="h-8 w-px bg-gray-200" />
                                 {/* 右组：A/B点 / 单句循环 / 间隔Xs / 单句暂停 */}
                                 <div className="flex items-center gap-1">
                                     {/* A/B点 */}
                                     <button
                                         onClick={handleAbClick}
-                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${abMode === 0 ? 'text-gray-600 hover:bg-gray-200' : abMode === 1 ? 'text-yellow-400 bg-gray-100' : 'text-green-400 bg-gray-100'}`}
+                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${abMode === 0 ? 'text-gray-600 hover:bg-gray-200' : abMode === 1 ? 'text-yellow-500 bg-yellow-50' : abMode === 2 ? 'text-orange-500 bg-orange-50' : 'text-green-500 bg-green-50'}`}
                                     >
                                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
                                         <span className="text-[10px] leading-none font-medium">
-                                            {abMode === 0 ? 'A/B点' : abMode === 1 ? 'A●' : 'A↔B'}
+                                            {abMode === 0 ? 'A/B点' : abMode === 1 ? 'A?' : abMode === 2 ? 'A●' : 'A↔B'}
                                         </span>
                                     </button>
-                                    {/* 单句循环 */}
-                                    <button
-                                        onClick={() => setIsSentenceLooping(v => !v)}
-                                        className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${isSentenceLooping ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
-                                    >
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/></svg>
-                                        <span className="text-[10px] leading-none">单句循环</span>
-                                    </button>
+                                    {/* 单句循环 + 次数选择浮层 */}
+                                    <div className="relative">
+                                        <button
+                                            onClick={() => {
+                                                if (!isSentenceLooping) setIsSentenceLooping(true);
+                                                setShowLoopTimesPanel(p => !p);
+                                            }}
+                                            className={`flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-lg transition-colors min-w-[44px] ${isSentenceLooping ? 'text-violet-500 bg-gray-100' : 'text-gray-600 hover:bg-gray-200'}`}
+                                        >
+                                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd"/></svg>
+                                            <span className="text-[10px] leading-none">
+                                                {isSentenceLooping
+                                                    ? (jingTingSettings.loopCount === null ? '循环 ∞' : `循环 ${jingTingSettings.loopCount}×`)
+                                                    : '单句循环'}
+                                            </span>
+                                        </button>
+                                        {showLoopTimesPanel && (
+                                            <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-800 rounded-xl shadow-xl p-2 z-10 w-[160px]">
+                                                <div className="grid grid-cols-4 gap-1 mb-1">
+                                                    {[1, 2, 3, 5, 10, 50, 100, null].map(count => (
+                                                        <button
+                                                            key={String(count)}
+                                                            onClick={() => {
+                                                                setJingTingSettings(s => ({ ...s, loopCount: count }));
+                                                                setIsSentenceLooping(true);
+                                                                setShowLoopTimesPanel(false);
+                                                            }}
+                                                            className={`aspect-square flex items-center justify-center rounded-lg text-xs font-medium transition-colors ${jingTingSettings.loopCount === count && isSentenceLooping ? 'bg-violet-500 text-white' : 'text-white hover:bg-white/15'}`}
+                                                        >
+                                                            {count === null ? '∞' : `${count}×`}
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                                <button
+                                                    onClick={() => { setIsSentenceLooping(false); setShowLoopTimesPanel(false); }}
+                                                    className="w-full text-center text-xs text-white/50 hover:text-white/80 py-1 transition-colors"
+                                                >
+                                                    关闭循环
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
                                     {/* 间隔Xs - only when sentence looping is on */}
                                     {isSentenceLooping && (
                                         <div className="flex flex-col items-center gap-0.5 px-1 py-1.5">
@@ -2115,12 +2177,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             <div className="flex-1 bg-white border-t xl:border-t-0 xl:border-l flex flex-col relative" onClick={() => setPlayerActive(false)}>
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
                     {/* A/B点引导提示条 */}
-                    {abMode === 1 && (
+                    {(abMode === 1 || abMode === 2) && (
                         <div className="sticky top-0 z-10 bg-violet-50 border-b border-violet-200 px-4 py-2 flex items-center gap-2 text-sm text-violet-700">
                             <svg className="w-4 h-4 shrink-0 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
-                            <span>A 点已设置（{formatTime(abPointA)}），请再次点击「A/B点」按钮设置 B 点</span>
+                            {abMode === 1
+                                ? <span>请点击字幕行设置 <strong>A 点</strong>（循环起点）</span>
+                                : <span>A 点已设置，请点击字幕行设置 <strong>B 点</strong>（循环终点）</span>
+                            }
                         </div>
                     )}
                     {mode === 'cloze' && (
@@ -2388,14 +2453,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 setNotebookDialogOpen(true);
                                             }}
                                             isLoggedIn={!!user}
+                                            abMode={abMode}
+                                            onSetAbPoint={handleSetAbPoint}
+                                            isAbPointA={index === abIndexA}
+                                            isAbPointB={index === abIndexB}
+                                            loopCountdown={isActive ? loopCountdown : null}
                                         />
-                                        {isActive && loopCountdown !== null && (
-                                            <div className="flex justify-end -mt-1 mb-1 pr-4">
-                                                <span className="text-xs text-violet-500 bg-violet-50 px-2 py-0.5 rounded-full font-medium animate-pulse">
-                                                    {loopCountdown}s
-                                                </span>
-                                            </div>
-                                        )}
                                     </div>
                                 );
                             })

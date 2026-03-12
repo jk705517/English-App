@@ -23,7 +23,12 @@ const SubtitleItem = memo(({
     favoriteVocabIds = [],
     onToggleVocabFavorite,
     onAddVocabToNotebook,
-    isLoggedIn = false
+    isLoggedIn = false,
+    abMode = 0,
+    onSetAbPoint,
+    isAbPointA = false,
+    isAbPointB = false,
+    loopCountdown = null,
 }) => {
     // Helper: generate stable ID for sentence
     // Uses existing id if available, otherwise creates fallback from videoId-index
@@ -65,10 +70,19 @@ const SubtitleItem = memo(({
 
     return (
         <div
-            onClick={() => onSeek(item.start)}
+            onClick={() => {
+                if (abMode === 1 || abMode === 2) {
+                    if (onSetAbPoint) onSetAbPoint(item.start, index);
+                    return;
+                }
+                onSeek(item.start);
+            }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${isActive ? 'bg-violet-50' : 'hover:bg-gray-50'
-                }`}
+            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${
+                isAbPointA ? 'bg-yellow-50 ring-1 ring-yellow-300' :
+                isAbPointB ? 'bg-green-50 ring-1 ring-green-300' :
+                isActive ? 'bg-violet-50' : 'hover:bg-gray-50'
+            }`}
         >
             {/* 字幕行编号 */}
             <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-violet-500' : 'text-gray-400'
@@ -81,6 +95,13 @@ const SubtitleItem = memo(({
                 className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-violet-400 opacity-100' : 'opacity-0'
                     }`}
             />
+
+            {/* 单句循环倒计时 */}
+            {loopCountdown !== null && (
+                <span className="absolute right-10 top-1/2 -translate-y-1/2 text-xs font-bold text-violet-500 bg-violet-100 px-1.5 py-0.5 rounded-full tabular-nums z-10">
+                    {loopCountdown}s
+                </span>
+            )}
 
             {/* 收藏按钮（右侧）- 挖空模式不显示 */}
             {mode !== 'cloze' && onToggleFavorite && (
