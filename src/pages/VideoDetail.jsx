@@ -63,58 +63,84 @@ const renderLevel = (level) => {
     return '⭐'.repeat(Math.min(Math.max(num, 0), 5));
 };
 
-// 字幕导航组件
-const SubtitleTabs = ({ mode, onSetMode, onPrint, showPodcast, onPodcastClick, hasPodcast, className = "", isMobileStyle = false }) => (
-    <div className={`flex items-center justify-between ${isMobileStyle ? 'overflow-hidden' : ''} ${className}`}>
-        {/* PC端显示书籍图标+字幕，手机端不显示文字 */}
-        {!isMobileStyle && <h2 className="font-bold flex items-center shrink-0 text-base md:text-lg">📖 字幕</h2>}
-        <div className={`flex items-center ${isMobileStyle ? 'flex-1 justify-between' : 'gap-1 md:gap-2'}`}>
-            <div className={`flex bg-gray-50 p-1 rounded-full ${isMobileStyle ? 'gap-1' : 'gap-1 md:gap-2 overflow-x-auto'}`}>
+// 手机端字幕导航（含更多下拉，独立组件以使用 useState）
+function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasPodcast, onPrint }) {
+    const [showMore, setShowMore] = useState(false);
+    const moreActive = ['en', 'cn', 'cloze'].includes(mode);
+    const pick = (m) => { onSetMode(m); setShowMore(false); };
+    return (
+        <div className="flex items-center flex-1 justify-between overflow-hidden">
+            <div className="flex items-center gap-1 flex-1">
+                <button onClick={() => pick('dual')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'dual' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>双语</button>
+                <button onClick={() => pick('intensive')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'intensive' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>精读</button>
+                <button onClick={() => pick('dictation')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'dictation' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>听写</button>
+                <button onClick={() => pick('dual')} className="rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs bg-gray-100 text-gray-400 cursor-not-allowed" title="精听（即将上线）">精听</button>
+                <div className="relative">
+                    <button onClick={() => setShowMore(p => !p)} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs flex items-center gap-0.5 ${moreActive ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+                        更多<svg className={`w-3 h-3 transition-transform ${showMore ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
+                    </button>
+                    {showMore && (
+                        <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 z-[100] flex flex-col gap-1 min-w-[60px]">
+                            <button onClick={() => pick('en')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'en' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>英文</button>
+                            <button onClick={() => pick('cn')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'cn' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>中文</button>
+                            <button onClick={() => pick('cloze')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'cloze' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>挖空</button>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <div className="flex items-center gap-1">
+                {hasPodcast && (
+                    <>
+                        <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
+                        <button onClick={onPodcastClick} className={`rounded-full transition-all duration-200 shrink-0 p-1.5 ${showPodcast ? 'bg-violet-500 text-white shadow-md' : 'text-violet-500 hover:bg-violet-50'}`} title="AI播客">
+                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" /></svg>
+                        </button>
+                    </>
+                )}
+                <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
+                <button onClick={onPrint} className="rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 p-1.5" title="打印字幕">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" /></svg>
+                </button>
+            </div>
+        </div>
+    );
+}
+
+// PC端字幕导航组件
+const SubtitleTabs = ({ mode, onSetMode, onPrint, showPodcast, onPodcastClick, hasPodcast, className = "" }) => (
+    <div className={`flex items-center justify-between ${className}`}>
+        <h2 className="font-bold flex items-center shrink-0 text-base md:text-lg">📖 字幕</h2>
+        <div className="flex items-center gap-1 md:gap-2">
+            <div className="flex bg-gray-50 p-1 rounded-full gap-1 md:gap-2 overflow-x-auto">
                 {['dual', 'en', 'cn', 'intensive', 'cloze', 'dictation'].map((m) => (
                     <button
                         key={m}
                         onClick={() => onSetMode(m)}
-                        className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap ${isMobileStyle ? 'px-3 py-1 text-xs' : 'px-2 md:px-3 py-1 text-xs md:text-sm'} ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
+                        className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-2 md:px-3 py-1 text-xs md:text-sm ${mode === m ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
                     >
                         {m === 'dual' ? '双语' : m === 'en' ? '英' : m === 'cn' ? '中' : m === 'intensive' ? '精读' : m === 'cloze' ? '挖空' : '听写'}
                     </button>
                 ))}
             </div>
             <div className="flex items-center gap-1">
-                {/* 播客按钮 - 仅在有 podcast_url 时显示 */}
                 {hasPodcast && (
                     <>
-                        {/* 分隔线 */}
-                        <div className={`h-6 w-px bg-gray-300 shrink-0 ${isMobileStyle ? 'mx-1' : 'mx-1'}`}></div>
+                        <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
                         <button
                             onClick={onPodcastClick}
-                            className={`rounded-full transition-all duration-200 shrink-0 ${showPodcast ? 'bg-violet-500 text-white shadow-md' : 'text-violet-500 hover:bg-violet-50'} ${isMobileStyle ? 'p-1.5' : 'px-3 py-1'}`}
+                            className={`rounded-full transition-all duration-200 shrink-0 px-3 py-1 ${showPodcast ? 'bg-violet-500 text-white shadow-md' : 'text-violet-500 hover:bg-violet-50'}`}
                             title="AI播客"
                         >
-                            {isMobileStyle ? (
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                    <path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" />
-                                </svg>
-                            ) : (
-                                <span className="flex items-center gap-1 text-sm font-medium whitespace-nowrap">
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                        <path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" />
-                                    </svg>
-                                    播客
-                                </span>
-                            )}
+                            <span className="flex items-center gap-1 text-sm font-medium whitespace-nowrap">
+                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" /></svg>
+                                播客
+                            </span>
                         </button>
                     </>
                 )}
-                {/* 分隔线 */}
-                <div className={`h-6 w-px bg-gray-300 shrink-0 ${isMobileStyle ? 'mx-1' : 'mx-1'}`}></div>
-                {/* 打印按钮 */}
-                <button
-                    onClick={onPrint}
-                    className={`rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 ${isMobileStyle ? 'p-1.5' : 'p-2'}`}
-                    title="打印字幕"
-                >
-                    <svg className={`${isMobileStyle ? 'w-4 h-4' : 'w-5 h-5'}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
+                <button onClick={onPrint} className="rounded-full text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors shrink-0 p-2" title="打印字幕">
+                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
                     </svg>
                 </button>
@@ -157,6 +183,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
+    const [isVideoHidden, setIsVideoHidden] = useState(false);
     const [visitedSet, setVisitedSet] = useState(new Set()); // Track visited sentences in intensive mode
     const [isAutoScrollEnabled, setIsAutoScrollEnabled] = useState(true);
     // 绉诲姩绔細鏄惁鏄剧ず椤堕儴"缁х画鎾斁"灏忔潯锛堟殏鍋?鎾斁鍣ㄨ婊氬姩闅愯棌鏃讹級
@@ -1215,6 +1242,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     // PC绔細杩斿洖鎾斁
 
 
+    // 手机端：上一句 / 下一句
+    const handleMobilePrevSentence = (e) => {
+        if (e) e.stopPropagation();
+        if (!videoData?.transcript || activeIndex <= 0) return;
+        const sentence = videoData.transcript[activeIndex - 1];
+        if (sentence) handleSeek(sentence.start);
+    };
+
+    const handleMobileNextSentence = (e) => {
+        if (e) e.stopPropagation();
+        if (!videoData?.transcript) return;
+        if (activeIndex === -1 && videoData.transcript.length > 0) {
+            handleSeek(videoData.transcript[0].start);
+            return;
+        }
+        if (activeIndex >= videoData.transcript.length - 1) return;
+        const sentence = videoData.transcript[activeIndex + 1];
+        if (sentence) handleSeek(sentence.start);
+    };
+
     // Toggle play/pause
     const handleTogglePlay = useCallback(() => {
         if (isPlaying) {
@@ -1714,6 +1761,56 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             </button>
                                         </div>
 
+                                        
+
+                                        {/* 单句循环开关 */}
+                                        <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                            <span className="text-white text-sm">单句循环</span>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsSentenceLooping(!isSentenceLooping);
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isSentenceLooping ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isSentenceLooping ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* 单句暂停开关 */}
+                                        <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                            <div>
+                                                <span className="text-white text-sm block">单句暂停</span>
+                                                <span className="text-white/40 text-[10px]">每句结束自动暂停</span>
+                                            </div>
+                                            <button
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    setIsSentencePauseEnabled(!isSentencePauseEnabled);
+                                                }}
+                                                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isSentencePauseEnabled ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
+                                            >
+                                                <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isSentencePauseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
+                                            </button>
+                                        </div>
+
+                                        {/* 全屏 */}
+                                        {document.fullscreenEnabled && (
+                                            <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                                <span className="text-white text-sm">全屏播放</span>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggleFullscreen();
+                                                        setShowMobileSettings(false);
+                                                    }}
+                                                    className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors"
+                                                >
+                                                    {isFullscreen ? '退出全屏' : '进入全屏'}
+                                                </button>
+                                            </div>
+                                        )}
+
                                         {/* 画面字幕开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <span className="text-white text-sm">画面字幕</span>
@@ -1734,7 +1831,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             <video
                                 ref={playerRef}
                                 src={videoData.video_url}
-                                className="absolute top-0 left-0 w-full h-full bg-black"
+                                className={`absolute top-0 left-0 w-full h-full bg-black ${isVideoHidden ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
                                 playsInline
                                 webkit-playsinline="true"
                                 x5-video-player-type="h5"
@@ -1756,262 +1853,187 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             />
 
                             {/* 自定义控制条 - 固定在视频底部 */}
-                            <div
-                                className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-3 md:px-4 py-1.5 md:py-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-                                onClick={(e) => { e.stopPropagation(); setPlayerActive(true); }}
-                            >
-                                {/* 进度条 */}
+                            {isMobile ? (
+                                /* 手机端新版控制条 */
                                 <div
-                                    className="w-full h-1.5 bg-white/30 rounded cursor-pointer mb-1 md:mb-3 group"
-                                    onClick={handleProgressClick}
+                                    className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/90 via-black/50 to-transparent px-4 pt-2 pb-5 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                                    onClick={(e) => { e.stopPropagation(); setPlayerActive(true); }}
                                 >
+                                    {/* 进度条 */}
                                     <div
-                                        className="h-full bg-violet-400 rounded relative"
-                                        style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                        className="relative w-full h-1 bg-white/30 rounded cursor-pointer mb-5 group"
+                                        onClick={handleProgressClick}
                                     >
-                                        <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                                    </div>
-                                </div>
-
-                                {/* 控制按钮行 */}
-                                <div className="flex items-center justify-between">
-                                    {/* 左侧：播放/暂停 + 时间 */}
-                                    <div className="flex items-center gap-2 md:gap-3">
-                                        <button
-                                            onClick={handleTogglePlay}
-                                            className="text-white p-1 hover:bg-white/20 rounded transition-colors"
+                                        <div
+                                            className="h-full bg-violet-400 rounded relative"
+                                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                                         >
-                                            {isPlaying ? (
-                                                <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
-                                                </svg>
-                                            ) : (
-                                                <svg className="w-5 h-5 md:w-6 md:h-6" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M8 5v14l11-7z" />
-                                                </svg>
-                                            )}
-                                        </button>
-                                        <span className="text-white text-xs md:text-sm tabular-nums">
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full shadow" />
+                                        </div>
+                                        <span className="absolute right-0 -top-5 text-white/70 text-[10px] tabular-nums">
                                             {formatTime(currentTime)} / {formatTime(duration)}
                                         </span>
                                     </div>
 
-                                    {/* 右侧：倍速、字幕、音量、循环、全屏 */}
-                                    <div className="flex items-center gap-1 md:gap-2">
-                                        {/* 倍速按钮 - 手机端隐藏 */}
-                                        <div className="hidden md:block relative">
+                                    {/* 三栏布局 */}
+                                    <div className="flex items-center">
+                                        {/* 左侧：倍速 + 隐藏视频 */}
+                                        <div className="flex flex-col gap-3 w-16 items-start">
                                             <button
-                                                onClick={() => setShowSpeedPanel(!showSpeedPanel)}
-                                                className="text-white text-xs md:text-sm px-2 py-1 hover:bg-white/20 rounded transition-colors"
+                                                onClick={(e) => { e.stopPropagation(); setShowMobileSettings(true); }}
+                                                className="text-white/90 text-sm font-medium leading-none"
                                             >
                                                 {playbackRate === 1 ? '倍速' : `${playbackRate}x`}
                                             </button>
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); setIsVideoHidden(v => !v); }}
+                                                className={`text-sm leading-none transition-colors ${isVideoHidden ? 'text-violet-400 font-semibold' : 'text-white/80'}`}
+                                            >
+                                                {isVideoHidden ? '显示' : '隐藏'}
+                                            </button>
+                                        </div>
 
-                                            {showSpeedPanel && (
-                                                <>
-                                                    {/* 移动端底部弹窗遮罩 */}
-                                                    <div
-                                                        className="md:hidden fixed inset-0 bg-black/50 z-40"
-                                                        onClick={() => setShowSpeedPanel(false)}
-                                                    />
-                                                    {/* 移动端底部弹窗 */}
-                                                    <div className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-gray-900 rounded-t-2xl py-4 px-2 max-h-[50vh] overflow-y-auto">
-                                                        <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
-                                                        <div className="text-center text-white/70 text-sm mb-3">选择播放速度</div>
-                                                        <div className="flex flex-col gap-1">
-                                                            {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
-                                                                <button
-                                                                    key={rate}
-                                                                    onClick={() => handleSetPlaybackRate(rate)}
-                                                                    className={`py-3 text-center text-base rounded-lg transition-colors ${playbackRate === rate
-                                                                        ? 'text-violet-400 bg-violet-500/20 font-medium'
-                                                                        : 'text-white hover:bg-white/10'
-                                                                        }`}
-                                                                >
-                                                                    {rate === 1 ? '正常' : `${rate}x`}
-                                                                </button>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-                                                    {/* PC端右侧浮层 */}
-                                                    <div className="hidden md:block absolute bottom-full mb-2 right-0 bg-gray-900/95 rounded-lg shadow-xl py-2 min-w-[80px] backdrop-blur">
-                                                        {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((rate) => (
-                                                            <button
-                                                                key={rate}
-                                                                onClick={() => handleSetPlaybackRate(rate)}
-                                                                className={`block w-full px-4 py-1.5 text-left text-sm transition-colors ${playbackRate === rate
-                                                                    ? 'text-violet-400 bg-violet-500/20'
-                                                                    : 'text-white hover:bg-white/10'
-                                                                    }`}
-                                                            >
+                                        {/* 中间：上一句 + 播放/暂停 + 下一句 */}
+                                        <div className="flex-1 flex items-center justify-center gap-6">
+                                            <button
+                                                onClick={handleMobilePrevSentence}
+                                                className="flex flex-col items-center gap-1"
+                                            >
+                                                <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-white">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7" />
+                                                    </svg>
+                                                </span>
+                                                <span className="text-white/70 text-[10px]">上一句</span>
+                                            </button>
+
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleTogglePlay(); }}
+                                            >
+                                                <span className="w-14 h-14 rounded-full bg-white flex items-center justify-center shadow-lg">
+                                                    {isPlaying ? (
+                                                        <svg className="w-6 h-6 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" />
+                                                        </svg>
+                                                    ) : (
+                                                        <svg className="w-7 h-7 ml-1 text-gray-900" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M8 5v14l11-7z" />
+                                                        </svg>
+                                                    )}
+                                                </span>
+                                            </button>
+
+                                            <button
+                                                onClick={handleMobileNextSentence}
+                                                className="flex flex-col items-center gap-1"
+                                            >
+                                                <span className="w-11 h-11 rounded-full bg-white/20 flex items-center justify-center text-white">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7" />
+                                                    </svg>
+                                                </span>
+                                                <span className="text-white/70 text-[10px]">下一句</span>
+                                            </button>
+                                        </div>
+
+                                        {/* 右侧：B点 + 精听（占位） */}
+                                        <div className="flex flex-col gap-3 w-16 items-end">
+                                            <button onClick={(e) => e.stopPropagation()} className="text-white/50 text-sm leading-none cursor-not-allowed">B点</button>
+                                            <button onClick={(e) => e.stopPropagation()} className="text-white/50 text-sm leading-none cursor-not-allowed">精听</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                /* PC端控制条（保持不变） */
+                                <div
+                                    className={`custom-controls absolute bottom-0 left-0 right-0 z-20 bg-gradient-to-t from-black/80 via-black/40 to-transparent px-4 py-3 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                                    onClick={(e) => { e.stopPropagation(); setPlayerActive(true); }}
+                                >
+                                    {/* 进度条 */}
+                                    <div
+                                        className="w-full h-1.5 bg-white/30 rounded cursor-pointer mb-3 group"
+                                        onClick={handleProgressClick}
+                                    >
+                                        <div
+                                            className="h-full bg-violet-400 rounded relative"
+                                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                        >
+                                            <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </div>
+                                    </div>
+
+                                    {/* 控制按钮行 */}
+                                    <div className="flex items-center justify-between">
+                                        <div className="flex items-center gap-3">
+                                            <button onClick={(e) => { e.stopPropagation(); handleTogglePlay(); }} className="text-white p-1 hover:bg-white/20 rounded transition-colors">
+                                                {isPlaying ? (
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z" /></svg>
+                                                ) : (
+                                                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z" /></svg>
+                                                )}
+                                            </button>
+                                            <span className="text-white text-sm tabular-nums">{formatTime(currentTime)} / {formatTime(duration)}</span>
+                                        </div>
+
+                                        <div className="flex items-center gap-2">
+                                            {/* 倍速 */}
+                                            <div className="relative">
+                                                <button onClick={(e) => { e.stopPropagation(); setShowSpeedPanel(!showSpeedPanel); }} className="text-white text-sm px-2 py-1 hover:bg-white/20 rounded transition-colors">
+                                                    {playbackRate === 1 ? '倍速' : `${playbackRate}x`}
+                                                </button>
+                                                {showSpeedPanel && (
+                                                    <div className="absolute bottom-full mb-2 right-0 bg-gray-900/95 rounded-lg shadow-xl py-2 min-w-[80px] backdrop-blur">
+                                                        {[0.4, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map(rate => (
+                                                            <button key={rate} onClick={(e) => { e.stopPropagation(); handleSetPlaybackRate(rate); }} className={`block w-full px-4 py-1.5 text-left text-sm transition-colors ${playbackRate === rate ? 'text-violet-400 bg-violet-500/20' : 'text-white hover:bg-white/10'}`}>
                                                                 {rate === 1 ? '正常' : `${rate}x`}
                                                             </button>
                                                         ))}
                                                     </div>
-                                                </>
-                                            )}
-                                        </div>
-
-                                        {/* 字幕按钮 - 手机端隐藏 */}
-                                        <button
-                                            onClick={() => setShowOverlaySubtitles(!showOverlaySubtitles)}
-                                            className={`hidden md:block p-1.5 rounded transition-colors ${showOverlaySubtitles ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                                            title={showOverlaySubtitles ? '关闭字幕' : '打开字幕'}
-                                        >
-                                            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z" />
-                                            </svg>
-                                        </button>
-
-                                        {/* 音量按钮 - 手机端隐藏 */}
-                                        <div className="hidden md:block relative">
-                                            <button
-                                                onClick={() => {
-                                                    if (isMobile) {
-                                                        setShowVolumeSlider(!showVolumeSlider);
-                                                    } else {
-                                                        handleToggleMute();
-                                                    }
-                                                }}
-                                                onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
-                                                onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
-                                                className="text-white p-1.5 hover:bg-white/10 rounded transition-colors"
-                                            >
-                                                {muted || volume === 0 ? (
-                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" />
-                                                    </svg>
-                                                ) : volume < 0.5 ? (
-                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M18.5 12c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM5 9v6h4l5 5V4L9 9H5z" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" />
-                                                    </svg>
                                                 )}
+                                            </div>
+                                            {/* 字幕 */}
+                                            <button onClick={(e) => { e.stopPropagation(); setShowOverlaySubtitles(!showOverlaySubtitles); }} className={`p-1.5 rounded transition-colors ${showOverlaySubtitles ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zM4 12h4v2H4v-2zm10 6H4v-2h10v2zm6 0h-4v-2h4v2zm0-4H10v-2h10v2z" /></svg>
                                             </button>
-
-                                            {showVolumeSlider && (
-                                                <div
-                                                    className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900/95 rounded-lg p-3 shadow-xl backdrop-blur"
-                                                    onMouseEnter={() => !isMobile && setShowVolumeSlider(true)}
-                                                    onMouseLeave={() => !isMobile && setShowVolumeSlider(false)}
-                                                >
-                                                    <div className="h-20 flex flex-col items-center">
-                                                        <input
-                                                            type="range"
-                                                            min="0"
-                                                            max="1"
-                                                            step="0.05"
-                                                            value={muted ? 0 : volume}
-                                                            onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                                                            className="h-16 accent-violet-400 cursor-pointer"
-                                                            style={{
-                                                                writingMode: 'vertical-lr',
-                                                                direction: 'rtl'
-                                                            }}
-                                                        />
-                                                        <span className="text-white text-xs mt-1">
-                                                            {Math.round((muted ? 0 : volume) * 100)}%
-                                                        </span>
+                                            {/* 音量 */}
+                                            <div className="relative">
+                                                <button onClick={(e) => { e.stopPropagation(); handleToggleMute(); }} onMouseEnter={() => setShowVolumeSlider(true)} onMouseLeave={() => setShowVolumeSlider(false)} className="text-white p-1.5 hover:bg-white/10 rounded transition-colors">
+                                                    {muted || volume === 0 ? (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M16.5 12c0-1.77-1.02-3.29-2.5-4.03v2.21l2.45 2.45c.03-.2.05-.41.05-.63zm2.5 0c0 .94-.2 1.82-.54 2.64l1.51 1.51C20.63 14.91 21 13.5 21 12c0-4.28-2.99-7.86-7-8.77v2.06c2.89.86 5 3.54 5 6.71zM4.27 3L3 4.27 7.73 9H3v6h4l5 5v-6.73l4.25 4.25c-.67.52-1.42.93-2.25 1.18v2.06c1.38-.31 2.63-.95 3.69-1.81L19.73 21 21 19.73l-9-9L4.27 3zM12 4L9.91 6.09 12 8.18V4z" /></svg>
+                                                    ) : (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z" /></svg>
+                                                    )}
+                                                </button>
+                                                {showVolumeSlider && (
+                                                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-gray-900/95 rounded-lg p-3 shadow-xl backdrop-blur" onMouseEnter={() => setShowVolumeSlider(true)} onMouseLeave={() => setShowVolumeSlider(false)}>
+                                                        <div className="h-20 flex flex-col items-center">
+                                                            <input type="range" min="0" max="1" step="0.05" value={muted ? 0 : volume} onChange={(e) => handleVolumeChange(parseFloat(e.target.value))} className="h-16 accent-violet-400 cursor-pointer" style={{ writingMode: 'vertical-lr', direction: 'rtl' }} />
+                                                            <span className="text-white text-xs mt-1">{Math.round((muted ? 0 : volume) * 100)}%</span>
+                                                        </div>
                                                     </div>
-                                                </div>
+                                                )}
+                                            </div>
+                                            {/* 单句暂停 */}
+                                            <button onClick={(e) => { e.stopPropagation(); setIsSentencePauseEnabled(!isSentencePauseEnabled); }} className={`p-1.5 rounded transition-colors ${isSentencePauseEnabled ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+                                                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1" /><rect x="13" y="4" width="4" height="16" rx="1" /><circle cx="20" cy="6" r="3" /></svg>
+                                            </button>
+                                            {/* 单句循环 */}
+                                            <button onClick={(e) => { e.stopPropagation(); setIsSentenceLooping(!isSentenceLooping); }} className={`p-1.5 rounded transition-colors ${isSentenceLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" /></svg>
+                                            </button>
+                                            {/* 视频循环 */}
+                                            <button onClick={(e) => { e.stopPropagation(); setIsVideoLooping(!isVideoLooping); }} className={`hidden md:flex p-1.5 rounded transition-colors ${isVideoLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}>
+                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" /></svg>
+                                            </button>
+                                            {/* 全屏 */}
+                                            {document.fullscreenEnabled && (
+                                                <button onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }} className="text-white p-1.5 hover:bg-white/10 rounded transition-colors">
+                                                    {isFullscreen ? (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" /></svg>
+                                                    ) : (<svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" /></svg>)}
+                                                </button>
                                             )}
                                         </div>
-
-                                        {/* 单句暂停按钮 */}
-                                        <button
-                                            onClick={() => setIsSentencePauseEnabled(!isSentencePauseEnabled)}
-                                            className={`flex items-center gap-1 p-1.5 rounded transition-colors ${isSentencePauseEnabled ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                                            title={isSentencePauseEnabled ? '关闭单句暂停' : '开启单句暂停（每句结束自动暂停）'}
-                                        >
-                                            <svg className="w-4 h-4 md:w-5 md:h-5" viewBox="0 0 24 24" fill="currentColor">
-                                                <rect x="5" y="4" width="4" height="16" rx="1" />
-                                                <rect x="13" y="4" width="4" height="16" rx="1" />
-                                                <circle cx="20" cy="6" r="3" />
-                                            </svg>
-                                            <span className="text-xs md:hidden">句停</span>
-                                        </button>
-
-                                        {/* 单句循环按钮 */}
-                                        <button
-                                            onClick={() => setIsSentenceLooping(!isSentenceLooping)}
-                                            className={`flex items-center gap-1 p-1.5 rounded transition-colors ${isSentenceLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                                            title={isSentenceLooping ? '关闭单句循环' : '开启单句循环'}
-                                        >
-                                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 20 20">
-                                                <path fillRule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clipRule="evenodd" />
-                                            </svg>
-                                            <span className="text-xs md:hidden">单句</span>
-                                        </button>
-
-                                        {/* 手机端全屏按钮 */}
-                                        <button
-                                            onClick={handleToggleFullscreen}
-                                            className="md:hidden text-white p-1.5 hover:bg-white/10 rounded transition-colors"
-                                            title={isFullscreen ? '退出全屏' : '全屏'}
-                                        >
-                                            {isFullscreen ? (
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                                                </svg>
-                                            ) : (
-                                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                                                </svg>
-                                            )}
-                                        </button>
-
-                                        {/* 平板端全屏按钮（768-1279px） */}
-                                        <button
-                                            onClick={handleToggleFullscreen}
-                                            className="hidden md:block xl:hidden text-white p-1.5 hover:bg-white/10 rounded transition-colors"
-                                            title={isFullscreen ? '退出全屏' : '全屏'}
-                                        >
-                                            {isFullscreen ? (
-                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                                                </svg>
-                                            ) : (
-                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                                                </svg>
-                                            )}
-                                        </button>
-
-                                        {/* 视频循环按钮 - 手机端隐藏 */}
-                                        <button
-                                            onClick={() => setIsVideoLooping(!isVideoLooping)}
-                                            className={`hidden md:flex items-center gap-1 p-1.5 rounded transition-colors ${isVideoLooping ? 'text-violet-400 bg-white/10' : 'text-white/70 hover:text-white hover:bg-white/10'}`}
-                                            title={isVideoLooping ? '关闭视频循环' : '开启视频循环'}
-                                        >
-                                            <svg className="w-4 h-4 md:w-5 md:h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                <path d="M12 4V1L8 5l4 4V6c3.31 0 6 2.69 6 6 0 1.01-.25 1.97-.7 2.8l1.46 1.46C19.54 15.03 20 13.57 20 12c0-4.42-3.58-8-8-8zm0 14c-3.31 0-6-2.69-6-6 0-1.01.25-1.97.7-2.8L5.24 7.74C4.46 8.97 4 10.43 4 12c0 4.42 3.58 8 8 8v3l4-4-4-4v3z" />
-                                            </svg>
-                                            <span className="text-xs md:hidden">视频</span>
-                                        </button>
-                                        {/* 全屏按钮 */}
-                                        {document.fullscreenEnabled && (
-                                            <button
-                                                onClick={handleToggleFullscreen}
-                                                className="text-white p-1.5 hover:bg-white/10 rounded transition-colors"
-                                                title={isFullscreen ? '退出全屏' : '全屏'}
-                                            >
-                                                {isFullscreen ? (
-                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z" />
-                                                    </svg>
-                                                ) : (
-                                                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                                                        <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z" />
-                                                    </svg>
-                                                )}
-                                            </button>
-                                        )}
                                     </div>
                                 </div>
-                            </div>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -2025,14 +2047,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         `}
                         style={!isInitialLoad && (isPlaying || !hasScrolledAfterPause) ? { top: playerHeight } : {}}
                     >
-                        <SubtitleTabs
+                        <MobileSubtitleTabs
                             mode={mode}
                             onSetMode={handleModeChange}
                             onPrint={handlePrint}
                             showPodcast={showPodcast}
                             onPodcastClick={handlePodcastClick}
                             hasPodcast={!!videoData.podcast_url}
-                            isMobileStyle={true}
                         />
                     </div>
                 )}
