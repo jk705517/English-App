@@ -1,5 +1,15 @@
 @import "tailwindcss";
 
+/* 视频页隐藏左侧导航栏 */
+.hide-sidebar aside {
+    display: none !important;
+}
+
+/* 视频页隐藏手机端底部导航栏 */
+.hide-mobile-nav .mobile-bottom-nav {
+    display: none !important;
+}
+
 @keyframes shake {
 
     0%,

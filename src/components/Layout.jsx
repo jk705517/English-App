@@ -75,12 +75,12 @@ function Layout() {
 
             {/* 右侧主内容区 - 手机端添加底部内边距 */}
             {/* 视频详情页在移动端需要自己控制滚动，所以移除overflow */}
-            <main className={`flex-1 ${location.pathname.startsWith('/episode/') ? 'md:overflow-y-auto' : 'overflow-y-auto'} p-4 md:p-8 pb-20 md:pb-8`}>
+            <main className={`flex-1 ${location.pathname.startsWith('/episode/') ? 'md:overflow-y-auto' : 'overflow-y-auto'} ${location.pathname.startsWith('/episode/') ? '' : 'p-4 md:p-8 pb-20 md:pb-8'}`}>
                 <Outlet />
             </main>
 
             {/* 底部导航栏 - 只在移动端显示 */}
-            <nav className="flex md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
+            <nav className="mobile-bottom-nav flex md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 shadow-lg z-50">
                 <div className="flex w-full">
                     {navItems.map((item) => {
                         const Icon = item.icon;

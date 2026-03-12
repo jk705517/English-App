@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cd \"D:/antigravity/English-App\" && node -e \"\nconst fs = require\\('fs'\\);\nconst content = fs.readFileSync\\('src/pages/VideoDetail.jsx', 'utf8'\\);\n// Count div opens and closes\nconst opens = \\(content.match\\(/<div /g\\) || []\\).length + \\(content.match\\(/<div>/g\\) || []\\).length;\nconst closes = \\(content.match\\(/<\\\\/div>/g\\) || []\\).length;\nconsole.log\\('Opens:', opens, 'Closes:', closes\\);\n\")",
+      "Bash(cd \"D:/antigravity/English-App\" && npm run dev)",
+      "Bash(cd \"D:/antigravity/English-App\" && grep -n \"mode === 'dictation'\\\\|mode === 'intensive'\\\\|mode === 'vocab'\\\\|showPodcast ?\" src/pages/VideoDetail.jsx | head -20)"
+    ]
+  }
+}
