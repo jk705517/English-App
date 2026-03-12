@@ -63,41 +63,42 @@ const renderLevel = (level) => {
     return '⭐'.repeat(Math.min(Math.max(num, 0), 5));
 };
 
-// 手机端字幕导航（含更多下拉，独立组件以使用 useState）
+// 手机端字幕导航 - 5个固定Tab
 function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasPodcast }) {
-    const [showMore, setShowMore] = useState(false);
-    const moreActive = ['en', 'cn', 'cloze'].includes(mode);
-    const pick = (m) => { onSetMode(m); setShowMore(false); };
+    // 字幕子模式循环顺序
+    const subtitleCycle = ['dual', 'en', 'cn', 'cloze'];
+    const subtitleNames = { dual: '双语', en: '英文', cn: '中文', cloze: '挖空' };
+    const isSubtitleMode = subtitleCycle.includes(mode);
+    const currentSubLabel = subtitleNames[isSubtitleMode ? mode : 'dual'];
+
+    const handleSubtitleTabClick = () => {
+        if (isSubtitleMode && !showPodcast) {
+            // 已在字幕Tab：循环切换子模式
+            const next = subtitleCycle[(subtitleCycle.indexOf(mode) + 1) % subtitleCycle.length];
+            onSetMode(next);
+        } else {
+            // 从其他Tab切换到字幕Tab：恢复上次子模式或默认双语
+            onSetMode(isSubtitleMode ? mode : 'dual');
+        }
+    };
+
+    const tabClass = (active) =>
+        `flex-1 rounded-full font-medium transition-all duration-200 whitespace-nowrap py-1 text-xs text-center ${active ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600'}`;
+
     return (
-        <div className="flex items-center flex-1 justify-between overflow-hidden">
-            <div className="flex items-center gap-1 flex-1">
-                <button onClick={() => pick('dual')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'dual' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>双语</button>
-                <button onClick={() => pick('intensive')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'intensive' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>精读</button>
-                <button onClick={() => pick('dictation')} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs ${mode === 'dictation' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>听写</button>
-                <button onClick={() => pick('dual')} className="rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs bg-gray-100 text-gray-400 cursor-not-allowed" title="精听（即将上线）">精听</button>
-                <div className="relative">
-                    <button onClick={() => setShowMore(p => !p)} className={`rounded-full font-medium transition-all duration-200 whitespace-nowrap px-3 py-1 text-xs flex items-center gap-0.5 ${moreActive ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
-                        更多<svg className={`w-3 h-3 transition-transform ${showMore ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
-                    </button>
-                    {showMore && (
-                        <div className="absolute top-full left-0 mt-1 bg-white shadow-lg rounded-xl border border-gray-100 p-1.5 z-[100] flex flex-col gap-1 min-w-[60px]">
-                            <button onClick={() => pick('en')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'en' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>英文</button>
-                            <button onClick={() => pick('cn')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'cn' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>中文</button>
-                            <button onClick={() => pick('cloze')} className={`rounded-full font-medium px-3 py-1 text-xs whitespace-nowrap ${mode === 'cloze' ? 'bg-violet-400 text-white shadow-md' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>挖空</button>
-                        </div>
-                    )}
-                </div>
-            </div>
-            <div className="flex items-center gap-1">
-                {hasPodcast && (
-                    <>
-                        <div className="h-6 w-px bg-gray-300 shrink-0 mx-1"></div>
-                        <button onClick={onPodcastClick} className={`rounded-full transition-all duration-200 shrink-0 p-1.5 ${showPodcast ? 'bg-violet-500 text-white shadow-md' : 'text-violet-500 hover:bg-violet-50'}`} title="AI播客">
-                            <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M12 2a4 4 0 014 4v6a4 4 0 11-8 0V6a4 4 0 014-4zm0 16.93A8.001 8.001 0 0120 13h-2a6 6 0 11-12 0H4a8.001 8.001 0 008 5.93V22h4v-2h-4v-1.07z" /></svg>
-                        </button>
-                    </>
-                )}
-            </div>
+        <div className="flex items-center gap-1 w-full">
+            <button onClick={handleSubtitleTabClick} className={tabClass(isSubtitleMode && !showPodcast)}>
+                <span className="inline-flex items-center gap-0.5">
+                    {isSubtitleMode && !showPodcast ? currentSubLabel : '字幕'}
+                    <svg className="w-2.5 h-2.5 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
+                </span>
+            </button>
+            <button onClick={() => onSetMode('shadow')} className={tabClass(mode === 'shadow' && !showPodcast)}>跟读</button>
+            <button onClick={() => onSetMode('dictation')} className={tabClass(mode === 'dictation' && !showPodcast)}>听写</button>
+            <button onClick={() => onSetMode('vocab')} className={tabClass(mode === 'vocab' && !showPodcast)}>词卡</button>
+            {hasPodcast && (
+                <button onClick={onPodcastClick} className={tabClass(showPodcast)}>播客</button>
+            )}
         </div>
     );
 }
@@ -185,6 +186,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [isSentenceLooping, setIsSentenceLooping] = useState(false);
     // 单句暂停 - 每句结束自动暂停，方便跟读练习
     const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
+    // 词卡详情索引（null=列表, number=详情页）
+    const [vocabDetailIndex, setVocabDetailIndex] = useState(null);
+    // 跟读模式 - 英文/中文模糊切换
+    const [shadowEnBlurred, setShadowEnBlurred] = useState(false);
+    const [shadowCnBlurred, setShadowCnBlurred] = useState(false);
     // 手机端更多设置面板状态
     const [showMobileSettings, setShowMobileSettings] = useState(false);
     const [showMobileSpeedPanel, setShowMobileSpeedPanel] = useState(false);
@@ -790,7 +796,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         }
 
         // 单句暂停逻辑：参考单句循环，用 nextSub.start - 0.4 检测时机
-        if (isSentencePauseEnabled && !isSentenceLooping && activeIndex >= 0) {
+        if ((isSentencePauseEnabled || mode === 'shadow') && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
@@ -881,6 +887,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
         }
     }, [isSeeking, mode, videoData, activeIndex, isAutoScrollEnabled, isSentenceLooping, isSentencePauseEnabled, abMode, abPointA, abPointB, jingTingSettings, startLoopCountdown]);
+
+    // 跟读模式：切换到下一句时重置模糊状态
+    useEffect(() => {
+        if (mode === 'shadow') {
+            setShadowEnBlurred(false);
+            setShadowCnBlurred(false);
+        }
+    }, [activeIndex, mode]);
 
     // A/B点按钮处理
     const handleAbClick = (e) => {
@@ -1174,6 +1188,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const handleModeChange = (newMode) => {
         setMode(newMode);
         setShowPodcast(false);
+        if (newMode !== 'shadow') {
+            setShadowEnBlurred(false);
+            setShadowCnBlurred(false);
+        }
+        if (newMode !== 'vocab') {
+            setVocabDetailIndex(null);
+        }
     };
 
     // Toggle handlers
@@ -1775,6 +1796,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     <div className="md:hidden fixed bottom-0 left-0 right-0 z-[101] bg-gray-900 rounded-t-2xl py-4 px-4 max-h-[70vh] overflow-y-auto">
                                         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
 
+                                        {/* 字幕模式 */}
+                                        <div className="mb-4" onClick={(e) => e.stopPropagation()}>
+                                            <div className="text-white/70 text-sm mb-2">字幕模式</div>
+                                            <div className="flex gap-2">
+                                                {[['dual','双语'],['en','英文'],['cn','中文'],['cloze','挖空']].map(([m, label]) => (
+                                                    <button
+                                                        key={m}
+                                                        onClick={(e) => { e.stopPropagation(); handleModeChange(m); }}
+                                                        className={`flex-1 py-2 rounded-lg text-sm transition-colors ${mode === m && !showPodcast ? 'bg-violet-400 text-white font-medium' : 'bg-white/10 text-white hover:bg-white/20'}`}
+                                                    >
+                                                        {label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+
                                         {/* 视频循环开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <span className="text-white text-sm">视频循环</span>
@@ -2293,94 +2330,183 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
                                 </details>
                             </div>
+                        ) : mode === 'shadow' ? (
+                            (() => {
+                                const currentSub = videoData.transcript[activeIndex] || videoData.transcript[0];
+                                if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
+                                return (
+                                    <div className="flex flex-col items-center justify-start p-6 pt-10 min-h-[300px]">
+                                        <div className="w-full max-w-lg bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+                                            <div
+                                                onClick={() => setShadowEnBlurred(v => !v)}
+                                                className={`px-6 pt-6 pb-4 text-xl font-medium text-gray-900 leading-relaxed cursor-pointer select-none transition-all ${shadowEnBlurred ? 'blur-sm' : ''}`}
+                                            >
+                                                {currentSub.text}
+                                            </div>
+                                            <div
+                                                onClick={() => setShadowCnBlurred(v => !v)}
+                                                className={`px-6 pb-6 text-base text-gray-500 cursor-pointer select-none transition-all border-t border-gray-100 pt-4 ${shadowCnBlurred ? 'blur-sm' : ''}`}
+                                            >
+                                                {currentSub.cn}
+                                            </div>
+                                        </div>
+                                        <p className="mt-4 text-xs text-gray-400">点击英文/中文可切换模糊隐藏</p>
+                                    </div>
+                                );
+                            })()
                         ) : mode === 'vocab' ? (
-                            <div className="p-3 md:p-4">
-                                <div className="grid grid-cols-1 gap-4">
-                                    {videoData.vocab?.map((item, index) => {
-                                        const vocabId = item.id !== undefined && item.id !== null
-                                            ? item.id
-                                            : `${videoData.id}-vocab-${index}`;
-                                        return (
-                                            <div key={vocabId} id={`vocab-card-${index}`} data-vocab-id={vocabId} data-vocab-index={index} data-vocab-word={item.word} className="relative p-4 bg-violet-50 rounded-lg border border-violet-100 transition-all duration-200">
-                                                <button
-                                                    onClick={() => handleToggleVocabFavorite(vocabId)}
-                                                    className={`absolute top-2 right-2 p-1 rounded-full transition-colors ${favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? 'text-yellow-500 hover:bg-yellow-100' : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'}`}
-                                                    title={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "取消收藏" : "收藏词汇"}
-                                                >
-                                                    <svg className="w-4 h-4" fill={favoriteVocabIds.some(fid => String(fid) === String(vocabId)) ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
-                                                    </svg>
+                            (() => {
+                                const vocab = videoData.vocab || [];
+                                if (vocab.length === 0) return (
+                                    <div className="p-8 text-center text-gray-400">暂无词卡内容</div>
+                                );
+
+                                // ── 词条详情页 ──
+                                if (vocabDetailIndex !== null) {
+                                    const item = vocab[vocabDetailIndex];
+                                    if (!item) return null;
+                                    const vocabId = item.id !== undefined && item.id !== null ? item.id : `${videoData.id}-vocab-${vocabDetailIndex}`;
+                                    const isFav = favoriteVocabIds.some(fid => String(fid) === String(vocabId));
+                                    const occData = vocabOccurrences[item.word?.toLowerCase()];
+                                    const hasOcc = occData?.total > 0 && occData?.occurrences?.length > 0;
+
+                                    // 触摸滑动
+                                    let touchStartX = null;
+                                    const onTouchStart = (e) => { touchStartX = e.touches[0].clientX; };
+                                    const onTouchEnd = (e) => {
+                                        if (touchStartX === null) return;
+                                        const dx = e.changedTouches[0].clientX - touchStartX;
+                                        touchStartX = null;
+                                        if (dx > 60 && vocabDetailIndex > 0) setVocabDetailIndex(v => v - 1);
+                                        else if (dx < -60 && vocabDetailIndex < vocab.length - 1) setVocabDetailIndex(v => v + 1);
+                                    };
+
+                                    return (
+                                        <div className="flex flex-col h-full" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
+                                            {/* 顶部导航栏 */}
+                                            <div className="flex items-center gap-1 px-2 border-b border-gray-100 bg-white sticky top-0 z-10" style={{minHeight:'52px'}}>
+                                                <button onClick={() => setVocabDetailIndex(null)} className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 transition-colors shrink-0">
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7"/></svg>
+                                                </button>
+                                                <div className="flex-1" />
+                                                <button disabled={vocabDetailIndex === 0} onClick={() => setVocabDetailIndex(v => v - 1)} className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition-colors">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7"/></svg>
+                                                </button>
+                                                <span className="text-xs text-gray-400 tabular-nums px-1">{vocabDetailIndex + 1}/{vocab.length}</span>
+                                                <button disabled={vocabDetailIndex === vocab.length - 1} onClick={() => setVocabDetailIndex(v => v + 1)} className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-500 disabled:opacity-30 transition-colors">
+                                                    <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M9 5l7 7-7 7"/></svg>
                                                 </button>
                                                 <button
-                                                    onClick={() => {
-                                                        if (!user && !isDemo) { alert('登录后才能使用本子功能'); return; }
-                                                        setNotebookDialogItem({ itemType: 'vocab', itemId: vocabId, videoId: Number(videoData.id) });
-                                                        setNotebookDialogOpen(true);
-                                                    }}
-                                                    className="absolute top-2 right-8 p-1 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
+                                                    onClick={() => { if (!user && !isDemo) { alert('登录后才能使用本子功能'); return; } setNotebookDialogItem({ itemType: 'vocab', itemId: vocabId, videoId: Number(videoData.id) }); setNotebookDialogOpen(true); }}
+                                                    className="w-11 h-11 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 hover:text-violet-500 transition-colors shrink-0"
                                                     title="加入本子"
                                                 >
-                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
-                                                    </svg>
+                                                    <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
                                                 </button>
-                                                <div className="flex items-end mb-2">
-                                                    <span className="text-lg font-bold text-violet-500 mr-2">{item.word}</span>
-                                                    <span className="text-sm text-gray-500">{item.type}</span>
+                                                <button onClick={() => handleToggleVocabFavorite(vocabId)} className={`w-11 h-11 flex items-center justify-center rounded-lg transition-colors shrink-0 ${isFav ? 'text-yellow-500 hover:bg-yellow-50' : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'}`} title={isFav ? '取消收藏' : '收藏'}>
+                                                    <svg className="w-6 h-6" fill={isFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
+                                                </button>
+                                            </div>
+
+                                            {/* 详情内容 */}
+                                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                                                {/* 单词标题 + 词性 */}
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <h2 className="text-2xl font-bold text-gray-900">{item.word}</h2>
+                                                    {item.type && <span className="px-2 py-0.5 bg-violet-100 text-violet-600 text-xs font-medium rounded-full">{item.type}</span>}
                                                 </div>
-                                                <div className="flex flex-col gap-1 mb-2">
-                                                    {item.ipa_us && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                            <span className="text-gray-400 w-4">US</span>
-                                                            <span>/{item.ipa_us}/</span>
-                                                            <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                    {item.ipa_uk && (
-                                                        <div className="flex items-center gap-2 text-xs text-gray-500 font-mono">
-                                                            <span className="text-gray-400 w-4">UK</span>
-                                                            <span>/{item.ipa_uk}/</span>
-                                                            <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
-                                                                <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" /></svg>
-                                                            </button>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                                <p className="text-gray-600 font-medium mb-3">{item.meaning}</p>
-                                                {item.examples && item.examples.length > 0 && (
-                                                    <div className="mb-3 space-y-2">
-                                                        {item.examples.map((ex, i) => (
-                                                            <div key={i} className="text-[15px]">
-                                                                <p className="text-gray-800 leading-snug">{ex.en}</p>
-                                                                <p className="text-gray-500 text-[14px] mt-0.5">{ex.cn}</p>
+                                                {/* 发音 */}
+                                                <div className="bg-gray-50 rounded-xl p-4">
+                                                    <div className="space-y-1">
+                                                        {item.ipa_us && (
+                                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                                <span className="text-gray-400 text-xs w-5">US</span>
+                                                                <span className="font-mono">/{item.ipa_us}/</span>
+                                                                <button onClick={() => speak(item.word, 'en-US')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                                </button>
                                                             </div>
-                                                        ))}
+                                                        )}
+                                                        {item.ipa_uk && (
+                                                            <div className="flex items-center gap-2 text-sm text-gray-500">
+                                                                <span className="text-gray-400 text-xs w-5">UK</span>
+                                                                <span className="font-mono">/{item.ipa_uk}/</span>
+                                                                <button onClick={() => speak(item.word, 'en-GB')} className="p-1 hover:bg-violet-100 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* 中文释义 */}
+                                                {item.meaning && (
+                                                    <div>
+                                                        <div className="text-xs text-gray-400 font-medium mb-1 uppercase tracking-wide">释义</div>
+                                                        <p className="text-gray-800 text-base font-medium">{item.meaning}</p>
                                                     </div>
                                                 )}
-                                                {item.collocations && item.collocations.length > 0 && (
-                                                    <div className="flex flex-wrap gap-2">
-                                                        {item.collocations.map((col, i) => (
-                                                            <span key={i} className="px-2 py-1 bg-white text-violet-500 text-[13px] rounded border border-violet-100">{col}</span>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                                {vocabOccurrences[item.word?.toLowerCase()]?.total > 0 && (
-                                                    <div className="mt-3 pt-3 border-t border-gray-100">
-                                                        <div className="text-sm flex flex-wrap items-center gap-2">
-                                                            <span className="text-gray-500">📍 还出现在：</span>
-                                                            {vocabOccurrences[item.word.toLowerCase()].occurrences.map((occ, idx) => (
-                                                                <a key={idx} href={`/episode/${occ.episode}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`} className="text-violet-500 hover:underline">第{occ.episode}期</a>
+
+                                                {/* 例句 */}
+                                                {item.examples && item.examples.length > 0 && (
+                                                    <div>
+                                                        <div className="text-xs text-gray-400 font-medium mb-2 uppercase tracking-wide">例句</div>
+                                                        <div className="space-y-3">
+                                                            {item.examples.map((ex, i) => (
+                                                                <div key={i} className="border-l-2 border-violet-200 pl-3">
+                                                                    <p className="text-gray-800 leading-relaxed">{ex.en}</p>
+                                                                    <p className="text-gray-500 text-sm mt-0.5">{ex.cn}</p>
+                                                                </div>
                                                             ))}
                                                         </div>
                                                     </div>
                                                 )}
+
+                                                {/* 跨期出现次数 */}
+                                                {hasOcc && (
+                                                    <details className="border border-gray-200 rounded-xl overflow-hidden">
+                                                        <summary className="px-4 py-3 cursor-pointer text-sm text-gray-600 font-medium bg-gray-50 hover:bg-gray-100 transition-colors list-none flex items-center justify-between">
+                                                            <span>在 {occData.occurrences.length} 期中出现了 {occData.total} 次</span>
+                                                            <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7"/></svg>
+                                                        </summary>
+                                                        <div className="divide-y divide-gray-100">
+                                                            {occData.occurrences.map((occ, idx) => (
+                                                                <a key={idx} href={`/episode/${occ.episode}?scrollTo=vocab&vocabIndex=${occ.vocab_index || 0}`} className="flex items-center justify-between px-4 py-2.5 hover:bg-violet-50 transition-colors text-sm">
+                                                                    <span className="text-gray-700">第 {occ.episode} 期</span>
+                                                                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                                                                </a>
+                                                            ))}
+                                                        </div>
+                                                    </details>
+                                                )}
                                             </div>
-                                        );
-                                    })}
-                                </div>
-                            </div>
+                                        </div>
+                                    );
+                                }
+
+                                // ── 词条列表页 ──
+                                return (
+                                    <div>
+                                        <div className="px-4 py-3 border-b border-gray-100">
+                                            <span className="text-sm font-medium text-gray-500">重点单词 & 地道表达 <span className="text-violet-500 font-bold">{vocab.length}</span> 条</span>
+                                        </div>
+                                        <div className="divide-y divide-gray-100">
+                                            {vocab.map((item, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => setVocabDetailIndex(index)}
+                                                    className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors text-left"
+                                                >
+                                                    <span className="text-xs text-gray-400 w-5 shrink-0 text-right">{index + 1}</span>
+                                                    <span className="flex-1 font-medium text-gray-900">{item.word}</span>
+                                                    <span className="text-xs text-gray-400 shrink-0">{item.type}</span>
+                                                    <svg className="w-4 h-4 text-gray-300 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })()
                         ) : mode === 'intensive' ? (
                             <>
                                 <IntensiveSentenceList
@@ -2454,8 +2580,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             })
                         )}
 
-                        {/* 重点词汇 - 只在手机端显示 */}
-                        <div className="xl:hidden mt-6 p-4 bg-violet-50 rounded-lg">
+                        {/* 重点词汇 - 只在词卡Tab列表页显示 */}
+                        <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null ? 'hidden' : ''}`}>
                             <h3 className="text-lg font-bold mb-3 text-violet-500">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => {
