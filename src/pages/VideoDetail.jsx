@@ -1557,15 +1557,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             {/* PC端统一顶部导航栏：← 返回 | 上一期/下一期 | 字幕Tab + 打印/设置 */}
             {!isMobile && (
                 <div className="hidden xl:flex items-center gap-3 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
-                    {/* 左：返回 */}
+                    {/* 左：首页 */}
                     <button
-                        onClick={() => navigate(-1)}
-                        className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors font-medium shrink-0"
+                        onClick={() => navigate('/')}
+                        className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400 hover:text-violet-600 dark:hover:text-violet-400 transition-colors font-medium shrink-0 mr-4"
                     >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                         </svg>
-                        返回
+                        首页
                     </button>
                     {/* 分隔线 */}
                     <div className="h-5 w-px bg-gray-200 shrink-0" />

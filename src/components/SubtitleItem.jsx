@@ -94,7 +94,7 @@ const SubtitleItem = memo(({
             {/* 文字内容 */}
             <div className="flex-1">
                 {/* 英文 */}
-                <div className="subtitle-en-text dark:text-gray-100 mb-1" style={{ fontSize: `${subtitleFontSize}px`, letterSpacing: '0.01em', lineHeight: '1.8' }}>
+                <div className="subtitle-en-text dark:text-gray-100 mb-1" style={{ fontSize: `${subtitleFontSize}px`, letterSpacing: '0.025em', lineHeight: '1.8' }}>
                     {mode === 'cloze' ? (
                         renderClozeText(item.text, index)
                     ) : (
