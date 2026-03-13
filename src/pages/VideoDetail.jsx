@@ -94,7 +94,6 @@ function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasP
                     <svg className="w-2.5 h-2.5 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
                 </span>
             </button>
-            <button onClick={() => onSetMode('shadow')} className={tabClass(mode === 'shadow' && !showPodcast)}>跟读</button>
             <button onClick={() => onSetMode('dictation')} className={tabClass(mode === 'dictation' && !showPodcast)}>听写</button>
             <button onClick={() => onSetMode('vocab')} className={tabClass(mode === 'vocab' && !showPodcast)}>词卡</button>
             {hasPodcast && (
@@ -105,7 +104,7 @@ function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasP
 }
 
 // PC端字幕导航组件
-const SubtitleTabs = ({ mode, onSetMode, onPrint, onOpenSettings, showPodcast, onPodcastClick, hasPodcast, className = "" }) => (
+const SubtitleTabs = ({ mode, onSetMode, onPrint, onOpenSettings, showPodcast, onPodcastClick, hasPodcast, hideSubtitles, onToggleHideSubtitles, className = "" }) => (
     <div className={`flex items-center justify-end ${className}`}>
         <div className="flex items-center gap-1 md:gap-2">
             <div className="flex bg-gray-50 dark:bg-gray-800 p-1 rounded-full gap-1 md:gap-2 overflow-x-auto">
@@ -141,6 +140,24 @@ const SubtitleTabs = ({ mode, onSetMode, onPrint, onOpenSettings, showPodcast, o
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
                 </button>
+                {onToggleHideSubtitles && (
+                    <button
+                        onClick={onToggleHideSubtitles}
+                        className={`rounded-full transition-colors shrink-0 p-2 ${hideSubtitles ? 'text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/30' : 'text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        title={hideSubtitles ? '显示字幕' : '隐藏字幕'}
+                    >
+                        {hideSubtitles ? (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" />
+                            </svg>
+                        ) : (
+                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                            </svg>
+                        )}
+                    </button>
+                )}
                 {onOpenSettings && (
                     <button onClick={onOpenSettings} className="rounded-full text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors shrink-0 p-2" title="设置">
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,6 +170,88 @@ const SubtitleTabs = ({ mode, onSetMode, onPrint, onOpenSettings, showPodcast, o
         </div>
     </div>
 );
+
+// 跟读面板 — PC端和手机端共用
+const ShadowPanel = React.memo(({
+    currentSub,
+    activeIndex,
+    totalCount,
+    vocab = [],
+    shadowEnBlurred,
+    shadowCnBlurred,
+    onToggleShadowEn,
+    onToggleShadowCn,
+    isFavorite,
+    onToggleFavorite,
+    sentenceId,
+    onAddToNotebook,
+    onSwitchToDictation,
+    onVocabNavigate,
+}) => {
+    if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
+    return (
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm min-h-0">
+            {/* 顶部信息栏 */}
+            <div className="flex items-center justify-between px-4 py-2 border-b border-gray-100 dark:border-gray-700 shrink-0">
+                <div className="flex items-center gap-3">
+                    <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums font-medium shrink-0">
+                        {activeIndex + 1} / {totalCount}
+                    </span>
+                    {/* 收藏按钮 */}
+                    <button
+                        onClick={() => onToggleFavorite && onToggleFavorite(sentenceId)}
+                        className={`p-1 rounded-full transition-colors ${isFavorite ? 'text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        title={isFavorite ? '取消收藏' : '收藏句子'}
+                    >
+                        <svg className="w-4 h-4" fill={isFavorite ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
+                        </svg>
+                    </button>
+                    {/* 本子按钮 */}
+                    <button
+                        onClick={onAddToNotebook}
+                        className="p-1 rounded-full text-gray-300 dark:text-gray-600 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        title="加入本子"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                        </svg>
+                    </button>
+                    {/* 切换到听写 */}
+                    <button
+                        onClick={onSwitchToDictation}
+                        className="text-xs text-violet-500 hover:text-violet-600 dark:hover:text-violet-400 transition-colors"
+                    >
+                        切换到听写
+                    </button>
+                </div>
+                <div />
+            </div>
+            {/* 主体字幕区 — flex-1 填满剩余高度，内容居中 */}
+            <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10 gap-4 min-h-0">
+                <div
+                    onClick={onToggleShadowEn}
+                    className={`w-full cursor-pointer select-none transition-all font-medium leading-relaxed`}
+                    style={{ fontSize: '22px', color: '#333', filter: shadowEnBlurred ? 'blur(6px)' : 'none' }}
+                >
+                    <HighlightedText
+                        text={currentSub.text}
+                        highlights={vocab}
+                        onVocabNavigate={onVocabNavigate}
+                    />
+                </div>
+                <div
+                    onClick={onToggleShadowCn}
+                    className="w-full cursor-pointer select-none transition-all text-base leading-relaxed"
+                    style={{ color: '#999', filter: shadowCnBlurred ? 'blur(6px)' : 'none' }}
+                >
+                    {currentSub.cn}
+                </div>
+            </div>
+            <p className="text-center text-xs text-gray-400 dark:text-gray-500 pb-3 shrink-0">点击英文/中文可切换模糊隐藏</p>
+        </div>
+    );
+});
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const { episode: urlEpisode } = useParams();
@@ -247,7 +346,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [showSpeedPanel, setShowSpeedPanel] = useState(false);
     const [showVolumeSlider, setShowVolumeSlider] = useState(false);
     // Initialize mode: URL query param > localStorage > default 'dual'
-    const [mode, setMode] = useState(() => modeFromQuery || localStorage.getItem('studyMode') || 'dual');
+    const [mode, setMode] = useState(() => {
+        const stored = modeFromQuery || localStorage.getItem('studyMode') || 'dual';
+        return stored === 'shadow' ? 'dual' : stored;
+    });
     const [isLearned, setIsLearned] = useState(false);
     const [isFavorite, setIsFavorite] = useState(false);
     const [dictationStats, setDictationStats] = useState({ correct: 0, wrong: 0, skipped: 0 });
@@ -1604,6 +1706,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             showPodcast={showPodcast}
                             onPodcastClick={handlePodcastClick}
                             hasPodcast={!!videoData.podcast_url}
+                            hideSubtitles={jingTingSettings.hideSubtitles}
+                            onToggleHideSubtitles={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
                         />
                     </div>
                 </div>
@@ -2170,6 +2274,42 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                     )}
                 </div>
 
+                {/* PC端跟读面板 — 播放器控制条正下方，始终显示 */}
+                {!isMobile && (() => {
+                    const shadowSub = videoData.transcript?.[activeIndex] || videoData.transcript?.[0];
+                    const shadowSentenceId = shadowSub?.id !== undefined && shadowSub?.id !== null
+                        ? shadowSub.id
+                        : `${videoData.id}-${activeIndex}`;
+                    const shadowIsFav = favoriteSentenceIds.some(fid => String(fid) === String(shadowSentenceId));
+                    return (
+                        <div className="flex-1 flex flex-col px-3 md:px-4 pb-3 pt-2 min-h-0">
+                            <ShadowPanel
+                                currentSub={shadowSub}
+                                activeIndex={activeIndex >= 0 ? activeIndex : 0}
+                                totalCount={videoData.transcript?.length || 0}
+                                vocab={videoData.vocab || []}
+                                shadowEnBlurred={shadowEnBlurred}
+                                shadowCnBlurred={shadowCnBlurred}
+                                onToggleShadowEn={() => setShadowEnBlurred(v => !v)}
+                                onToggleShadowCn={() => setShadowCnBlurred(v => !v)}
+                                isFavorite={shadowIsFav}
+                                onToggleFavorite={handleToggleSentenceFavorite}
+                                sentenceId={shadowSentenceId}
+                                onAddToNotebook={() => {
+                                    if (!user && !isDemo) { alert('登录后才能使用本子功能'); return; }
+                                    setNotebookDialogItem({ itemType: 'sentence', itemId: shadowSentenceId, videoId: Number(videoData.id) });
+                                    setNotebookDialogOpen(true);
+                                }}
+                                onSwitchToDictation={() => handleModeChange('dictation')}
+                                onVocabNavigate={(vocabIndex) => {
+                                    const vItem = (videoData.vocab || [])[vocabIndex];
+                                    if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
+                                }}
+                            />
+                        </div>
+                    );
+                })()}
+
                 {/* 移动端：字幕导航条（手机端fixed紧贴播放器下方，平板sticky） */}
                 {isMobile && (
                     <>
@@ -2328,30 +2468,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
                                 </details>
                             </div>
-                        ) : mode === 'shadow' ? (
-                            (() => {
-                                const currentSub = videoData.transcript[activeIndex] || videoData.transcript[0];
-                                if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
-                                return (
-                                    <div className="flex flex-col items-center justify-start p-6 pt-10 min-h-[300px]">
-                                        <div className="w-full max-w-lg bg-white dark:bg-gray-800 rounded-2xl shadow-lg border border-gray-100 dark:border-gray-700 overflow-hidden">
-                                            <div
-                                                onClick={() => setShadowEnBlurred(v => !v)}
-                                                className={`px-6 pt-6 pb-4 text-xl font-medium text-gray-900 dark:text-gray-100 leading-relaxed cursor-pointer select-none transition-all ${shadowEnBlurred ? 'blur-sm' : ''}`}
-                                            >
-                                                {currentSub.text}
-                                            </div>
-                                            <div
-                                                onClick={() => setShadowCnBlurred(v => !v)}
-                                                className={`px-6 pb-6 text-base text-gray-500 dark:text-gray-400 cursor-pointer select-none transition-all border-t border-gray-100 dark:border-gray-700 pt-4 ${shadowCnBlurred ? 'blur-sm' : ''}`}
-                                            >
-                                                {currentSub.cn}
-                                            </div>
-                                        </div>
-                                        <p className="mt-4 text-xs text-gray-400">点击英文/中文可切换模糊隐藏</p>
-                                    </div>
-                                );
-                            })()
                         ) : mode === 'vocab' ? (
                             (() => {
                                 const vocab = videoData.vocab || [];
@@ -2733,12 +2849,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
                 {/* 隐藏字幕 overlay - fixed在视口中央，pointer-events-none不遮挡其他交互 */}
                 {jingTingSettings.hideSubtitles && (
-                    <div className="fixed inset-0 z-[45] flex items-center justify-center pointer-events-none">
+                    <div className="absolute inset-0 z-[45] flex items-center justify-center pointer-events-none">
                         <button
-                            className="pointer-events-auto inline-flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 px-5 py-3 rounded-2xl text-gray-700 dark:text-gray-200 font-medium shadow-lg text-sm"
+                            className="pointer-events-auto inline-flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 px-6 py-4 rounded-2xl text-gray-700 dark:text-gray-200 font-medium shadow-lg"
+                            style={{ fontSize: '16px' }}
                             onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: false }))}
                         >
-                            <svg className="w-4 h-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                            <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
                             字幕已隐藏，点击显示
                         </button>
                     </div>
