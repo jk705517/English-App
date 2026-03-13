@@ -168,12 +168,12 @@ function Favorites() {
         return (
             <div className="max-w-7xl mx-auto">
                 <div className="mb-8">
-                    <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                    <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-3">
                         <Heart className="w-10 h-10 text-red-500 fill-current" />
                         我的收藏
                     </h1>
                 </div>
-                <div className="flex flex-col items-center justify-center py-20 bg-white rounded-xl shadow-sm">
+                <div className="flex flex-col items-center justify-center py-20 bg-white dark:bg-gray-800 rounded-xl shadow-sm">
                     <Heart className="w-24 h-24 text-gray-300 mb-4" />
                     <p className="text-xl text-gray-500 mb-2">收藏功能需要登录后使用</p>
                     <p className="text-gray-400 mb-6">登录后可以收藏视频、句子和词汇</p>
@@ -206,11 +206,11 @@ function Favorites() {
         <div className="max-w-7xl mx-auto fade-in">
             {/* 页面标题 */}
             <div className="mb-6">
-                <h1 className="text-4xl font-bold text-gray-800 mb-2 flex items-center gap-3">
+                <h1 className="text-4xl font-bold text-gray-800 dark:text-gray-100 mb-2 flex items-center gap-3">
                     <Heart className="w-10 h-10 text-red-500 fill-current" />
                     我的收藏
                 </h1>
-                <p className="text-gray-600">{getTabStats()}</p>
+                <p className="text-gray-600 dark:text-gray-400">{getTabStats()}</p>
             </div>
 
             {/* Tab 切换区域 */}
@@ -225,7 +225,7 @@ function Favorites() {
                         onClick={() => handleTabChange(tab.key)}
                         className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${activeTab === tab.key
                             ? 'bg-violet-400 text-white'
-                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                            : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
                             }`}
                     >
                         <tab.icon className="w-4 h-4" />
@@ -285,16 +285,16 @@ function Favorites() {
                                 {favoriteSentences.map((sentence) => (
                                     <div
                                         key={`${sentence.videoId}-${sentence.sentenceId}`}
-                                        className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                                        className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow"
                                     >
                                         <div className="flex justify-between items-start gap-4">
                                             <div className="flex-1">
                                                 {/* 英文句子 */}
-                                                <p className="text-lg text-gray-800 font-medium mb-2 leading-relaxed">
+                                                <p className="text-lg text-gray-800 dark:text-gray-100 font-medium mb-2 leading-relaxed">
                                                     {sentence.en}
                                                 </p>
                                                 {/* 中文翻译 */}
-                                                <p className="text-gray-500 mb-3">
+                                                <p className="text-gray-500 dark:text-gray-400 mb-3">
                                                     {sentence.cn}
                                                 </p>
                                                 {/* 视频信息 */}
@@ -313,7 +313,7 @@ function Favorites() {
                                                         });
                                                         setNotebookDialogOpen(true);
                                                     }}
-                                                    className="px-3 py-1 bg-gray-50 text-gray-500 rounded-lg hover:bg-violet-50 hover:text-violet-500 font-medium transition-colors text-sm flex items-center gap-1"
+                                                    className="px-3 py-1 bg-gray-50 dark:bg-gray-700 text-gray-500 dark:text-gray-400 rounded-lg hover:bg-violet-50 dark:hover:bg-violet-900/20 hover:text-violet-500 font-medium transition-colors text-sm flex items-center gap-1"
                                                     title="加入本子"
                                                 >
                                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -352,7 +352,7 @@ function Favorites() {
                                 {favoriteVocabs.map((vocab) => (
                                     <div
                                         key={`${vocab.videoId}-${vocab.vocabId}`}
-                                        className="bg-white rounded-xl p-5 shadow-sm border border-gray-100 hover:shadow-md transition-shadow"
+                                        className="bg-white dark:bg-gray-800 rounded-xl p-5 shadow-sm border border-gray-100 dark:border-gray-700 hover:shadow-md transition-shadow"
                                     >
                                         <div className="flex justify-between items-start mb-3">
                                             <div>

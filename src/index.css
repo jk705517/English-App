@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* 启用基于 class 的深色模式（Tailwind v4） */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* 视频页隐藏左侧导航栏 */
 .hide-sidebar aside {
     display: none !important;

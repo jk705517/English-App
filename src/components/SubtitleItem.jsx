@@ -29,6 +29,7 @@ const SubtitleItem = memo(({
     isAbPointA = false,
     isAbPointB = false,
     loopCountdown = null,
+    subtitleFontSize = 16,
 }) => {
     // Helper: generate stable ID for sentence
     // Uses existing id if available, otherwise creates fallback from videoId-index
@@ -79,13 +80,13 @@ const SubtitleItem = memo(({
             }}
             data-subtitle-index={index}
             className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${
-                isAbPointA ? 'bg-yellow-50 ring-1 ring-yellow-300' :
-                isAbPointB ? 'bg-green-50 ring-1 ring-green-300' :
-                isActive ? 'bg-violet-50' : 'hover:bg-gray-50'
+                isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
+                isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
+                isActive ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
             }`}
         >
             {/* 字幕行编号 */}
-            <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-violet-500' : 'text-gray-400'
+            <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'
                 }`}>
                 {index + 1}
             </span>
@@ -122,7 +123,7 @@ const SubtitleItem = memo(({
             {/* 文字内容 */}
             <div className="flex-1">
                 {/* 英文 */}
-                <div className="text-base font-medium text-gray-900 leading-loose mb-1">
+                <div className="font-medium text-gray-900 dark:text-gray-100 leading-loose mb-1" style={{ fontSize: `${subtitleFontSize}px` }}>
                     {mode === 'cloze' ? (
                         renderClozeText(item.text, index)
                     ) : (
@@ -153,10 +154,13 @@ const SubtitleItem = memo(({
                 </div>
 
                 {/* 中文 */}
-                <div className={`text-sm transition-all duration-300 ${mode === 'en'
-                    ? 'blur-sm bg-gray-200 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600'
-                    : 'text-gray-600'
-                    }`}>
+                <div
+                    className={`transition-all duration-300 ${mode === 'en'
+                        ? 'blur-sm bg-gray-200 dark:bg-gray-600 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600 dark:hover:text-gray-300'
+                        : 'text-gray-600 dark:text-gray-400'
+                    }`}
+                    style={{ fontSize: `${Math.max(subtitleFontSize - 2, 10)}px` }}
+                >
                     {item.cn}
                 </div>
             </div>
