@@ -110,6 +110,25 @@
     font-weight: 500 !important;
     color: #555 !important;
 }
+.dark .subtitle-en-text {
+    color: #e5e5e5 !important;
+}
+
+/* 跟读区域英文颜色 */
+.shadow-en-text {
+    color: #333;
+}
+.dark .shadow-en-text {
+    color: #e5e5e5;
+}
+
+/* 字幕中文翻译 */
+.subtitle-cn-text {
+    color: #999 !important;
+}
+.dark .subtitle-cn-text {
+    color: #999 !important;
+}
 
 /* Toast 提示样式 */
 .toast-message {

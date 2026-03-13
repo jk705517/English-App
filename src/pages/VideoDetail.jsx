@@ -94,6 +94,7 @@ function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasP
                     <svg className="w-2.5 h-2.5 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
                 </span>
             </button>
+            <button onClick={() => onSetMode('shadow')} className={tabClass(mode === 'shadow' && !showPodcast)}>跟读</button>
             <button onClick={() => onSetMode('dictation')} className={tabClass(mode === 'dictation' && !showPodcast)}>听写</button>
             <button onClick={() => onSetMode('vocab')} className={tabClass(mode === 'vocab' && !showPodcast)}>词卡</button>
             {hasPodcast && (
@@ -231,8 +232,8 @@ const ShadowPanel = React.memo(({
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10 gap-4 min-h-0">
                 <div
                     onClick={onToggleShadowEn}
-                    className={`w-full cursor-pointer select-none transition-all font-medium leading-relaxed`}
-                    style={{ fontSize: '22px', color: '#333', filter: shadowEnBlurred ? 'blur(6px)' : 'none' }}
+                    className="w-full cursor-pointer select-none transition-all font-medium leading-relaxed shadow-en-text"
+                    style={{ fontSize: '22px', filter: shadowEnBlurred ? 'blur(6px)' : 'none' }}
                 >
                     <HighlightedText
                         text={currentSub.text}
@@ -242,8 +243,8 @@ const ShadowPanel = React.memo(({
                 </div>
                 <div
                     onClick={onToggleShadowCn}
-                    className="w-full cursor-pointer select-none transition-all text-base leading-relaxed"
-                    style={{ color: '#999', filter: shadowCnBlurred ? 'blur(6px)' : 'none' }}
+                    className="w-full cursor-pointer select-none transition-all text-base leading-relaxed subtitle-cn-text"
+                    style={{ filter: shadowCnBlurred ? 'blur(6px)' : 'none' }}
                 >
                     {currentSub.cn}
                 </div>
@@ -2468,6 +2469,40 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     <p className="mt-2 text-gray-700 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
                                 </details>
                             </div>
+                        ) : mode === 'shadow' ? (
+                            (() => {
+                                const mobileShadowSub = videoData.transcript?.[activeIndex] || videoData.transcript?.[0];
+                                const mobileShadowId = mobileShadowSub?.id !== undefined && mobileShadowSub?.id !== null
+                                    ? mobileShadowSub.id : `${videoData.id}-${activeIndex}`;
+                                const mobileShadowIsFav = favoriteSentenceIds.some(fid => String(fid) === String(mobileShadowId));
+                                return (
+                                    <div className="pt-3">
+                                        <ShadowPanel
+                                            currentSub={mobileShadowSub}
+                                            activeIndex={activeIndex >= 0 ? activeIndex : 0}
+                                            totalCount={videoData.transcript?.length || 0}
+                                            vocab={videoData.vocab || []}
+                                            shadowEnBlurred={shadowEnBlurred}
+                                            shadowCnBlurred={shadowCnBlurred}
+                                            onToggleShadowEn={() => setShadowEnBlurred(v => !v)}
+                                            onToggleShadowCn={() => setShadowCnBlurred(v => !v)}
+                                            isFavorite={mobileShadowIsFav}
+                                            onToggleFavorite={handleToggleSentenceFavorite}
+                                            sentenceId={mobileShadowId}
+                                            onAddToNotebook={() => {
+                                                if (!user && !isDemo) { alert('登录后才能使用本子功能'); return; }
+                                                setNotebookDialogItem({ itemType: 'sentence', itemId: mobileShadowId, videoId: Number(videoData.id) });
+                                                setNotebookDialogOpen(true);
+                                            }}
+                                            onSwitchToDictation={() => handleModeChange('dictation')}
+                                            onVocabNavigate={(vocabIndex) => {
+                                                const vItem = (videoData.vocab || [])[vocabIndex];
+                                                if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
+                                            }}
+                                        />
+                                    </div>
+                                );
+                            })()
                         ) : mode === 'vocab' ? (
                             (() => {
                                 const vocab = videoData.vocab || [];

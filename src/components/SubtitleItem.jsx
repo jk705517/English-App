@@ -112,9 +112,9 @@ const SubtitleItem = memo(({
                 <div
                     className={`transition-all duration-300 ${mode === 'en'
                         ? 'blur-sm bg-gray-200 dark:bg-gray-600 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600 dark:hover:text-gray-300'
-                        : 'dark:text-gray-500'
+                        : 'subtitle-cn-text'
                     }`}
-                    style={{ fontSize: `${Math.max(subtitleFontSize - 2, 10)}px`, color: '#999' }}
+                    style={{ fontSize: `${Math.max(subtitleFontSize - 2, 10)}px` }}
                 >
                     {item.cn}
                 </div>
