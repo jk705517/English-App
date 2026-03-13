@@ -1,206 +1,107 @@
-﻿import { useState, useMemo, useEffect, memo } from 'react';
-import VocabPopover from './VocabPopover';
+import { useMemo, memo } from 'react';
+
+// 4色循环（按词汇在列表中的顺序）：背景色 + 同色系深色文字
+const VOCAB_COLORS = [
+    { bg: '#E8D5FF', text: '#7C3AED' },
+    { bg: '#FFE0CC', text: '#C2500A' },
+    { bg: '#C8F0E0', text: '#0D7A4E' },
+    { bg: '#CCE8FF', text: '#1A5FA8' },
+];
 
 /**
  * 高亮文本组件 - 自动识别并高亮重点词汇
- * @param {string} text - 原文本
- * @param {array} highlights - 高亮词汇数组 [{ word, phonetic, type, meaning, definition, example, exampleCn }]
- * @param {string} className - 额外样式类
- * @param {function} onPauseVideo - 暂停视频回调
- * @param {boolean} isFavorite - 当前词汇是否已收藏
- * @param {function} onToggleFavorite - 收藏切换回调
- * @param {function} onAddToNotebook - 添加到本子回调
- * @param {boolean} isLoggedIn - 用户是否登录
- * @param {function} getVocabFavoriteStatus - 获取词汇收藏状态回调
- * @param {function} handleVocabFavoriteToggle - 切换词汇收藏状态回调
- * @param {function} handleVocabAddToNotebook - 添加词汇到本子回调
+ * 点击词汇直接跳转到词卡Tab的该词条详情页
  */
 const HighlightedText = ({
     text,
     highlights = [],
     className = '',
-    onPauseVideo,
-    getVocabFavoriteStatus,
-    handleVocabFavoriteToggle,
-    handleVocabAddToNotebook,
-    isLoggedIn = false,
-    videoId  // 新增：用于生成 vocabId
+    onVocabNavigate,  // (vocabIndex) => void — 跳转到词卡详情
 }) => {
-    const [activeVocab, setActiveVocab] = useState(null);
-    const [popoverPosition, setPopoverPosition] = useState({ x: 0, y: 0 });
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
-
-    // 监听窗口大小变化
-    useEffect(() => {
-        const checkMobile = () => setIsMobile(window.innerWidth < 1280);
-        window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
-    }, []);
-
-    // 处理词汇点击
-    const handleVocabClick = (word, vocabInfo, vocabIndex, event) => {
-        event.stopPropagation();
-        event.preventDefault();
-
-        // 如果没有词汇数据，显示 Toast 提示
-        if (!vocabInfo || !vocabInfo.meaning) {
-            if (window.showToast) {
-                window.showToast('这个词暂时没有词汇卡片');
-            }
-            console.warn(`⚠️ 词汇 "${word}" 没有有效的词汇数据`);
-            return;
-        }
-
-        const rect = event.target.getBoundingClientRect();
-        setPopoverPosition({
-            x: rect.left,
-            y: rect.bottom + window.scrollY
-        });
-        setActiveVocab({ word, vocabInfo, vocabIndex });
-    };
-
-    // 关闭弹窗
-    const closePopover = () => {
-        setActiveVocab(null);
-    };
-
     // 如果没有高亮词汇，直接返回原文本
     if (!highlights || highlights.length === 0) {
         return <span className={className}>{text}</span>;
     }
 
-    // 🚀 性能优化：使用 useMemo 缓存文本分割结果
-    // 只在 text 或 highlights 变化时重新计算，避免每次父组件 re-render 都执行正则匹配
+    // 使用 useMemo 缓存文本分割结果
     const parts = useMemo(() => {
-        // 构建正则表达式匹配所有高亮词（忽略大小写）
         const words = highlights.map(h => h.word.toLowerCase());
         const pattern = new RegExp(`\\b(${words.join('|')})\\b`, 'gi');
 
-        // 分割文本并高亮匹配的词汇
         const result = [];
         let lastIndex = 0;
         let match;
 
         while ((match = pattern.exec(text)) !== null) {
-            // 添加匹配前的普通文本
             if (match.index > lastIndex) {
-                result.push({
-                    type: 'text',
-                    content: text.slice(lastIndex, match.index)
-                });
+                result.push({ type: 'text', content: text.slice(lastIndex, match.index) });
             }
 
-            // 找到对应的词汇信息
             const matchedWord = match[0];
             const vocabIndex = highlights.findIndex(
                 h => h.word.toLowerCase() === matchedWord.toLowerCase()
             );
             const vocabInfo = vocabIndex >= 0 ? highlights[vocabIndex] : null;
 
-            // 只有有效的词汇信息才添加为高亮（有 meaning 才认为有效）
             if (vocabInfo && vocabInfo.meaning) {
-                result.push({
-                    type: 'highlight',
-                    content: matchedWord,
-                    vocabInfo,
-                    vocabIndex
-                });
+                result.push({ type: 'highlight', content: matchedWord, vocabInfo, vocabIndex });
             } else {
-                // 没有有效词汇数据的词仍然高亮，但标记为无数据
-                result.push({
-                    type: 'highlight-no-data',
-                    content: matchedWord,
-                    vocabInfo: null
-                });
+                result.push({ type: 'highlight-no-data', content: matchedWord, vocabInfo: null, vocabIndex });
             }
 
             lastIndex = pattern.lastIndex;
         }
 
-        // 添加剩余的普通文本
         if (lastIndex < text.length) {
-            result.push({
-                type: 'text',
-                content: text.slice(lastIndex)
-            });
+            result.push({ type: 'text', content: text.slice(lastIndex) });
         }
 
         return result;
     }, [text, highlights]);
 
     return (
-        <>
-            <span className={className}>
-                {parts.map((part, index) => {
-                    if (part.type === 'text') {
-                        return <span key={index}>{part.content}</span>;
-                    } else if (part.type === 'highlight') {
-                        // 有词汇数据的高亮词
-                        return (
-                            <span
-                                key={index}
-                                onClick={(e) => handleVocabClick(part.content, part.vocabInfo, part.vocabIndex, e)}
-                                onTouchEnd={(e) => {
-                                    // 手机端也响应 touch 事件，避免延迟
-                                    e.preventDefault();
-                                    handleVocabClick(part.content, part.vocabInfo, part.vocabIndex, e);
-                                }}
-                                className="font-bold border-b-2 border-violet-500 bg-violet-50 px-0.5 cursor-pointer hover:bg-violet-100 hover:text-violet-500 transition-colors rounded-sm"
-                                title={part.vocabInfo?.meaning || '点击查看释义'}
-                            >
-                                {part.content}
-                            </span>
-                        );
-                    } else {
-                        // 无词汇数据的高亮词（样式略有不同，提示用户可能无数据）
-                        return (
-                            <span
-                                key={index}
-                                onClick={(e) => handleVocabClick(part.content, null, e)}
-                                onTouchEnd={(e) => {
-                                    e.preventDefault();
-                                    handleVocabClick(part.content, null, e);
-                                }}
-                                className="font-bold border-b-2 border-gray-300 bg-gray-50 px-0.5 cursor-pointer hover:bg-gray-100 transition-colors rounded-sm"
-                                title="点击查看（可能无数据）"
-                            >
-                                {part.content}
-                            </span>
-                        );
-                    }
-                })}
-            </span>
-
-            {/* 词汇弹窗 */}
-            {activeVocab && (() => {
-                // 生成正确的 vocabId
-                const generatedVocabId = videoId && activeVocab.vocabIndex !== undefined 
-                    ? `${videoId}-vocab-${activeVocab.vocabIndex}` 
-                    : undefined;
-                
-                return (
-                    <VocabPopover
-                        word={activeVocab.word}
-                        vocabInfo={activeVocab.vocabInfo}
-                        vocabId={generatedVocabId}
-                        position={popoverPosition}
-                        onClose={closePopover}
-                        onPauseVideo={onPauseVideo}
-                        isMobile={isMobile}
-                        isFavorite={getVocabFavoriteStatus ? getVocabFavoriteStatus(generatedVocabId) : false}
-                        onToggleFavorite={generatedVocabId && handleVocabFavoriteToggle 
-                            ? () => handleVocabFavoriteToggle(generatedVocabId) 
-                            : undefined}
-                        onAddToNotebook={generatedVocabId && handleVocabAddToNotebook 
-                            ? () => handleVocabAddToNotebook(generatedVocabId) 
-                            : undefined}
-                        isLoggedIn={isLoggedIn}
-                    />
-                );
-            })()}
-        </>
+        <span className={className}>
+            {parts.map((part, index) => {
+                if (part.type === 'text') {
+                    return <span key={index}>{part.content}</span>;
+                } else if (part.type === 'highlight') {
+                    const color = VOCAB_COLORS[part.vocabIndex % VOCAB_COLORS.length];
+                    return (
+                        <span
+                            key={index}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                e.preventDefault();
+                                if (onVocabNavigate) onVocabNavigate(part.vocabIndex);
+                            }}
+                            onTouchEnd={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                if (onVocabNavigate) onVocabNavigate(part.vocabIndex);
+                            }}
+                            style={{ backgroundColor: color.bg, color: color.text }}
+                            className="px-0.5 cursor-pointer rounded-sm transition-opacity hover:opacity-75"
+                            title={part.vocabInfo?.meaning || '点击查看释义'}
+                        >
+                            {part.content}
+                        </span>
+                    );
+                } else {
+                    // 无词汇数据
+                    return (
+                        <span
+                            key={index}
+                            style={{ backgroundColor: '#F0F0F0', color: '#666' }}
+                            className="px-0.5 rounded-sm"
+                            title="暂无词汇数据"
+                        >
+                            {part.content}
+                        </span>
+                    );
+                }
+            })}
+        </span>
     );
 };
 
-// 🚀 使用 React.memo 包装组件，只在 props 变化时才 re-render
 export default memo(HighlightedText);

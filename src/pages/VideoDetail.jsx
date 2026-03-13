@@ -190,6 +190,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
     // 词卡详情索引（null=列表, number=详情页）
     const [vocabDetailIndex, setVocabDetailIndex] = useState(null);
+    // 词汇弹窗（点击高亮词汇弹出）
+    const [vocabPopup, setVocabPopup] = useState(null); // { index, item }
     // 跟读模式 - 英文/中文模糊切换
     const [shadowEnBlurred, setShadowEnBlurred] = useState(false);
     const [shadowCnBlurred, setShadowCnBlurred] = useState(false);
@@ -1551,7 +1553,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 xl:h-screen xl:flex xl:flex-col">
+        <div className="min-h-screen bg-[#f5f5f5] dark:bg-gray-900 xl:h-screen xl:flex xl:flex-col">
             {/* PC端统一顶部导航栏：← 返回 | 上一期/下一期 | 字幕Tab + 打印/设置 */}
             {!isMobile && (
                 <div className="hidden xl:flex items-center gap-3 px-6 py-3 border-b border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 flex-shrink-0">
@@ -1610,7 +1612,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             {/* 主内容区：左侧视频 + 右侧字幕 */}
             <div className="xl:flex-1 xl:flex xl:flex-row xl:overflow-hidden">
             {/* 左侧：视频 */}
-            <div className="w-full xl:w-3/5 xl:flex xl:flex-col xl:overflow-y-auto">
+            <div className="w-full xl:w-1/2 xl:flex xl:flex-col xl:overflow-y-auto">
 
                 {/* 视频播放器区域 */}
                 <div className={isPhone ? '' : 'px-3 md:px-6 xl:pt-4'}>
@@ -2195,7 +2197,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             </div>
 
             {/* Right Side Container Start */}
-            <div className="flex-1 bg-white dark:bg-gray-800 border-t xl:border-t-0 xl:border-l border-gray-200 dark:border-gray-700 flex flex-col relative" onClick={() => setPlayerActive(false)}>
+            <div className="flex-1 bg-[#f5f5f5] dark:bg-gray-800 border-t xl:border-t-0 xl:border-l border-gray-200 dark:border-gray-700 flex flex-col relative" onClick={() => setPlayerActive(false)}>
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
                     {/* A/B点引导提示条 */}
                     {(abMode === 1 || abMode === 2) && (
@@ -2405,12 +2407,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             </div>
 
                                             {/* 详情内容 */}
-                                            <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                                                {/* 单词标题 + 词性 */}
-                                                <div className="flex items-center gap-3 flex-wrap">
-                                                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">{item.word}</h2>
-                                                    {item.type && <span className="px-2 py-0.5 bg-violet-100 text-violet-600 text-xs font-medium rounded-full">{item.type}</span>}
-                                                </div>
+                                            <div className="flex-1 overflow-y-auto">
+                                                {/* 单词标题区 — 彩色背景 */}
+                                                {(() => {
+                                                    const DETAIL_COLORS = [
+                                                        { bg: '#E8D5FF', text: '#7C3AED' },
+                                                        { bg: '#FFE0CC', text: '#C2500A' },
+                                                        { bg: '#C8F0E0', text: '#0D7A4E' },
+                                                        { bg: '#CCE8FF', text: '#1A5FA8' },
+                                                    ];
+                                                    const dc = DETAIL_COLORS[vocabDetailIndex % DETAIL_COLORS.length];
+                                                    return (
+                                                        <div className="px-4 pt-4 pb-4" style={{ backgroundColor: dc.bg, borderRadius: '12px 12px 0 0' }}>
+                                                            <div className="flex items-center gap-2 flex-wrap">
+                                                                <h2 className="text-2xl font-bold" style={{ color: dc.text }}>{item.word}</h2>
+                                                                {item.type && <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.1)', color: dc.text }}>{item.type}</span>}
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })()}
+                                            <div className="p-4 space-y-4">
                                                 {/* 发音 */}
                                                 <div className="bg-gray-50 dark:bg-gray-700/50 rounded-xl p-4">
                                                     <div className="space-y-1">
@@ -2475,6 +2491,29 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                         </div>
                                                     </details>
                                                 )}
+
+                                                {/* 词典链接 */}
+                                                <div className="flex gap-2 pt-1">
+                                                    <a
+                                                        href={`https://translate.google.com/?sl=en&tl=zh-CN&text=${encodeURIComponent(item.word)}&op=translate`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                                                        Google 翻译
+                                                    </a>
+                                                    <a
+                                                        href={`https://dict.youdao.com/result?word=${encodeURIComponent(item.word)}&lang=en`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                                    >
+                                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                                        有道词典
+                                                    </a>
+                                                </div>
+                                            </div>
                                             </div>
                                         </div>
                                     );
@@ -2550,22 +2589,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             isFavorite={favoriteSentenceIds.some(fid => String(fid) === String(sentenceId))}
                                             onToggleFavorite={handleToggleSentenceFavorite}
                                             videoId={Number(videoData.id)}
-                                            favoriteVocabIds={favoriteVocabIds}
-                                            onToggleVocabFavorite={handleToggleVocabFavorite}
                                             subtitleFontSize={subtitleFontSize}
-                                            onAddVocabToNotebook={(vocabId) => {
-                                                if (!user && !isDemo) {
-                                                    alert('登录后才能使用本子功能');
-                                                    return;
-                                                }
-                                                setNotebookDialogItem({
-                                                    itemType: 'vocab',
-                                                    itemId: vocabId,
-                                                    videoId: Number(videoData.id)
-                                                });
-                                                setNotebookDialogOpen(true);
+                                            onVocabNavigate={(vocabIndex) => {
+                                                const vList = videoData.vocab || [];
+                                                const vItem = vList[vocabIndex];
+                                                if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                             }}
-                                            isLoggedIn={!!user}
                                             abMode={abMode}
                                             onSetAbPoint={handleSetAbPoint}
                                             isAbPointA={index === abIndexA}
@@ -2717,6 +2746,122 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
             </div>
             </div>{/* closes xl:flex-row wrapper */}
+
+            {/* 词汇弹窗 */}
+            {vocabPopup && (() => {
+                const POPUP_COLORS = [
+                    { bg: '#E8D5FF', text: '#7C3AED' },
+                    { bg: '#FFE0CC', text: '#C2500A' },
+                    { bg: '#C8F0E0', text: '#0D7A4E' },
+                    { bg: '#CCE8FF', text: '#1A5FA8' },
+                ];
+                const pc = POPUP_COLORS[vocabPopup.index % POPUP_COLORS.length];
+                return (
+                    <div
+                        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+                        onClick={() => setVocabPopup(null)}
+                    >
+                        {/* 半透明遮罩 */}
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        {/* 弹窗卡片 */}
+                        <div
+                            className="relative w-full sm:max-w-[400px] bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 彩色标题区 */}
+                            <div className="relative px-5 pt-4 pb-4" style={{ backgroundColor: pc.bg }}>
+                                {/* 拖拽条（手机端） */}
+                                <div className="sm:hidden flex justify-center mb-3 -mt-1">
+                                    <div className="w-9 h-1 rounded-full opacity-40" style={{ backgroundColor: pc.text }} />
+                                </div>
+                                {/* 关闭按钮 */}
+                                <button
+                                    onClick={() => setVocabPopup(null)}
+                                    className="absolute right-3 top-3 w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                                    style={{ color: pc.text, backgroundColor: 'transparent' }}
+                                    onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
+                                    onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                                </button>
+                                {/* 单词标题 + 类型标签 */}
+                                <div className="flex items-center gap-2 flex-wrap pr-8">
+                                    <h3 className="text-2xl font-bold" style={{ color: pc.text }}>{vocabPopup.item.word}</h3>
+                                    {vocabPopup.item.type && (
+                                        <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.1)', color: pc.text }}>{vocabPopup.item.type}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 正文内容 */}
+                            <div className="px-5 pt-4 pb-5">
+                                {/* 音标 + 发音按钮 */}
+                                {(vocabPopup.item.ipa_us || vocabPopup.item.ipa_uk) && (
+                                    <div className="flex flex-wrap gap-3 mb-4">
+                                        {vocabPopup.item.ipa_us && (
+                                            <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                                <span className="text-gray-400 dark:text-gray-500 text-xs">US</span>
+                                                <span className="font-mono">/{vocabPopup.item.ipa_us}/</span>
+                                                <button onClick={() => speak(vocabPopup.item.word, 'en-US')} className="p-1 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                        {vocabPopup.item.ipa_uk && (
+                                            <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                                <span className="text-gray-400 dark:text-gray-500 text-xs">UK</span>
+                                                <span className="font-mono">/{vocabPopup.item.ipa_uk}/</span>
+                                                <button onClick={() => speak(vocabPopup.item.word, 'en-GB')} className="p-1 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                    <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                </button>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {/* 中文释义 */}
+                                {vocabPopup.item.meaning && (
+                                    <p className="text-gray-800 dark:text-gray-200 mb-4" style={{ fontSize: '15px', lineHeight: '1.6' }}>{vocabPopup.item.meaning}</p>
+                                )}
+
+                                {/* 例句 */}
+                                {vocabPopup.item.examples && vocabPopup.item.examples.length > 0 && (
+                                    <div className="space-y-3 mb-4">
+                                        {vocabPopup.item.examples.slice(0, 2).map((ex, i) => (
+                                            <div key={i} className="border-l-2 pl-3" style={{ borderColor: pc.bg }}>
+                                                <p className="text-gray-700 dark:text-gray-300" style={{ fontSize: '14px', lineHeight: '1.6' }}>{ex.en}</p>
+                                                <p className="text-gray-400 dark:text-gray-500 mt-0.5" style={{ fontSize: '14px', lineHeight: '1.6' }}>{ex.cn}</p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+
+                                {/* 词典按钮 */}
+                                <div className="flex gap-2 pt-1">
+                                    <a
+                                        href={`https://translate.google.com/?sl=en&tl=zh-CN&text=${encodeURIComponent(vocabPopup.item.word)}&op=translate`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="currentColor"><path d="M12.87 15.07l-2.54-2.51.03-.03c1.74-1.94 2.98-4.17 3.71-6.53H17V4h-7V2H8v2H1v1.99h11.17C11.5 7.92 10.44 9.75 9 11.35 8.07 10.32 7.3 9.19 6.69 8h-2c.73 1.63 1.73 3.17 2.98 4.56l-5.09 5.02L4 19l5-5 3.11 3.11.76-2.04zM18.5 10h-2L12 22h2l1.12-3h4.75L21 22h2l-4.5-12zm-2.62 7l1.62-4.33L19.12 17h-3.24z"/></svg>
+                                        Google 翻译
+                                    </a>
+                                    <a
+                                        href={`https://dict.youdao.com/result?word=${encodeURIComponent(vocabPopup.item.word)}&lang=en`}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-sm font-medium border border-gray-200 dark:border-gray-600 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                                    >
+                                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                        有道词典
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
 
             {/* Add to Notebook Dialog */}
             <AddToNotebookDialog

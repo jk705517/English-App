@@ -19,11 +19,8 @@ const SubtitleItem = memo(({
     onToggleFavorite,
     // Video ID for generating fallback sentence IDs
     videoId,
-    // 词汇收藏/本子相关 props
-    favoriteVocabIds = [],
-    onToggleVocabFavorite,
-    onAddVocabToNotebook,
-    isLoggedIn = false,
+    // 词汇导航 prop
+    onVocabNavigate,
     abMode = 0,
     onSetAbPoint,
     isAbPointA = false,
@@ -50,25 +47,6 @@ const SubtitleItem = memo(({
         }
     };
 
-    // 获取词汇收藏状态
-    const getVocabFavoriteStatus = (vocabId) => {
-        return favoriteVocabIds.some(fid => String(fid) === String(vocabId));
-    };
-
-    // 切换词汇收藏
-    const handleVocabFavoriteToggle = (vocabId) => {
-        if (onToggleVocabFavorite) {
-            onToggleVocabFavorite(vocabId);
-        }
-    };
-
-    // 添加词汇到本子
-    const handleVocabAddToNotebook = (vocabId) => {
-        if (onAddVocabToNotebook) {
-            onAddVocabToNotebook(vocabId);
-        }
-    };
-
     return (
         <div
             onClick={() => {
@@ -79,23 +57,16 @@ const SubtitleItem = memo(({
                 onSeek(item.start);
             }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-colors duration-200 ${
+            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
                 isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
-                isActive ? 'bg-violet-50 dark:bg-violet-900/20' : 'hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
             }`}
         >
             {/* 字幕行编号 */}
-            <span className={`absolute left-2 top-3 text-xs font-medium ${isActive ? 'text-violet-500' : 'text-gray-400 dark:text-gray-500'
-                }`}>
+            <span className="absolute left-2 top-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                 {index + 1}
             </span>
-
-            {/* 蓝色指示条 */}
-            <div
-                className={`absolute left-0 top-0 bottom-0 w-1.5 rounded-l-lg transition-opacity duration-200 ${isActive ? 'bg-violet-400 opacity-100' : 'opacity-0'
-                    }`}
-            />
 
             {/* 单句循环倒计时 */}
             {loopCountdown !== null && (
@@ -123,7 +94,7 @@ const SubtitleItem = memo(({
             {/* 文字内容 */}
             <div className="flex-1">
                 {/* 英文 */}
-                <div className="font-medium text-gray-900 dark:text-gray-100 leading-loose mb-1" style={{ fontSize: `${subtitleFontSize}px` }}>
+                <div className="subtitle-en-text dark:text-gray-100 mb-1" style={{ fontSize: `${subtitleFontSize}px`, letterSpacing: '0.01em', lineHeight: '1.8' }}>
                     {mode === 'cloze' ? (
                         renderClozeText(item.text, index)
                     ) : (
@@ -131,23 +102,7 @@ const SubtitleItem = memo(({
                             <HighlightedText
                                 text={item.text}
                                 highlights={vocab || []}
-                                videoId={videoId}
-                                onPauseVideo={() => {
-                                    console.log('⏸️ 视频暂停');
-                                    onSetIsPlaying(false);
-                                    // 兼容原生 video 和 ReactPlayer
-                                    if (playerRef.current && typeof playerRef.current.pause === 'function') {
-                                        playerRef.current.pause();
-                                    } else if (playerRef.current?.getInternalPlayer) {
-                                        const p = playerRef.current.getInternalPlayer();
-                                        if (p?.pauseVideo) p.pauseVideo();
-                                        else if (p?.pause) p.pause();
-                                    }
-                                }}
-                                getVocabFavoriteStatus={getVocabFavoriteStatus}
-                                handleVocabFavoriteToggle={handleVocabFavoriteToggle}
-                                handleVocabAddToNotebook={handleVocabAddToNotebook}
-                                isLoggedIn={isLoggedIn}
+                                onVocabNavigate={onVocabNavigate}
                             />
                         )
                     )}
@@ -157,9 +112,9 @@ const SubtitleItem = memo(({
                 <div
                     className={`transition-all duration-300 ${mode === 'en'
                         ? 'blur-sm bg-gray-200 dark:bg-gray-600 text-transparent select-none hover:blur-0 hover:bg-transparent hover:text-gray-600 dark:hover:text-gray-300'
-                        : 'text-gray-600 dark:text-gray-400'
+                        : 'dark:text-gray-500'
                     }`}
-                    style={{ fontSize: `${Math.max(subtitleFontSize - 2, 10)}px` }}
+                    style={{ fontSize: `${Math.max(subtitleFontSize - 2, 10)}px`, color: '#999' }}
                 >
                     {item.cn}
                 </div>
