@@ -189,7 +189,39 @@ const ShadowPanel = React.memo(({
     onAddToNotebook,
     onSwitchToDictation,
     onVocabNavigate,
+    note = null,
+    onNoteClick,
+    videoId,
+    hasRecording = false,
+    isRecording = false,
+    onRecordClick,
+    onPlayOriginal,
+    onDeleteRecording,
 }) => {
+    const [isPlayingMyRec, setIsPlayingMyRec] = useState(false);
+    const [audioUrl, setAudioUrl] = useState(null);
+    const myAudioRef = useRef(null);
+
+    useEffect(() => {
+        setIsPlayingMyRec(false);
+        if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); }
+    }, [activeIndex]);
+
+    const handlePlayMyRec = async () => {
+        if (isPlayingMyRec && myAudioRef.current) {
+            myAudioRef.current.pause();
+            setIsPlayingMyRec(false);
+            return;
+        }
+        const blob = await recordingStorage.get(videoId, activeIndex);
+        if (!blob) return;
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
+        setIsPlayingMyRec(true);
+        setTimeout(() => { if (myAudioRef.current) myAudioRef.current.play().catch(() => {}); }, 0);
+    };
+
     if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
     return (
         <div className="flex-1 flex flex-col bg-white dark:bg-gray-800 rounded-2xl border border-gray-100 dark:border-gray-700 overflow-hidden shadow-sm min-h-0">
@@ -199,6 +231,16 @@ const ShadowPanel = React.memo(({
                     <span className="text-xs text-gray-400 dark:text-gray-500 tabular-nums font-medium shrink-0">
                         {activeIndex + 1} / {totalCount}
                     </span>
+                    {/* 笔记按钮 */}
+                    <button
+                        onClick={() => onNoteClick && onNoteClick(activeIndex)}
+                        className={`p-1 rounded-full transition-colors ${note ? 'text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20' : 'text-gray-300 dark:text-gray-600 hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+                        title={note ? '编辑笔记' : '添加笔记'}
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                        </svg>
+                    </button>
                     {/* 收藏按钮 */}
                     <button
                         onClick={() => onToggleFavorite && onToggleFavorite(sentenceId)}
@@ -227,7 +269,22 @@ const ShadowPanel = React.memo(({
                         切换到听写
                     </button>
                 </div>
-                <div />
+                {/* 录音按钮 */}
+                <button
+                    onClick={() => onRecordClick && onRecordClick(activeIndex)}
+                    className={`p-1.5 rounded-full transition-colors ${
+                        isRecording
+                            ? 'text-red-500 bg-red-50 dark:bg-red-900/20 animate-pulse'
+                            : hasRecording
+                                ? 'text-violet-500 hover:bg-violet-50 dark:hover:bg-violet-900/20'
+                                : 'text-gray-300 dark:text-gray-600 hover:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
+                    }`}
+                    title={isRecording ? '停止录音' : hasRecording ? '重录' : '开始录音'}
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                    </svg>
+                </button>
             </div>
             {/* 主体字幕区 — flex-1 填满剩余高度，内容居中 */}
             <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10 gap-4 min-h-0">
@@ -249,7 +306,53 @@ const ShadowPanel = React.memo(({
                 >
                     {currentSub.cn}
                 </div>
+                {/* 笔记显示 */}
+                {note && (
+                    <div className="w-full text-left mt-1.5 pl-2 border-l-2 border-violet-300 text-xs text-violet-600 dark:text-violet-400">
+                        {note}
+                    </div>
+                )}
             </div>
+            {/* 录音播放条 */}
+            {hasRecording && (
+                <div className="shrink-0 px-4 py-2 bg-red-50 dark:bg-red-900/10 border-t border-red-100 dark:border-red-900/20 flex items-center gap-2">
+                    <button
+                        onClick={handlePlayMyRec}
+                        className="flex items-center gap-1 text-xs text-red-600 dark:text-red-400 font-medium hover:text-red-700"
+                    >
+                        {isPlayingMyRec ? '⏸' : '▶'} 我的录音
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                        onClick={() => onPlayOriginal && onPlayOriginal(activeIndex)}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                    >
+                        🔊 原音
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                        onClick={() => onRecordClick && onRecordClick(activeIndex)}
+                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700"
+                    >
+                        🔄 重录
+                    </button>
+                    <span className="text-gray-300">|</span>
+                    <button
+                        onClick={() => { onDeleteRecording && onDeleteRecording(activeIndex); }}
+                        className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500"
+                    >
+                        🗑️ 删除
+                    </button>
+                    {audioUrl && (
+                        <audio
+                            ref={myAudioRef}
+                            src={audioUrl}
+                            onEnded={() => setIsPlayingMyRec(false)}
+                            className="hidden"
+                        />
+                    )}
+                </div>
+            )}
             <p className="text-center text-xs text-gray-400 dark:text-gray-500 pb-3 shrink-0">点击英文/中文可切换模糊隐藏</p>
         </div>
     );
@@ -2502,6 +2605,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     const vItem = (videoData.vocab || [])[vocabIndex];
                                     if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                 }}
+                                note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
+                                onNoteClick={handleNoteClick}
+                                videoId={videoData.id}
+                                hasRecording={recordingIndices.has(activeIndex >= 0 ? activeIndex : 0)}
+                                isRecording={activeRecordingIndex === (activeIndex >= 0 ? activeIndex : 0)}
+                                onRecordClick={handleRecordClick}
+                                onPlayOriginal={handlePlayOriginal}
+                                onDeleteRecording={handleDeleteRecording}
                             />
                         </div>
                     );
@@ -2695,6 +2806,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 const vItem = (videoData.vocab || [])[vocabIndex];
                                                 if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                             }}
+                                            note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
+                                            onNoteClick={handleNoteClick}
+                                            videoId={videoData.id}
+                                            hasRecording={recordingIndices.has(activeIndex >= 0 ? activeIndex : 0)}
+                                            isRecording={activeRecordingIndex === (activeIndex >= 0 ? activeIndex : 0)}
+                                            onRecordClick={handleRecordClick}
+                                            onPlayOriginal={handlePlayOriginal}
+                                            onDeleteRecording={handleDeleteRecording}
                                         />
                                     </div>
                                 );
