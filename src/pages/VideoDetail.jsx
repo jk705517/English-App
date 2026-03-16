@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
-import { videoAPI, vocabOccurrencesAPI, notesAPI } from '../services/api';
+import { videoAPI, vocabOccurrencesAPI, notesAPI, progressAPI } from '../services/api';
 import { recordingStorage } from '../utils/recordingStorage';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
@@ -646,6 +646,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             if (playOriginalTimeoutRef.current) clearTimeout(playOriginalTimeoutRef.current);
         };
     }, []);
+
+    // 记录视频访问（更新"最近学习"时间戳）
+    useEffect(() => {
+        if (!videoData || !user || isDemo) return;
+        progressAPI.add(videoData.id, 'video', videoData.id).catch(() => {});
+    }, [videoData?.id, user?.id]);
 
     // 加载笔记
     useEffect(() => {
