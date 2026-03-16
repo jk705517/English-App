@@ -1,5 +1,6 @@
-﻿import React, { memo } from 'react';
+import React, { memo, useState, useEffect, useRef } from 'react';
 import HighlightedText from './HighlightedText';
+import { recordingStorage } from '../utils/recordingStorage';
 
 // 🚀 性能优化：字幕行组件（使用 React.memo 避免不必要的 re-render）
 // 只在 isActive 或 item 内容变化时才重新渲染
@@ -32,24 +33,66 @@ const SubtitleItem = memo(({
     onNoteClick,
     // 本子相关 props
     onAddToNotebook,
+    // 录音相关 props
+    hasRecording = false,
+    isRecording = false,
+    onRecordClick,
+    onPlayOriginal,
+    onDeleteRecording,
 }) => {
     // Helper: generate stable ID for sentence
-    // Uses existing id if available, otherwise creates fallback from videoId-index
     const getSentenceId = () => {
-        if (item.id !== undefined && item.id !== null) {
-            return item.id;
-        }
-        // Fallback: videoId-index (e.g., "123-0", "123-1")
+        if (item.id !== undefined && item.id !== null) return item.id;
         return `${videoId}-${index}`;
     };
 
-    // 点击收藏按钮（阻止事件冒泡，避免触发 seek）
+    // 录音本地播放状态
+    const [audioUrl, setAudioUrl] = useState(null);
+    const [isPlayingMyRecording, setIsPlayingMyRecording] = useState(false);
+    const myAudioRef = useRef(null);
+
+    // hasRecording 变为 false 时清理 audio URL
+    useEffect(() => {
+        if (!hasRecording) {
+            if (myAudioRef.current) {
+                myAudioRef.current.pause();
+                myAudioRef.current = null;
+            }
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+                setAudioUrl(null);
+            }
+            setIsPlayingMyRecording(false);
+        }
+    }, [hasRecording]);
+
+    // 播放我的录音
+    const handlePlayMyRecording = async (e) => {
+        e.stopPropagation();
+        // 暂停中则继续播放，播放中则暂停
+        if (isPlayingMyRecording && myAudioRef.current) {
+            myAudioRef.current.pause();
+            setIsPlayingMyRecording(false);
+            return;
+        }
+        let url = audioUrl;
+        if (!url) {
+            const blob = await recordingStorage.get(videoId, index);
+            if (!blob) return;
+            url = URL.createObjectURL(blob);
+            setAudioUrl(url);
+        }
+        const audio = new Audio(url);
+        myAudioRef.current = audio;
+        audio.onended = () => setIsPlayingMyRecording(false);
+        audio.onpause = () => setIsPlayingMyRecording(false);
+        audio.play().then(() => setIsPlayingMyRecording(true)).catch(() => {});
+    };
+
+    // 点击收藏按钮
     const handleFavoriteClick = (e) => {
         e.stopPropagation();
-        if (onToggleFavorite) {
-            const sentenceId = getSentenceId();
-            onToggleFavorite(sentenceId);
-        }
+        if (onToggleFavorite) onToggleFavorite(getSentenceId());
     };
 
     const handleNoteClick = (e) => {
@@ -67,7 +110,7 @@ const SubtitleItem = memo(({
                 onSeek(item.start);
             }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-20 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`relative pl-10 pr-3 md:pr-28 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
                 isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
                 isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
@@ -85,11 +128,30 @@ const SubtitleItem = memo(({
                 </span>
             )}
 
-            {/* 笔记按钮（右侧第三，最左）- 挖空模式不显示 */}
+            {/* 录音按钮（PC右侧，手机端隐藏）- 挖空模式不显示 */}
+            {mode !== 'cloze' && onRecordClick && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onRecordClick(index); }}
+                    className={`hidden md:block absolute right-20 top-3 p-1 rounded-full transition-colors ${
+                        isRecording
+                            ? 'text-red-500 animate-pulse'
+                            : hasRecording
+                            ? 'text-violet-500 hover:bg-violet-100'
+                            : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                    }`}
+                    title={isRecording ? "停止录音" : hasRecording ? "重新录音" : "开始录音"}
+                >
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                    </svg>
+                </button>
+            )}
+
+            {/* 笔记按钮（PC右侧，手机端隐藏）- 挖空模式不显示 */}
             {mode !== 'cloze' && onNoteClick && (
                 <button
                     onClick={handleNoteClick}
-                    className={`absolute right-14 top-3 p-1 rounded-full transition-colors ${note
+                    className={`hidden md:block absolute right-14 top-3 p-1 rounded-full transition-colors ${note
                         ? 'text-violet-500 hover:bg-violet-100'
                         : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                         }`}
@@ -101,11 +163,11 @@ const SubtitleItem = memo(({
                 </button>
             )}
 
-            {/* 收藏按钮（右侧第二）- 挖空模式不显示 */}
+            {/* 收藏按钮（PC右侧，手机端隐藏）- 挖空模式不显示 */}
             {mode !== 'cloze' && onToggleFavorite && (
                 <button
                     onClick={handleFavoriteClick}
-                    className={`absolute right-8 top-3 p-1 rounded-full transition-colors ${isFavorite
+                    className={`hidden md:block absolute right-8 top-3 p-1 rounded-full transition-colors ${isFavorite
                         ? 'text-yellow-500 hover:bg-yellow-100'
                         : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                         }`}
@@ -117,11 +179,11 @@ const SubtitleItem = memo(({
                 </button>
             )}
 
-            {/* 本子按钮（右侧第一，最右）- 挖空模式不显示 */}
+            {/* 本子按钮（PC右侧，手机端隐藏）- 挖空模式不显示 */}
             {mode !== 'cloze' && onAddToNotebook && (
                 <button
                     onClick={(e) => { e.stopPropagation(); onAddToNotebook(getSentenceId()); }}
-                    className="absolute right-2 top-3 p-1 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
+                    className="hidden md:block absolute right-2 top-3 p-1 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
                     title="加入本子"
                 >
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -164,10 +226,121 @@ const SubtitleItem = memo(({
                         <p className="text-xs leading-relaxed text-violet-600 dark:text-violet-400">{note}</p>
                     </div>
                 )}
+
+                {/* 手机端按钮行（md以下显示，PC隐藏）- 挖空模式不显示 */}
+                {mode !== 'cloze' && (onNoteClick || onToggleFavorite || onAddToNotebook || onRecordClick) && (
+                    <div className="flex md:hidden items-center gap-0.5 mt-2" onClick={(e) => e.stopPropagation()}>
+                        {/* 笔记 */}
+                        {onNoteClick && (
+                            <button
+                                onClick={handleNoteClick}
+                                className={`p-1.5 rounded-full transition-colors ${note ? 'text-violet-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                title={note ? "编辑笔记" : "添加笔记"}
+                            >
+                                <svg className="w-4 h-4" fill={note ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                                </svg>
+                            </button>
+                        )}
+                        {/* 收藏 */}
+                        {onToggleFavorite && (
+                            <button
+                                onClick={handleFavoriteClick}
+                                className={`p-1.5 rounded-full transition-colors ${isFavorite ? 'text-yellow-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                title={isFavorite ? "取消收藏" : "收藏句子"}
+                            >
+                                <svg className="w-4 h-4" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                                </svg>
+                            </button>
+                        )}
+                        {/* 本子 */}
+                        {onAddToNotebook && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onAddToNotebook(getSentenceId()); }}
+                                className="p-1.5 rounded-full transition-colors text-gray-400 hover:text-violet-500"
+                                title="加入本子"
+                            >
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                            </button>
+                        )}
+                        {/* 录音（最右） */}
+                        {onRecordClick && (
+                            <>
+                                <div className="flex-1" />
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); onRecordClick(index); }}
+                                    className={`p-1.5 rounded-full transition-colors ${isRecording ? 'text-red-500 animate-pulse' : hasRecording ? 'text-violet-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                    title={isRecording ? "停止录音" : hasRecording ? "重新录音" : "开始录音"}
+                                >
+                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm-1-9c0-.55.45-1 1-1s1 .45 1 1v6c0 .55-.45 1-1 1s-1-.45-1-1V5zm6 6c0 2.76-2.24 5-5 5s-5-2.24-5-5H5c0 3.53 2.61 6.43 6 6.92V21h2v-3.08c3.39-.49 6-3.39 6-6.92h-2z"/>
+                                    </svg>
+                                </button>
+                            </>
+                        )}
+                    </div>
+                )}
+
+                {/* 录音播放条（有录音时显示）- 挖空模式不显示 */}
+                {hasRecording && mode !== 'cloze' && (
+                    <div
+                        className="mt-2 flex items-center gap-1 bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-900/30 rounded-lg px-2 py-1.5"
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* ▶/⏸ 播放我的录音 */}
+                        <button
+                            onClick={handlePlayMyRecording}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-red-500 hover:bg-red-100 dark:hover:bg-red-900/20 transition-colors text-xs font-medium"
+                            title={isPlayingMyRecording ? "暂停" : "播放我的录音"}
+                        >
+                            {isPlayingMyRecording ? (
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                            ) : (
+                                <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                            )}
+                            我的录音
+                        </button>
+
+                        {/* 分隔 */}
+                        <div className="w-px h-4 bg-red-200 dark:bg-red-800 mx-0.5" />
+
+                        {/* 🔊 播放原音 */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onPlayOriginal && onPlayOriginal(index); }}
+                            className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-xs"
+                            title="播放原音"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
+                            原音
+                        </button>
+
+                        <div className="flex-1" />
+
+                        {/* 🔄 重录 */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onRecordClick && onRecordClick(index); }}
+                            className="p-1 rounded-md text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                            title="重新录音"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        </button>
+
+                        {/* 🗑️ 删除录音 */}
+                        <button
+                            onClick={(e) => { e.stopPropagation(); onDeleteRecording && onDeleteRecording(index); }}
+                            className="p-1 rounded-md text-gray-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
+                            title="删除录音"
+                        >
+                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                        </button>
+                    </div>
+                )}
             </div>
         </div>
     );
 });
 
 export default SubtitleItem;
-

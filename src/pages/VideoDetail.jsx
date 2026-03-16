@@ -2,6 +2,7 @@
 import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
 import { videoAPI, vocabOccurrencesAPI, notesAPI } from '../services/api';
+import { recordingStorage } from '../utils/recordingStorage';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
@@ -388,6 +389,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     // PC端键盘快捷键 - 播放器激活状态
     const [playerActive, setPlayerActive] = useState(false);
 
+    // 录音状态
+    const [recordingIndices, setRecordingIndices] = useState(new Set()); // 已有录音的字幕索引
+    const [activeRecordingIndex, setActiveRecordingIndex] = useState(null); // 正在录音的字幕索引
+    const mediaRecorderRef = useRef(null);
+    const recordingChunksRef = useRef([]);
+    const mediaStreamRef = useRef(null);
+    const playOriginalTimeoutRef = useRef(null);
+
     // 词汇关联期数状态
     const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
 
@@ -618,6 +627,25 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         };
         loadVocabFavorites();
     }, [user, videoData?.id, isDemo]);
+
+    // 加载录音索引
+    useEffect(() => {
+        if (!videoData) return;
+        recordingStorage.getIndicesForVideo(videoData.id)
+            .then(indices => setRecordingIndices(new Set(indices)))
+            .catch(err => console.error('Failed to load recording indices:', err));
+    }, [videoData?.id]);
+
+    // 录音清理（组件卸载时停止麦克风）
+    useEffect(() => {
+        return () => {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            }
+            mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+            if (playOriginalTimeoutRef.current) clearTimeout(playOriginalTimeoutRef.current);
+        };
+    }, []);
 
     // 加载笔记
     useEffect(() => {
@@ -1445,6 +1473,89 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // PC绔細杩斿洖鎾斁
 
+
+    // 录音：开始/停止
+    const handleRecordClick = useCallback(async (index) => {
+        // 如果当前正在录音这条字幕，则停止
+        if (activeRecordingIndex === index) {
+            if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+                mediaRecorderRef.current.stop();
+            }
+            return;
+        }
+        // 如果正在录音其他字幕，先停止
+        if (activeRecordingIndex !== null && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            mediaRecorderRef.current.stop();
+        }
+        // 请求麦克风权限并开始录音
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaStreamRef.current = stream;
+            const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+                ? 'audio/webm;codecs=opus'
+                : MediaRecorder.isTypeSupported('audio/webm')
+                ? 'audio/webm'
+                : '';
+            const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+            mediaRecorderRef.current = recorder;
+            recordingChunksRef.current = [];
+            recorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordingChunksRef.current.push(e.data);
+            };
+            recorder.onstop = async () => {
+                const chunks = recordingChunksRef.current;
+                if (chunks.length > 0 && videoData) {
+                    const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+                    await recordingStorage.save(videoData.id, index, blob);
+                    setRecordingIndices(prev => new Set([...prev, index]));
+                }
+                mediaStreamRef.current?.getTracks().forEach(t => t.stop());
+                mediaStreamRef.current = null;
+                setActiveRecordingIndex(null);
+            };
+            setActiveRecordingIndex(index);
+            recorder.start();
+        } catch (err) {
+            if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
+                alert('请允许麦克风权限以使用录音功能');
+            } else {
+                console.error('Recording error:', err);
+                alert('录音失败，请检查麦克风设备');
+            }
+        }
+    }, [activeRecordingIndex, videoData]);
+
+    // 录音：播放原音片段
+    const handlePlayOriginal = useCallback((index) => {
+        if (playOriginalTimeoutRef.current) clearTimeout(playOriginalTimeoutRef.current);
+        const transcript = videoData?.transcript;
+        if (!transcript || !playerRef.current) return;
+        const item = transcript[index];
+        if (!item) return;
+        const startTime = item.start;
+        const endTime = item.end ?? (transcript[index + 1]?.start ?? startTime + 5);
+        const duration = Math.max(0.5, endTime - startTime);
+        playerRef.current.currentTime = startTime;
+        playerRef.current.play();
+        setIsPlaying(true);
+        playOriginalTimeoutRef.current = setTimeout(() => {
+            if (playerRef.current && playerRef.current.currentTime >= endTime - 0.3) {
+                playerRef.current.pause();
+                setIsPlaying(false);
+            }
+        }, duration * 1000 + 300);
+    }, [videoData]);
+
+    // 录音：删除
+    const handleDeleteRecording = useCallback(async (index) => {
+        if (!videoData) return;
+        try {
+            await recordingStorage.delete(videoData.id, index);
+            setRecordingIndices(prev => { const next = new Set(prev); next.delete(index); return next; });
+        } catch (err) {
+            console.error('Failed to delete recording:', err);
+        }
+    }, [videoData]);
 
     // 笔记：打开编辑器
     const handleNoteClick = useCallback((index) => {
@@ -2825,6 +2936,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 setNotebookDialogItem({ itemType: 'sentence', itemId: sentenceId, videoId: Number(videoData.id) });
                                                 setNotebookDialogOpen(true);
                                             } : null}
+                                            hasRecording={recordingIndices.has(index)}
+                                            isRecording={activeRecordingIndex === index}
+                                            onRecordClick={handleRecordClick}
+                                            onPlayOriginal={handlePlayOriginal}
+                                            onDeleteRecording={handleDeleteRecording}
                                         />
                                     </div>
                                 );
@@ -3563,11 +3679,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             {/* 输入框 */}
                             <div className="px-4 pt-3 pb-2">
                                 <textarea
-                                    className="w-full min-h-[120px] text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 resize-none outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                                    className="w-full min-h-[120px] text-base text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 resize-none outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
                                     placeholder="写下你的笔记..."
                                     value={noteEditor.content}
                                     onChange={e => setNoteEditor(prev => ({ ...prev, content: e.target.value }))}
-                                    autoFocus
                                 />
                             </div>
                             {/* 按钮 */}
