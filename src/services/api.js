@@ -197,6 +197,18 @@ export const activateAPI = {
     },
 };
 
+// 字幕笔记 API
+export const notesAPI = {
+    getAll: (videoId) => request(`/api/notes/${videoId}`),
+    save: (video_id, subtitle_index, content) =>
+        request('/api/notes', {
+            method: 'POST',
+            body: JSON.stringify({ video_id, subtitle_index, content }),
+        }),
+    delete: (videoId, subtitleIndex) =>
+        request(`/api/notes/${videoId}/${subtitleIndex}`, { method: 'DELETE' }),
+};
+
 // 绠＄悊鍛?API
 export const adminAPI = {
     generateLink: async (phone, adminPassword) => {

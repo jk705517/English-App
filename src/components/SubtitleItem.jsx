@@ -27,6 +27,9 @@ const SubtitleItem = memo(({
     isAbPointB = false,
     loopCountdown = null,
     subtitleFontSize = 16,
+    // 笔记相关 props
+    note = null,
+    onNoteClick,
 }) => {
     // Helper: generate stable ID for sentence
     // Uses existing id if available, otherwise creates fallback from videoId-index
@@ -47,6 +50,11 @@ const SubtitleItem = memo(({
         }
     };
 
+    const handleNoteClick = (e) => {
+        e.stopPropagation();
+        if (onNoteClick) onNoteClick(index);
+    };
+
     return (
         <div
             onClick={() => {
@@ -57,7 +65,7 @@ const SubtitleItem = memo(({
                 onSeek(item.start);
             }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-12 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`relative pl-10 pr-16 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
                 isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
                 isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
@@ -73,6 +81,22 @@ const SubtitleItem = memo(({
                 <span className="absolute right-10 top-1/2 -translate-y-1/2 text-4xl font-bold text-violet-600 bg-violet-100 px-3 py-1 rounded-2xl tabular-nums z-10 shadow-sm">
                     {loopCountdown}s
                 </span>
+            )}
+
+            {/* 笔记按钮（右侧，收藏左边）- 挖空模式不显示 */}
+            {mode !== 'cloze' && onNoteClick && (
+                <button
+                    onClick={handleNoteClick}
+                    className={`absolute right-8 top-3 p-1 rounded-full transition-colors ${note
+                        ? 'text-violet-500 hover:bg-violet-100'
+                        : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                        }`}
+                    title={note ? "编辑笔记" : "添加笔记"}
+                >
+                    <svg className="w-4 h-4" fill={note ? "currentColor" : "none"} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                    </svg>
+                </button>
             )}
 
             {/* 收藏按钮（右侧）- 挖空模式不显示 */}
@@ -118,6 +142,13 @@ const SubtitleItem = memo(({
                 >
                     {item.cn}
                 </div>
+
+                {/* 笔记内容（字幕下方小字显示） */}
+                {note && (
+                    <div className="mt-1.5 pl-2 border-l-2 border-violet-300 dark:border-violet-600">
+                        <p className="text-xs leading-relaxed text-violet-600 dark:text-violet-400">{note}</p>
+                    </div>
+                )}
             </div>
         </div>
     );

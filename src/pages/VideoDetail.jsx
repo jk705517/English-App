@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
-import { videoAPI, vocabOccurrencesAPI } from '../services/api';
+import { videoAPI, vocabOccurrencesAPI, notesAPI } from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
 import { favoritesService } from '../services/favoritesService';
@@ -365,6 +365,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const [notebookDialogOpen, setNotebookDialogOpen] = useState(false);
     const [notebookDialogItem, setNotebookDialogItem] = useState(null); // { itemType, itemId, videoId }
 
+    // 笔记状态
+    const [notes, setNotes] = useState({}); // { subtitle_index: content }
+    const [noteEditor, setNoteEditor] = useState(null); // null | { index, content }
+    const [noteSaving, setNoteSaving] = useState(false);
+
     // 打印/下载弹窗状态
     const [showPrintDialog, setShowPrintDialog] = useState(false);
     // PC端设置面板
@@ -613,6 +618,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         };
         loadVocabFavorites();
     }, [user, videoData?.id, isDemo]);
+
+    // 加载笔记
+    useEffect(() => {
+        if (!videoData || !user || isDemo) return;
+        const loadNotes = async () => {
+            try {
+                const data = await notesAPI.getAll(videoData.id);
+                const map = {};
+                data.forEach(n => { map[n.subtitle_index] = n.content; });
+                setNotes(map);
+            } catch (err) {
+                console.error('Failed to load notes:', err);
+            }
+        };
+        loadNotes();
+    }, [user?.id, videoData?.id, isDemo]);
 
     // 加载所有词汇的出现记录
     const loadAllVocabOccurrences = async (vocabList, currentVideoId) => {
@@ -1424,6 +1445,48 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
     // PC绔細杩斿洖鎾斁
 
+
+    // 笔记：打开编辑器
+    const handleNoteClick = useCallback((index) => {
+        if (!user) {
+            alert('请先登录才能使用笔记功能');
+            return;
+        }
+        setNoteEditor({ index, content: notes[index] || '' });
+    }, [user, notes]);
+
+    // 笔记：保存
+    const handleNoteSave = async () => {
+        if (!noteEditor || !videoData) return;
+        const { index, content } = noteEditor;
+        if (!content.trim()) return;
+        setNoteSaving(true);
+        try {
+            await notesAPI.save(videoData.id, index, content.trim());
+            setNotes(prev => ({ ...prev, [index]: content.trim() }));
+            setNoteEditor(null);
+        } catch (err) {
+            console.error('Failed to save note:', err);
+        } finally {
+            setNoteSaving(false);
+        }
+    };
+
+    // 笔记：删除
+    const handleNoteDelete = async () => {
+        if (!noteEditor || !videoData) return;
+        const { index } = noteEditor;
+        setNoteSaving(true);
+        try {
+            await notesAPI.delete(videoData.id, index);
+            setNotes(prev => { const next = { ...prev }; delete next[index]; return next; });
+            setNoteEditor(null);
+        } catch (err) {
+            console.error('Failed to delete note:', err);
+        } finally {
+            setNoteSaving(false);
+        }
+    };
 
     // 手机端：上一句 / 下一句
     const handleMobilePrevSentence = (e) => {
@@ -2755,6 +2818,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             isAbPointA={index === abIndexA}
                                             isAbPointB={index === abIndexB}
                                             loopCountdown={isActive ? loopCountdown : null}
+                                            note={!isDemo ? (notes[index] || null) : null}
+                                            onNoteClick={!isDemo ? handleNoteClick : null}
                                         />
                                     </div>
                                 );
@@ -3465,6 +3530,121 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             完成
                         </button>
                     </div>
+                </>
+            )}
+            {/* 笔记编辑面板 */}
+            {noteEditor !== null && (
+                <>
+                    {/* 背景遮罩 */}
+                    <div className="fixed inset-0 bg-black/50 z-[200]" onClick={() => setNoteEditor(null)} />
+
+                    {isMobile ? (
+                        /* 手机端：底部弹出面板 */
+                        <div className="fixed bottom-0 left-0 right-0 z-[201] bg-white dark:bg-gray-800 rounded-t-2xl">
+                            <div className="flex justify-center pt-3 pb-1 cursor-pointer" onClick={() => setNoteEditor(null)}>
+                                <div className="w-12 h-1 bg-gray-300 dark:bg-gray-600 rounded-full" />
+                            </div>
+                            {/* 字幕预览 */}
+                            {videoData?.transcript?.[noteEditor.index] && (
+                                <div className="px-4 pt-2 pb-3 border-b border-gray-100 dark:border-gray-700">
+                                    <p className="text-sm text-gray-800 dark:text-gray-100 leading-relaxed">
+                                        {videoData.transcript[noteEditor.index].text}
+                                    </p>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                                        {videoData.transcript[noteEditor.index].cn}
+                                    </p>
+                                </div>
+                            )}
+                            {/* 输入框 */}
+                            <div className="px-4 pt-3 pb-2">
+                                <textarea
+                                    className="w-full min-h-[120px] text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 resize-none outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                                    placeholder="写下你的笔记..."
+                                    value={noteEditor.content}
+                                    onChange={e => setNoteEditor(prev => ({ ...prev, content: e.target.value }))}
+                                    autoFocus
+                                />
+                            </div>
+                            {/* 按钮 */}
+                            <div className="flex gap-2 px-4 pb-8 pt-1">
+                                {notes[noteEditor.index] && (
+                                    <button
+                                        onClick={handleNoteDelete}
+                                        disabled={noteSaving}
+                                        className="px-4 py-2.5 bg-red-50 text-red-600 rounded-xl text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+                                    >删除</button>
+                                )}
+                                <button
+                                    onClick={() => setNoteEditor(null)}
+                                    className="flex-1 py-2.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-xl text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                                >取消</button>
+                                <button
+                                    onClick={handleNoteSave}
+                                    disabled={noteSaving || !noteEditor.content.trim()}
+                                    className="flex-1 py-2.5 bg-violet-500 text-white rounded-xl text-sm font-medium hover:bg-violet-600 transition-colors disabled:opacity-50"
+                                >保存</button>
+                            </div>
+                        </div>
+                    ) : (
+                        /* PC端：居中弹窗 */
+                        <div className="fixed inset-0 z-[201] flex items-center justify-center p-4" onClick={() => setNoteEditor(null)}>
+                            <div className="bg-white dark:bg-gray-800 rounded-2xl w-full max-w-lg shadow-2xl" onClick={e => e.stopPropagation()}>
+                                {/* 标题栏 */}
+                                <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 dark:border-gray-700">
+                                    <h3 className="font-semibold text-gray-800 dark:text-gray-100">字幕笔记</h3>
+                                    <button
+                                        onClick={() => setNoteEditor(null)}
+                                        className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                                    >
+                                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                        </svg>
+                                    </button>
+                                </div>
+                                {/* 字幕预览 */}
+                                {videoData?.transcript?.[noteEditor.index] && (
+                                    <div className="px-6 py-3 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700">
+                                        <p className="text-sm text-gray-700 dark:text-gray-200 leading-relaxed">
+                                            {videoData.transcript[noteEditor.index].text}
+                                        </p>
+                                        <p className="text-xs text-gray-400 dark:text-gray-400 mt-1">
+                                            {videoData.transcript[noteEditor.index].cn}
+                                        </p>
+                                    </div>
+                                )}
+                                {/* 输入框 */}
+                                <div className="px-6 py-4">
+                                    <textarea
+                                        className="w-full min-h-[120px] text-sm text-gray-800 dark:text-gray-100 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-xl p-3 resize-none outline-none focus:ring-2 focus:ring-violet-400 dark:focus:ring-violet-500"
+                                        placeholder="写下你的笔记..."
+                                        value={noteEditor.content}
+                                        onChange={e => setNoteEditor(prev => ({ ...prev, content: e.target.value }))}
+                                        autoFocus
+                                    />
+                                </div>
+                                {/* 底部按钮 */}
+                                <div className="flex items-center gap-2 px-6 pb-5">
+                                    {notes[noteEditor.index] && (
+                                        <button
+                                            onClick={handleNoteDelete}
+                                            disabled={noteSaving}
+                                            className="px-4 py-2 bg-red-50 text-red-600 rounded-lg text-sm font-medium hover:bg-red-100 transition-colors disabled:opacity-50"
+                                        >删除</button>
+                                    )}
+                                    <div className="flex-1" />
+                                    <button
+                                        onClick={() => setNoteEditor(null)}
+                                        className="px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg text-sm transition-colors"
+                                    >取消</button>
+                                    <button
+                                        onClick={handleNoteSave}
+                                        disabled={noteSaving || !noteEditor.content.trim()}
+                                        className="px-4 py-2 bg-violet-500 text-white rounded-lg text-sm font-medium hover:bg-violet-600 transition-colors disabled:opacity-50"
+                                    >保存</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
                 </>
             )}
         </div >
