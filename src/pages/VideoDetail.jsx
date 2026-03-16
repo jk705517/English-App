@@ -1963,9 +1963,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
                             {/* 视频覆盖按钮（PC和手机端统一：暂停/结束时显示，播放时隐藏） */}
                             <div className={`absolute inset-0 z-10 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-                                {/* 左上角：上一期/下一期（横排） */}
-                                {!isDemo && (
-                                    <div className="absolute left-2 top-2 flex flex-row gap-1.5">
+                                {/* 左上角：首页/上一期/下一期（横排） */}
+                                <div className="absolute left-2 top-2 flex flex-row gap-1.5">
+                                    {/* 首页 */}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); navigate('/'); }}
+                                        className="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                        title="首页"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+                                        </svg>
+                                    </button>
+                                    {!isDemo && (
+                                        <>
                                         {prevVideo && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/episode/${prevVideo.episode}`); }}
@@ -1988,8 +1999,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                                 </svg>
                                             </button>
                                         )}
-                                    </div>
-                                )}
+                                        </>
+                                    )}
+                                </div>
                                 {/* 右上角：收藏★、已学✓、更多…（横排） */}
                                 <div className="absolute right-2 top-2 flex flex-row gap-1.5">
                                     <button
