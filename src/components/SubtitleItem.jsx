@@ -30,6 +30,8 @@ const SubtitleItem = memo(({
     // 笔记相关 props
     note = null,
     onNoteClick,
+    // 本子相关 props
+    onAddToNotebook,
 }) => {
     // Helper: generate stable ID for sentence
     // Uses existing id if available, otherwise creates fallback from videoId-index
@@ -65,7 +67,7 @@ const SubtitleItem = memo(({
                 onSeek(item.start);
             }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-16 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`relative pl-10 pr-20 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
                 isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
                 isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
@@ -83,11 +85,11 @@ const SubtitleItem = memo(({
                 </span>
             )}
 
-            {/* 笔记按钮（右侧，收藏左边）- 挖空模式不显示 */}
+            {/* 笔记按钮（右侧第三，最左）- 挖空模式不显示 */}
             {mode !== 'cloze' && onNoteClick && (
                 <button
                     onClick={handleNoteClick}
-                    className={`absolute right-8 top-3 p-1 rounded-full transition-colors ${note
+                    className={`absolute right-14 top-3 p-1 rounded-full transition-colors ${note
                         ? 'text-violet-500 hover:bg-violet-100'
                         : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                         }`}
@@ -99,11 +101,11 @@ const SubtitleItem = memo(({
                 </button>
             )}
 
-            {/* 收藏按钮（右侧）- 挖空模式不显示 */}
+            {/* 收藏按钮（右侧第二）- 挖空模式不显示 */}
             {mode !== 'cloze' && onToggleFavorite && (
                 <button
                     onClick={handleFavoriteClick}
-                    className={`absolute right-2 top-3 p-1 rounded-full transition-colors ${isFavorite
+                    className={`absolute right-8 top-3 p-1 rounded-full transition-colors ${isFavorite
                         ? 'text-yellow-500 hover:bg-yellow-100'
                         : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
                         }`}
@@ -111,6 +113,19 @@ const SubtitleItem = memo(({
                 >
                     <svg className="w-4 h-4" fill={isFavorite ? "currentColor" : "none"} stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+                    </svg>
+                </button>
+            )}
+
+            {/* 本子按钮（右侧第一，最右）- 挖空模式不显示 */}
+            {mode !== 'cloze' && onAddToNotebook && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onAddToNotebook(getSentenceId()); }}
+                    className="absolute right-2 top-3 p-1 rounded-full transition-colors text-gray-300 hover:text-violet-500 hover:bg-violet-50"
+                    title="加入本子"
+                >
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
                 </button>
             )}

@@ -2820,6 +2820,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             loopCountdown={isActive ? loopCountdown : null}
                                             note={!isDemo ? (notes[index] || null) : null}
                                             onNoteClick={!isDemo ? handleNoteClick : null}
+                                            onAddToNotebook={!isDemo ? (sentenceId) => {
+                                                if (!user) { alert('登录后才能使用本子功能'); return; }
+                                                setNotebookDialogItem({ itemType: 'sentence', itemId: sentenceId, videoId: Number(videoData.id) });
+                                                setNotebookDialogOpen(true);
+                                            } : null}
                                         />
                                     </div>
                                 );
