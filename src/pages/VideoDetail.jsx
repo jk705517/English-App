@@ -1631,6 +1631,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 playerRef.current.currentTime = 0;
                 playerRef.current.play();
             }
+        } else {
+            // 非循环：视频结束，显示覆盖按钮
+            setIsPlaying(false);
+            setShowControls(true);
         }
     };
 
@@ -1783,11 +1787,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 </div>
                             )}
 
-                            {/* 手机端视频覆盖按钮（始终可见） */}
-                            <div className="md:hidden absolute inset-0 z-10 pointer-events-none">
+                            {/* 视频覆盖按钮（PC和手机端统一：暂停/结束时显示，播放时隐藏） */}
+                            <div className={`absolute inset-0 z-10 transition-opacity duration-300 ${showControls ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
                                 {/* 左上角：上一期/下一期（横排） */}
                                 {!isDemo && (
-                                    <div className="absolute left-2 top-2 flex flex-row gap-1.5 pointer-events-auto">
+                                    <div className="absolute left-2 top-2 flex flex-row gap-1.5">
                                         {prevVideo && (
                                             <button
                                                 onClick={(e) => { e.stopPropagation(); navigate(`/episode/${prevVideo.episode}`); }}
@@ -1813,7 +1817,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     </div>
                                 )}
                                 {/* 右上角：收藏★、已学✓、更多…（横排） */}
-                                <div className="absolute right-2 top-2 flex flex-row gap-1.5 pointer-events-auto">
+                                <div className="absolute right-2 top-2 flex flex-row gap-1.5">
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleToggleFavorite(); }}
                                         className={`w-9 h-9 rounded-full bg-black/50 flex items-center justify-center transition-colors hover:bg-black/70 ${isFavorite ? 'text-yellow-400' : 'text-white'}`}
