@@ -213,13 +213,18 @@ const ShadowPanel = React.memo(({
             setIsPlayingMyRec(false);
             return;
         }
-        const blob = await recordingStorage.get(videoId, activeIndex);
-        if (!blob) return;
-        if (audioUrl) URL.revokeObjectURL(audioUrl);
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-        setIsPlayingMyRec(true);
-        setTimeout(() => { if (myAudioRef.current) myAudioRef.current.play().catch(() => {}); }, 0);
+        let url = audioUrl;
+        if (!url) {
+            const blob = await recordingStorage.get(videoId, activeIndex);
+            if (!blob) return;
+            url = URL.createObjectURL(blob);
+            setAudioUrl(url);
+        }
+        const audio = new Audio(url);
+        myAudioRef.current = audio;
+        audio.onended = () => setIsPlayingMyRec(false);
+        audio.onpause = () => setIsPlayingMyRec(false);
+        audio.play().then(() => setIsPlayingMyRec(true)).catch(() => {});
     };
 
     if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
@@ -343,14 +348,6 @@ const ShadowPanel = React.memo(({
                     >
                         🗑️ 删除
                     </button>
-                    {audioUrl && (
-                        <audio
-                            ref={myAudioRef}
-                            src={audioUrl}
-                            onEnded={() => setIsPlayingMyRec(false)}
-                            className="hidden"
-                        />
-                    )}
                 </div>
             )}
             <p className="text-center text-xs text-gray-400 dark:text-gray-500 pb-3 shrink-0">点击英文/中文可切换模糊隐藏</p>
