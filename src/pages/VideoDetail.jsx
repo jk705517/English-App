@@ -197,6 +197,8 @@ const ShadowPanel = React.memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    showNavButtons = false,
+    onNextSentence,
 }) => {
     const [isPlayingMyRec, setIsPlayingMyRec] = useState(false);
     const [audioUrl, setAudioUrl] = useState(null);
@@ -347,6 +349,29 @@ const ShadowPanel = React.memo(({
                         className="text-xs text-gray-400 dark:text-gray-500 hover:text-red-500"
                     >
                         🗑️ 删除
+                    </button>
+                </div>
+            )}
+            {/* 手机端跟读操作按钮 */}
+            {showNavButtons && (
+                <div className="shrink-0 flex items-center justify-center gap-3 px-4 pb-3">
+                    <button
+                        onClick={() => onPlayOriginal && onPlayOriginal(activeIndex)}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
+                    >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                        </svg>
+                        重播
+                    </button>
+                    <button
+                        onClick={onNextSentence}
+                        className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-violet-500 text-white text-sm font-medium active:bg-violet-600 transition-colors"
+                    >
+                        下一句
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                        </svg>
                     </button>
                 </div>
             )}
@@ -1063,6 +1088,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         if ((isSentencePauseEnabled || mode === 'shadow') && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
+            // 手机端跟读模式：暂停后停留在当前句，不跳到下一句
+            const isMobileShadow = isMobile && mode === 'shadow';
 
             // 与单句循环相同的检测条件：下一句开始前 0.3 秒
             if (nextSub &&
@@ -1073,10 +1100,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
 
                 if (playerRef.current) {
                     playerRef.current.pause();
-                    playerRef.current.currentTime = nextSub.start;
+                    // 手机端跟读：不跳到下一句开头，停留在当前句
+                    if (!isMobileShadow) {
+                        playerRef.current.currentTime = nextSub.start;
+                    }
                 }
                 setIsPlaying(false);
-                setActiveIndex(activeIndex + 1);
+                // 手机端跟读：不更新 activeIndex，让用户手动点下一句
+                if (!isMobileShadow) {
+                    setActiveIndex(activeIndex + 1);
+                }
                 return;
             }
 
@@ -1646,6 +1679,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
         }, duration * 1000 + 300);
     }, [videoData]);
+
+    // 手机端跟读：手动跳到下一句并播放
+    const handleShadowNextSentence = useCallback(() => {
+        if (!videoData?.transcript) return;
+        const nextIndex = activeIndex + 1;
+        if (nextIndex >= videoData.transcript.length) return;
+        const nextSub = videoData.transcript[nextIndex];
+        setActiveIndex(nextIndex);
+        if (playerRef.current) {
+            playerRef.current.currentTime = nextSub.start;
+            playerRef.current.play();
+        }
+        setIsPlaying(true);
+    }, [videoData, activeIndex]);
 
     // 录音：删除
     const handleDeleteRecording = useCallback(async (index) => {
@@ -2819,6 +2866,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
+                                            showNavButtons={true}
+                                            onNextSentence={handleShadowNextSentence}
                                         />
                                     </div>
                                 );
