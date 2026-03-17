@@ -671,6 +671,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     }, [isPlaying]);
 
     // Load learned status
+    // 记录最近访问的视频，供首页"继续学习"使用
+    useEffect(() => {
+        if (videoData?.id) {
+            localStorage.setItem('lastVisitedVideo', JSON.stringify({
+                video_id: videoData.id,
+                episode: videoData.episode,
+                title: videoData.title
+            }));
+        }
+    }, [videoData]);
+
     useEffect(() => {
         if (!videoData?.id) return;
         const loadLearnedStatus = async () => {

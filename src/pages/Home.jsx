@@ -54,6 +54,11 @@ function Home() {
     }, [user]);
 
     useEffect(() => {
+        const lastVisited = JSON.parse(localStorage.getItem('lastVisitedVideo') || 'null');
+        if (lastVisited) {
+            setRecentLearning(lastVisited);
+            return;
+        }
         if (user) {
             progressAPI.getRecentLearning()
                 .then(res => {
