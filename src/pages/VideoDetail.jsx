@@ -747,11 +747,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         };
     }, []);
 
-    // 记录视频访问（更新"最近学习"时间戳）
-    useEffect(() => {
-        if (!videoData || !user || isDemo) return;
-        progressAPI.add(videoData.id, 'video', videoData.id).catch(() => {});
-    }, [videoData?.id, user?.id]);
 
     // 加载笔记
     useEffect(() => {
@@ -2128,10 +2123,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                                         </svg>
                                     </button>
+                                    {/* 手机端：打开底部弹窗 */}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowMobileSettings(true); }}
-                                        className="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                        className="md:hidden w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
                                         title="更多"
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
+                                            <circle cx="5" cy="12" r="2" />
+                                            <circle cx="12" cy="12" r="2" />
+                                            <circle cx="19" cy="12" r="2" />
+                                        </svg>
+                                    </button>
+                                    {/* PC端：打开居中设置面板 */}
+                                    <button
+                                        onClick={(e) => { e.stopPropagation(); setShowDesktopSettings(true); }}
+                                        className="hidden md:flex w-9 h-9 rounded-full bg-black/50 text-white items-center justify-center hover:bg-black/70 transition-colors"
+                                        title="设置"
                                     >
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
                                             <circle cx="5" cy="12" r="2" />

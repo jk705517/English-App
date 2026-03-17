@@ -829,17 +829,12 @@ app.post('/api/user/progress', authMiddleware, async (req, res) => {
     }
 
     // 检查是否已存在
-    const existing = await pool.query(
-      'SELECT id FROM user_progress WHERE user_id = $1 AND video_id = $2 AND item_type = $3 AND item_id = $4',
-      [userId, video_id, item_type, item_id]
-    );
-
-    if (existing.rows.length > 0) {
-      return res.json({ success: true, data: existing.rows[0], message: '进度已存在' });
-    }
-
     const result = await pool.query(
-      'INSERT INTO user_progress (user_id, video_id, item_type, item_id, learned_at) VALUES ($1, $2, $3, $4, NOW()) RETURNING *',
+      `INSERT INTO user_progress (user_id, video_id, item_type, item_id, learned_at)
+       VALUES ($1, $2, $3, $4, NOW())
+       ON CONFLICT (user_id, video_id, item_type, item_id)
+       DO UPDATE SET learned_at = NOW()
+       RETURNING *`,
       [userId, video_id, item_type, item_id]
     );
 
@@ -1404,6 +1399,60 @@ app.get('/api/user/review-logs', authMiddleware, async (req, res) => {
   } catch (error) {
     console.error('获取复习日志失败:', error);
     res.status(500).json({ success: false, error: '获取复习日志失败' });
+  }
+});
+
+// ============ 字幕笔记 API ============
+
+// 获取某个视频的所有笔记
+app.get('/api/notes/:videoId', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { videoId } = req.params;
+    const result = await pool.query(
+      'SELECT subtitle_index, content, updated_at FROM subtitle_notes WHERE user_id = $1 AND video_id = $2 ORDER BY subtitle_index',
+      [userId, videoId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('获取笔记失败:', error);
+    res.status(500).json({ error: '获取笔记失败' });
+  }
+});
+
+// 保存/更新笔记
+app.post('/api/notes', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { video_id, subtitle_index, content } = req.body;
+    const result = await pool.query(
+      `INSERT INTO subtitle_notes (user_id, video_id, subtitle_index, content)
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (user_id, video_id, subtitle_index)
+       DO UPDATE SET content = $4, updated_at = NOW()
+       RETURNING *`,
+      [userId, video_id, subtitle_index, content]
+    );
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('保存笔记失败:', error);
+    res.status(500).json({ error: '保存笔记失败' });
+  }
+});
+
+// 删除笔记
+app.delete('/api/notes/:videoId/:subtitleIndex', authMiddleware, async (req, res) => {
+  try {
+    const userId = req.user.userId;
+    const { videoId, subtitleIndex } = req.params;
+    await pool.query(
+      'DELETE FROM subtitle_notes WHERE user_id = $1 AND video_id = $2 AND subtitle_index = $3',
+      [userId, videoId, subtitleIndex]
+    );
+    res.json({ success: true });
+  } catch (error) {
+    console.error('删除笔记失败:', error);
+    res.status(500).json({ error: '删除笔记失败' });
   }
 });
 

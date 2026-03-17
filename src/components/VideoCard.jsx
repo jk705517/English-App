@@ -31,9 +31,12 @@ function VideoCard({ video, onAuthorClick }) {
                     <Clock className="w-3 h-3" />
                     {video.duration}
                 </div>
+                {/* 已学习遮罩 */}
                 {video.isLearned && (
-                    <div className="absolute top-2 right-2 bg-green-500 text-white text-xs px-2 py-1 rounded font-medium">
-                        已学习
+                    <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.35)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <div style={{ width: 28, height: 28, borderRadius: '50%', background: 'rgba(255,255,255,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#27ae60', fontSize: 16, fontWeight: 'bold' }}>
+                            ✓
+                        </div>
                     </div>
                 )}
             </div>
@@ -43,21 +46,21 @@ function VideoCard({ video, onAuthorClick }) {
                 <h3 className="text-lg font-semibold text-gray-800 dark:text-gray-100 mb-2 line-clamp-2 group-hover:text-violet-500 transition-colors">
                     {video.title}
                 </h3>
-                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400">
-                    <div className="flex items-center gap-1">
-                        <User className="w-4 h-4" />
+                <div className="flex items-center justify-between text-sm text-gray-500 dark:text-gray-400 gap-2">
+                    <div className="flex items-center gap-1 min-w-0 flex-1">
+                        <User className="w-4 h-4 flex-shrink-0" />
                         <span
                             onClick={(e) => {
                                 e.stopPropagation();
                                 e.preventDefault();
                                 onAuthorClick && onAuthorClick(video.author);
                             }}
-                            className="cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 hover:underline transition-colors"
+                            className="cursor-pointer hover:text-purple-600 dark:hover:text-purple-400 hover:underline transition-colors truncate"
                         >
                             {video.author}
                         </span>
                     </div>
-                    <div className="text-yellow-500 tracking-widest text-xs">
+                    <div className="text-yellow-500 tracking-widest text-xs flex-shrink-0">
                         {renderLevel(video.level)}
                     </div>
                 </div>
@@ -70,6 +73,10 @@ function VideoCard({ video, onAuthorClick }) {
                             {video.accent}
                         </span>
                     )}
+                </div>
+                {/* 学习进度条 - 灰色底轨道始终可见 */}
+                <div style={{ height: 3, background: '#e0e0e0', borderRadius: 2, marginTop: 10 }}>
+                    <div style={{ height: '100%', borderRadius: 2, background: '#6B4FBB', width: video.isLearned ? '100%' : '0%', transition: 'width 0.3s' }}></div>
                 </div>
             </div>
         </Link>
