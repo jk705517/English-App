@@ -432,9 +432,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     // 绉诲姩绔細鏆傚仠鍚庢槸鍚﹀凡婊氬姩锛堢敤浜庡欢杩熷垏鎹㈠皬绐楀彛妯″紡锛?
     // hasScrolledAfterPause removed (Task 0B)
     // 妫€娴嬫槸鍚︿负绉诲姩绔?
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth < 1280);
-    // 检测是否为手机端（< 768px，仅手机，用于固定播放器行为）
-    const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.innerWidth < 768);
+    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 1024);
+    // 检测是否为手机/平板端（<= 1024px，用于固定播放器行为）
+    const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 1024);
     // 绉诲姩绔細鏄惁鍦ㄩ〉闈㈤《閮紙鐢ㄤ簬鏍囬鍖烘樉绀烘帶鍒讹級
     const [isAtTop, setIsAtTop] = useState(true);
 
@@ -554,8 +554,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     // 妫€娴嬬Щ鍔ㄧ
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth < 1280);
-            setIsPhone(window.innerWidth < 768);
+            setIsMobile(window.innerWidth <= 1024);
+            setIsPhone(window.innerWidth <= 1024);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
@@ -2184,7 +2184,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     {/* 手机端：打开底部弹窗 */}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowMobileSettings(true); }}
-                                        className="md:hidden w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                        className="xl:hidden w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
                                         title="更多"
                                     >
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -2196,7 +2196,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                     {/* PC端：打开居中设置面板 */}
                                     <button
                                         onClick={(e) => { e.stopPropagation(); setShowDesktopSettings(true); }}
-                                        className="hidden md:flex w-9 h-9 rounded-full bg-black/50 text-white items-center justify-center hover:bg-black/70 transition-colors"
+                                        className="hidden xl:flex w-9 h-9 rounded-full bg-black/50 text-white items-center justify-center hover:bg-black/70 transition-colors"
                                         title="设置"
                                     >
                                         <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
@@ -2212,13 +2212,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                             {showMobileSettings && (
                                 <>
                                     <div
-                                        className="md:hidden fixed inset-0 bg-black/50 z-[100]"
+                                        className="xl:hidden fixed inset-0 bg-black/50 z-[100]"
                                         onClick={(e) => {
                                             e.stopPropagation();
                                             setShowMobileSettings(false);
                                         }}
                                     />
-                                    <div className="md:hidden fixed bottom-0 left-0 right-0 z-[101] bg-gray-900 rounded-t-2xl py-4 px-4 max-h-[70vh] overflow-y-auto">
+                                    <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[101] bg-gray-900 rounded-t-2xl py-4 px-4 max-h-[70vh] overflow-y-auto">
                                         <div className="w-12 h-1 bg-gray-600 rounded-full mx-auto mb-4" />
 
                                         {/* 字幕模式 */}
@@ -3670,7 +3670,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             }
             {/* 手机端底部控制条（替换底部导航栏） */}
             {isMobile && (
-                <div className="md:hidden fixed bottom-0 left-0 right-0 z-[51] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
+                <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[51] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
                     {/* 进度条 */}
                     <div
                         className="relative w-full h-1 bg-gray-200 cursor-pointer"

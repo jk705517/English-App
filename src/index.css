@@ -55,6 +55,11 @@
     user-select: none;
 }
 
+/* 手机端分类标签横向滚动 - 隐藏滚动条 */
+.category-scroll::-webkit-scrollbar {
+    display: none;
+}
+
 /* 页面内容渐入动画 */
 .fade-in {
     animation: fadeIn 0.25s ease-out;
