@@ -2653,13 +2653,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                 <div className="h-8 w-px bg-gray-200" />
                                 {/* 中组：上一句 / ▶播放 / 下一句 */}
                                 <div className="flex items-center gap-5">
-                                    <button onClick={handleMobilePrevSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
+                                    <button onClick={mode === 'dictation' ? handlePrevDictation : handleMobilePrevSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
                                         <span className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
                                         </span>
                                         <span className="text-xs leading-none">上一句</span>
                                     </button>
-                                    <button onClick={handleTogglePlay} className="flex flex-col items-center gap-0.5">
+                                    <button onClick={mode === 'dictation' ? handleReplayDictation : handleTogglePlay} className="flex flex-col items-center gap-0.5">
                                         <span className="w-11 h-11 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
                                             {isPlaying ? (
                                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
@@ -2669,7 +2669,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                         </span>
                                         <span className="text-xs leading-none text-gray-600">{isPlaying ? '暂停' : '播放'}</span>
                                     </button>
-                                    <button onClick={handleMobileNextSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
+                                    <button onClick={mode === 'dictation' ? handleNextDictation : handleMobileNextSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
                                         <span className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
                                         </span>
@@ -2757,8 +2757,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                     )}
                 </div>
 
-                {/* PC端跟读面板 — 播放器控制条正下方，始终显示 */}
-                {!isMobile && (() => {
+                {/* PC端跟读面板 — 播放器控制条正下方，听写模式隐藏字幕 */}
+                {!isMobile && mode === 'dictation' && (
+                    <div className="flex-1 flex items-center justify-center px-4 py-6 text-sm text-gray-400">
+                        听写模式下字幕已隐藏
+                    </div>
+                )}
+                {!isMobile && mode !== 'dictation' && (() => {
                     const shadowSub = videoData.transcript?.[activeIndex] || videoData.transcript?.[0];
                     const shadowSentenceId = shadowSub?.id !== undefined && shadowSub?.id !== null
                         ? shadowSub.id
@@ -2882,7 +2887,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                                             ? Math.round(((dictationStats.firstTry + dictationStats.corrected) / (dictationStats.firstTry + dictationStats.corrected + dictationStats.skipped)) * 100)
                                             : 0}%
                                     </div>
-                                    <div className="text-xs text-gray-600">完成率</div>
+                                    <div className="text-xs text-gray-600">正确率</div>
                                 </div>
                             </div>
                         </div>
@@ -3829,70 +3834,118 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                     </div>
                     {/* 控制按钮 */}
                     <div className="flex items-center px-2 py-1.5">
-                        {/* 左组：倍速 / 隐藏 */}
-                        <div className="flex items-center gap-1 w-20">
-                            <button
-                                onClick={() => setShowMobileSpeedPanel(true)}
-                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${playbackRate !== 1 ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
-                            >
-                                <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
-                                <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
-                            </button>
-                            <button
-                                onClick={() => setIsVideoHidden(v => !v)}
-                                className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${isVideoHidden ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
-                            >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
-                                <span className="text-[10px] leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
-                            </button>
-                        </div>
-                        {/* 中组：上一句 / ▶播放 / 下一句 */}
-                        <div className="flex-1 flex items-center justify-center gap-5">
-                            <button onClick={mode === 'dictation' ? handlePrevDictation : handleMobilePrevSentence} className="flex flex-col items-center gap-0.5">
-                                <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
-                                </span>
-                                <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">上一句</span>
-                            </button>
-                            <button onClick={mode === 'dictation' ? handleReplayDictation : handleTogglePlay}>
-                                <span className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
-                                    {isPlaying ? (
-                                        <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
-                                    ) : (
-                                        <svg className="w-5 h-5 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-                                    )}
-                                </span>
-                            </button>
-                            <button
-                                onClick={mode === 'dictation' ? () => { setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 })); handleNextDictation(); } : handleMobileNextSentence}
-                                className="flex flex-col items-center gap-0.5"
-                            >
-                                <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
-                                </span>
-                                <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">下一句</span>
-                            </button>
-                        </div>
-                        {/* 右组：A/B点 / 精听（听写模式隐藏） */}
-                        {mode !== 'dictation' ? (
-                            <div className="flex items-center gap-1 w-20 justify-end">
-                                <button
-                                    onClick={handleAbClick}
-                                    className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${abMode === 0 ? 'text-gray-600' : abMode === 1 ? 'text-yellow-500' : 'text-green-500'}`}
-                                >
-                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
-                                    <span className="text-[10px] leading-none font-medium">{abMode === 0 ? 'A/B点' : abMode === 1 ? 'A●' : 'A↔B'}</span>
-                                </button>
-                                <button
-                                    onClick={() => setShowJingTingPanel(true)}
-                                    className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${(isSentenceLooping || isSentencePauseEnabled) ? 'text-violet-500' : 'text-gray-600'}`}
-                                >
-                                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd"/></svg>
-                                    <span className="text-[10px] leading-none">精听</span>
-                                </button>
-                            </div>
+                        {mode === 'dictation' ? (
+                            /* 听写模式：对称三栏，播放按钮居中 */
+                            <>
+                                {/* 左：倍速 */}
+                                <div className="w-16 flex justify-center">
+                                    <button
+                                        onClick={() => setShowMobileSpeedPanel(true)}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${playbackRate !== 1 ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+                                        <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
+                                    </button>
+                                </div>
+                                {/* 中：上一句 / 播放 / 下一句 */}
+                                <div className="flex-1 flex items-center justify-center gap-5">
+                                    <button onClick={handlePrevDictation} className="flex flex-col items-center gap-0.5">
+                                        <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">上一句</span>
+                                    </button>
+                                    <button onClick={handleReplayDictation}>
+                                        <span className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
+                                            {isPlaying ? (
+                                                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                                            ) : (
+                                                <svg className="w-5 h-5 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                            )}
+                                        </span>
+                                    </button>
+                                    <button
+                                        onClick={() => { setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 })); handleNextDictation(); }}
+                                        className="flex flex-col items-center gap-0.5"
+                                    >
+                                        <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">下一句</span>
+                                    </button>
+                                </div>
+                                {/* 右：隐藏 */}
+                                <div className="w-16 flex justify-center">
+                                    <button
+                                        onClick={() => setIsVideoHidden(v => !v)}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${isVideoHidden ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
+                                        <span className="text-[10px] leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
+                                    </button>
+                                </div>
+                            </>
                         ) : (
-                            <div className="w-20" />
+                            <>
+                                {/* 左组：倍速 / 隐藏 */}
+                                <div className="flex items-center gap-1 w-20">
+                                    <button
+                                        onClick={() => setShowMobileSpeedPanel(true)}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${playbackRate !== 1 ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M20.38 8.57l-1.23 1.85a8 8 0 0 1-.22 7.58H5.07A8 8 0 0 1 15.58 6.85l1.85-1.23A10 10 0 0 0 3.35 19a2 2 0 0 0 1.72 1h13.85a2 2 0 0 0 1.74-1 10 10 0 0 0-.27-10.44zm-9.79 6.84a2 2 0 0 0 2.83 0l5.66-8.49-8.49 5.66a2 2 0 0 0 0 2.83z"/></svg>
+                                        <span className="text-[10px] leading-none">{playbackRate === 1 ? '倍速' : `${playbackRate}x`}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setIsVideoHidden(v => !v)}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${isVideoHidden ? 'text-violet-500' : 'text-gray-600 dark:text-gray-400'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
+                                        <span className="text-[10px] leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
+                                    </button>
+                                </div>
+                                {/* 中组：上一句 / ▶播放 / 下一句 */}
+                                <div className="flex-1 flex items-center justify-center gap-5">
+                                    <button onClick={handleMobilePrevSentence} className="flex flex-col items-center gap-0.5">
+                                        <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">上一句</span>
+                                    </button>
+                                    <button onClick={handleTogglePlay}>
+                                        <span className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
+                                            {isPlaying ? (
+                                                <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
+                                            ) : (
+                                                <svg className="w-5 h-5 ml-0.5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                            )}
+                                        </span>
+                                    </button>
+                                    <button onClick={handleMobileNextSentence} className="flex flex-col items-center gap-0.5">
+                                        <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 5l7 7-7 7M5 5l7 7-7 7"/></svg>
+                                        </span>
+                                        <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">下一句</span>
+                                    </button>
+                                </div>
+                                {/* 右组：A/B点 / 精听 */}
+                                <div className="flex items-center gap-1 w-20 justify-end">
+                                    <button
+                                        onClick={handleAbClick}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${abMode === 0 ? 'text-gray-600' : abMode === 1 ? 'text-yellow-500' : 'text-green-500'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                                        <span className="text-[10px] leading-none font-medium">{abMode === 0 ? 'A/B点' : abMode === 1 ? 'A●' : 'A↔B'}</span>
+                                    </button>
+                                    <button
+                                        onClick={() => setShowJingTingPanel(true)}
+                                        className={`flex flex-col items-center gap-0.5 px-1.5 py-0.5 rounded-lg min-w-[40px] transition-colors ${(isSentenceLooping || isSentencePauseEnabled) ? 'text-violet-500' : 'text-gray-600'}`}
+                                    >
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M9.383 3.076A1 1 0 0110 4v12a1 1 0 01-1.707.707L4.586 13H2a1 1 0 01-1-1V8a1 1 0 011-1h2.586l3.707-3.707a1 1 0 011.09-.217zM14.657 2.929a1 1 0 011.414 0A9.972 9.972 0 0119 10a9.972 9.972 0 01-2.929 7.071 1 1 0 01-1.414-1.414A7.971 7.971 0 0017 10c0-2.21-.894-4.208-2.343-5.657a1 1 0 010-1.414zm-2.829 2.828a1 1 0 011.415 0A5.983 5.983 0 0115 10a5.984 5.984 0 01-1.757 4.243 1 1 0 01-1.415-1.415A3.984 3.984 0 0013 10a3.983 3.983 0 00-1.172-2.828 1 1 0 010-1.415z" clipRule="evenodd"/></svg>
+                                        <span className="text-[10px] leading-none">精听</span>
+                                    </button>
+                                </div>
+                            </>
                         )}
                     </div>
                 </div>
