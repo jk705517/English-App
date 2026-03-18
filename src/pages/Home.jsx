@@ -250,15 +250,16 @@ function Home() {
             {user && recentLearning && (
                 <div
                     onClick={() => navigate(`/episode/${recentLearning.episode}`)}
-                    className="md:hidden mx-4 mt-3 px-4 py-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg flex items-center justify-between cursor-pointer hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors"
+                    className="md:hidden mx-4 mt-3 px-4 py-2 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-lg flex items-center justify-between cursor-pointer transition-colors"
+                    style={{ background: '#f5f3ff' }}
                 >
                     <div className="flex items-center gap-2 min-w-0">
-                        <span className="text-orange-500">▶</span>
-                        <span className="text-gray-700 dark:text-gray-200 truncate">
-                            最近学习 · 第{recentLearning.episode}期：{recentLearning.title}
+                        <span style={{ color: '#6B4FBB' }}>▶</span>
+                        <span style={{ color: '#6B4FBB', fontWeight: 500 }} className="truncate">
+                            继续学习 · 第{recentLearning.episode}期
                         </span>
                     </div>
-                    <span className="text-gray-400 flex-shrink-0">→</span>
+                    <span style={{ color: '#6B4FBB' }} className="flex-shrink-0">→</span>
                 </div>
             )}
 
