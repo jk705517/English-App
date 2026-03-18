@@ -682,6 +682,42 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
         }
     }, [videoData]);
 
+    // 记录当前播放句子，用于下次恢复
+    useEffect(() => {
+        if (videoData?.id && activeIndex > 0) {
+            localStorage.setItem(`lastSentence_${videoData.id}`, String(activeIndex));
+            localStorage.setItem('lastVisitedVideo', JSON.stringify({
+                video_id: videoData.id,
+                episode: videoData.episode,
+                title: videoData.title,
+                lastSentenceIndex: activeIndex
+            }));
+        }
+    }, [activeIndex, videoData]);
+
+    // 视频数据加载后，恢复上次播放位置（无URL导航参数时）
+    useEffect(() => {
+        if (!videoData?.transcript?.length) return;
+        if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || scrollToParam) return;
+
+        const savedIndex = localStorage.getItem(`lastSentence_${videoData.id}`);
+        if (!savedIndex) return;
+
+        const index = parseInt(savedIndex, 10);
+        if (isNaN(index) || index <= 0 || index >= videoData.transcript.length) return;
+
+        setActiveIndex(index);
+        setTimeout(() => {
+            if (playerRef.current && videoData.transcript[index]) {
+                playerRef.current.currentTime = videoData.transcript[index].start;
+            }
+            if (transcriptRefs.current[index]) {
+                transcriptRefs.current[index].scrollIntoView({ behavior: 'smooth', block: 'center' });
+            }
+        }, 300);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [videoData]);
+
     useEffect(() => {
         if (!videoData?.id) return;
         const loadLearnedStatus = async () => {
@@ -1509,6 +1545,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
     const handleToggleLearned = async () => {
         const newStatus = !isLearned;
         setIsLearned(newStatus);
+        if (newStatus) {
+            // 标记已学时清除上次句子记录
+            localStorage.removeItem(`lastSentence_${videoData.id}`);
+        }
         if (isDemo) {
             // Demo 模式：保存到 localStorage
             if (newStatus) {
