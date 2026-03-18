@@ -1,114 +1,91 @@
-﻿import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
 
 /**
- * 听写输入组件（增强版）
- * @param {string} correctAnswer - 正确答案
- * @param {function} onCorrect - 答对回调
- * @param {function} onSkip - 跳过回调
- * @param {function} onWrong - 答错回调
- * @param {number} currentIndex - 当前句子索引
- * @param {number} totalCount - 总句子数
- * @param {function} onReplay - 重播当前句子回调
- * @param {boolean} hasPlayed - 当前句是否已播放过
+ * 逐词对比：返回对比结果数组
+ * type: 'correct' | 'wrong' | 'missing' | 'extra'
+ */
+function compareSentences(userText, correctText) {
+    const normalize = (word) => word.toLowerCase().replace(/[.,!?;:'"()]/g, '');
+    const userWords = userText.trim().split(/\s+/).filter(Boolean);
+    const correctWords = correctText.trim().split(/\s+/).filter(Boolean);
+    const results = [];
+    const maxLen = Math.max(userWords.length, correctWords.length);
+    for (let i = 0; i < maxLen; i++) {
+        const u = userWords[i] || null;
+        const c = correctWords[i] || null;
+        if (!u && c) {
+            results.push({ type: 'missing', correct: c });
+        } else if (u && !c) {
+            results.push({ type: 'extra', user: u });
+        } else if (normalize(u) === normalize(c)) {
+            results.push({ type: 'correct', word: u });
+        } else {
+            results.push({ type: 'wrong', user: u, correct: c });
+        }
+    }
+    return results;
+}
+
+/**
+ * 听写输入组件（词级对比版）
+ * status: 'editing' | 'reviewed'（有错误，可继续修改）| 'correct'
  */
 const DictationInput = ({
     correctAnswer,
-    onCorrect,
+    onCorrect,   // ({ firstTry: boolean }) => void
     onSkip,
-    onWrong,
     currentIndex,
     totalCount,
     onReplay,
-    hasPlayed = false
+    hasPlayed = false,
 }) => {
     const [userInput, setUserInput] = useState('');
-    const [status, setStatus] = useState('editing'); // editing | correct | wrong
-    const [showAnswer, setShowAnswer] = useState(false);
+    const [status, setStatus] = useState('editing');
+    const [diffResult, setDiffResult] = useState([]);
     const [hint, setHint] = useState('');
-
-    // 🆕 FIX: Use State instead of Ref for the snapshot to ensure correct rendering during updates
-    const [diffSnapshot, setDiffSnapshot] = useState('');
-
+    const hasBeenWrong = useRef(false);
     const inputRef = useRef(null);
 
-    // 自动聚焦
+    // 挂载后自动聚焦（每次新句子 key 变化时组件重挂，自动触发）
     useEffect(() => {
         inputRef.current?.focus();
-    }, [correctAnswer]);
+    }, []);
 
-    // 标准化文本（用于比较）
-    const normalizeText = (text) => {
-        return text
-            .toLowerCase()
-            .replace(/[.,!?;:'\"()]/g, '') // 移除标点
-            .replace(/\s+/g, ' ') // 多个空格变一个
-            .trim();
-    };
-
-    // 提交验证
     const handleSubmit = () => {
         if (!userInput.trim()) return;
-
-        const isCorrect = normalizeText(userInput) === normalizeText(correctAnswer);
-
-        if (isCorrect) {
+        const result = compareSentences(userInput, correctAnswer);
+        const allCorrect = result.every(r => r.type === 'correct');
+        setDiffResult(result);
+        if (allCorrect) {
             setStatus('correct');
-            setTimeout(() => {
-                onCorrect?.();
-                // 重置状态准备下一句
-                setUserInput('');
-                setDiffSnapshot(''); // 🆕 Reset snapshot
-                setStatus('editing');
-                setShowAnswer(false);
-                setHint('');
-            }, 1500);
+            onCorrect?.({ firstTry: !hasBeenWrong.current });
         } else {
-            setStatus('wrong');
-            onWrong?.(); // 调用答错回调
+            hasBeenWrong.current = true;
+            setStatus('reviewed');
         }
     };
 
-    // 重试
-    const handleRetry = () => {
-        setUserInput('');
-        setDiffSnapshot(''); // 🆕 Reset snapshot
-        setStatus('editing');
-        setShowAnswer(false);
-        inputRef.current?.focus();
-    };
-
-    // 显示答案
-    const handleShowAnswer = () => {
-        setDiffSnapshot(userInput); // 🆕 Capture user input into state BEFORE overwriting
-        setShowAnswer(true);
-        // 输入框显示正确答案供用户参考
-        setUserInput(correctAnswer);
-    };
-
-    // 获取首字母提示
-    const handleHint = () => {
-        const words = correctAnswer.split(' ');
-        const hintText = words.map(word => word[0]).join(' ');
-        setHint(hintText);
-    };
-
-    // Enter 提交，Esc 跳过
     const handleKeyDown = (e) => {
-        if (e.key === 'Enter' && status === 'editing') {
+        if (e.key === 'Enter' && !e.shiftKey && status !== 'correct') {
+            e.preventDefault();
             handleSubmit();
         } else if (e.key === 'Escape') {
             onSkip?.();
         }
     };
 
+    const handleHint = () => {
+        setHint(correctAnswer.split(' ').map(w => w[0]).join(' '));
+    };
+
     return (
-        <div className="space-y-4">
-            {/* 进度提示 */}
-            <div className="flex items-center justify-between text-sm text-gray-600">
+        <div className="space-y-3">
+            {/* 进度 + 播放按钮 */}
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-gray-400">
                 <span>听写练习：第 {currentIndex + 1} / {totalCount} 句</span>
                 <button
                     onClick={onReplay}
-                    className="flex items-center gap-1 text-violet-500 hover:text-violet-500"
+                    className="flex items-center gap-1 text-violet-500 hover:text-violet-600 transition-colors"
                 >
                     <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
                         <path d="M10 18a8 8 0 100-16 8 8 0 000 16zM9.555 7.168A1 1 0 008 8v4a1 1 0 001.555.832l3-2a1 1 0 000-1.664l-3-2z" />
@@ -117,135 +94,112 @@ const DictationInput = ({
                 </button>
             </div>
 
-            {/* 输入区域 */}
+            {/* 词级对比结果（提交后显示） */}
+            {diffResult.length > 0 && (
+                <div className={`p-3 rounded-lg flex flex-wrap gap-x-1.5 gap-y-1 text-base leading-relaxed ${
+                    status === 'correct' ? 'bg-green-50 dark:bg-green-900/20' : 'bg-gray-50 dark:bg-gray-700/50'
+                }`}>
+                    {diffResult.map((item, i) => {
+                        if (item.type === 'correct') {
+                            return (
+                                <span key={i} className="text-green-600 dark:text-green-400 font-medium">
+                                    {item.word}
+                                </span>
+                            );
+                        }
+                        if (item.type === 'wrong') {
+                            return (
+                                <span key={i} className="inline-flex items-center gap-1">
+                                    <span className="text-red-500 line-through opacity-75">{item.user}</span>
+                                    <span className="text-green-600 dark:text-green-400 font-bold">{item.correct}</span>
+                                </span>
+                            );
+                        }
+                        if (item.type === 'missing') {
+                            return (
+                                <span key={i} className="text-green-600 dark:text-green-400 font-bold underline decoration-dotted">
+                                    {item.correct}
+                                </span>
+                            );
+                        }
+                        if (item.type === 'extra') {
+                            return (
+                                <span key={i} className="text-red-500 line-through opacity-75">
+                                    {item.user}
+                                </span>
+                            );
+                        }
+                        return null;
+                    })}
+                </div>
+            )}
+
+            {/* 输入框 */}
             <div className="relative">
                 <textarea
                     ref={inputRef}
                     value={userInput}
                     onChange={(e) => setUserInput(e.target.value)}
                     onKeyDown={handleKeyDown}
-                    disabled={status !== 'editing'}
+                    disabled={status === 'correct'}
                     placeholder="请输入你听到的内容..."
-                    className={`
-            w-full p-4 border-2 rounded-lg resize-none
-            focus:outline-none focus:ring-2 transition-all
-            ${status === 'correct' ? 'border-green-500 bg-green-50' : ''}
-            ${status === 'wrong' ? 'border-red-500 bg-red-50' : ''}
-            ${status === 'editing' ? 'border-gray-300 focus:border-violet-400 focus:ring-violet-200' : ''}
-          `}
+                    className={`w-full p-4 border-2 rounded-lg resize-none focus:outline-none focus:ring-2 transition-all dark:bg-gray-700 dark:text-gray-100 dark:placeholder-gray-500
+                        ${status === 'correct'   ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : ''}
+                        ${status === 'reviewed'  ? 'border-yellow-400 bg-white focus:border-yellow-400 focus:ring-yellow-200 dark:border-yellow-500 dark:bg-gray-700' : ''}
+                        ${status === 'editing'   ? 'border-gray-300 bg-white focus:border-violet-400 focus:ring-violet-200 dark:border-gray-600' : ''}
+                    `}
                     rows={3}
                 />
-                {/* 提示文字 */}
-                {hint && status === 'editing' && (
-                    <div className="absolute top-2 right-2 text-xs text-gray-500 bg-yellow-100 px-2 py-1 rounded">
+                {hint && status !== 'correct' && (
+                    <div className="absolute top-2 right-2 text-xs text-gray-500 bg-yellow-100 dark:bg-yellow-900/40 dark:text-yellow-300 px-2 py-1 rounded pointer-events-none">
                         提示: {hint}
                     </div>
                 )}
             </div>
 
-            {/* 状态反馈 */}
+            {/* 答对反馈 */}
             {status === 'correct' && (
-                <div className="flex items-center gap-2 text-green-600 bg-green-50 p-3 rounded-lg">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-medium">答对了！太棒了 🎉</span>
-                </div>
-            )}
-
-            {status === 'wrong' && (
-                <div className="space-y-3">
-                    <div className="flex items-start gap-2 text-red-600 bg-red-50 p-3 rounded-lg">
-                        <svg className="w-6 h-6 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                        <div className="flex-1">
-                            <p className="font-medium mb-1">再试一次吧！</p>
-                            {!showAnswer && (
-                                <p className="text-sm">
-                                    你的答案：<span className="font-mono">{userInput}</span>
-                                </p>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* 显示答案后的对比 */}
-                    {showAnswer && (
-                        <div className="bg-gray-50 p-3 rounded-lg">
-                            <p className="text-sm text-gray-600 mb-1">正确答案：</p>
-                            <p className="text-base font-medium">{correctAnswer}</p>
-                            <p className="text-sm text-gray-600 mt-2 mb-1">你的答案：</p>
-                            <p className="text-base font-mono">{diffSnapshot}</p>
-                        </div>
-                    )}
+                    <span className="font-medium">
+                        {hasBeenWrong.current ? '修正正确！👍' : '太棒了！🎉'}
+                    </span>
                 </div>
             )}
 
             {/* 操作按钮 */}
-            <div className="flex gap-2">
-                {status === 'editing' && (
-                    <>
-                        <button
-                            onClick={handleSubmit}
-                            disabled={!userInput.trim()}
-                            className="flex-1 bg-violet-400 text-white py-2.5 rounded-lg hover:bg-violet-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
-                        >
-                            提交答案 (Enter)
-                        </button>
-                        <button
-                            onClick={handleHint}
-                            className="px-4 py-2.5 border-2 border-yellow-500 text-yellow-700 rounded-lg hover:bg-yellow-50 transition-colors"
-                            title="显示首字母提示"
-                        >
-                            💡 提示
-                        </button>
-                        <button
-                            onClick={onSkip}
-                            className="px-4 py-2.5 border-2 border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
-                            title="跳过这一句 (Esc)"
-                        >
-                            跳过
-                        </button>
-                    </>
-                )}
-
-                {status === 'wrong' && (
-                    <>
-                        <button
-                            onClick={handleRetry}
-                            className="flex-1 bg-violet-400 text-white py-2.5 rounded-lg hover:bg-violet-500 transition-colors font-medium"
-                        >
-                            🔄 重新输入
-                        </button>
-                        {!showAnswer && (
-                            <button
-                                onClick={handleShowAnswer}
-                                className="flex-1 bg-white border-2 border-violet-400 text-violet-500 py-2.5 rounded-lg hover:bg-violet-50 transition-colors font-medium"
-                            >
-                                👁️ 显示答案
-                            </button>
-                        )}
-                        {showAnswer && (
-                            <button
-                                onClick={() => {
-                                    onSkip?.();
-                                    setUserInput('');
-                                    setStatus('editing');
-                                    setShowAnswer(false);
-                                }}
-                                className="flex-1 bg-violet-500 text-white py-2.5 rounded-lg hover:bg-violet-600 transition-colors font-medium"
-                            >
-                                下一句 →
-                            </button>
-                        )}
-                    </>
-                )}
-            </div>
+            {status !== 'correct' && (
+                <div className="flex gap-2">
+                    <button
+                        onClick={handleSubmit}
+                        disabled={!userInput.trim()}
+                        className="flex-1 bg-violet-400 text-white py-2.5 rounded-lg hover:bg-violet-500 disabled:bg-gray-300 disabled:cursor-not-allowed transition-colors font-medium"
+                    >
+                        提交答案 (Enter)
+                    </button>
+                    <button
+                        onClick={handleHint}
+                        className="px-3 py-2.5 border-2 border-yellow-500 text-yellow-700 dark:text-yellow-400 rounded-lg hover:bg-yellow-50 dark:hover:bg-yellow-900/20 transition-colors"
+                        title="显示首字母提示"
+                    >
+                        💡
+                    </button>
+                    <button
+                        onClick={onSkip}
+                        className="px-3 py-2.5 border-2 border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                        title="跳过这一句 (Esc)"
+                    >
+                        跳过
+                    </button>
+                </div>
+            )}
 
             {/* 键盘提示 */}
-            <div className="text-xs text-gray-500 text-center">
-                按 <kbd className="px-2 py-1 bg-gray-200 rounded">Enter</kbd> 提交，
-                <kbd className="px-2 py-1 bg-gray-200 rounded">Esc</kbd> 跳过
+            <div className="text-xs text-gray-400 text-center">
+                <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400">Enter</kbd> 提交 &nbsp;
+                <kbd className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 rounded text-gray-500 dark:text-gray-400">Esc</kbd> 跳过
             </div>
         </div>
     );
