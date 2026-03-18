@@ -3150,7 +3150,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                         )}
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
-                        <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null ? 'hidden' : ''}`}>
+                        <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
                             <h3 className="text-lg font-bold mb-3 text-violet-500">重点词汇</h3>
                             <div className="space-y-3">
                                 {videoData.vocab?.map((item, index) => {
