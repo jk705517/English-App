@@ -95,6 +95,7 @@ function MobileSubtitleTabs({ mode, onSetMode, showPodcast, onPodcastClick, hasP
                     <svg className="w-2.5 h-2.5 opacity-50 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M8 7h12m0 0l-4-4m4 4l-4 4M16 17H4m0 0l4 4m-4-4l4-4"/></svg>
                 </span>
             </button>
+            <button onClick={() => onSetMode('intensive')} className={tabClass(mode === 'intensive' && !showPodcast)}>精读</button>
             <button onClick={() => onSetMode('shadow')} className={tabClass(mode === 'shadow' && !showPodcast)}>跟读</button>
             <button onClick={() => onSetMode('dictation')} className={tabClass(mode === 'dictation' && !showPodcast)}>听写</button>
             <button onClick={() => onSetMode('vocab')} className={tabClass(mode === 'vocab' && !showPodcast)}>词卡</button>
