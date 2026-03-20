@@ -1747,11 +1747,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                 mediaRecorderRef.current.stop();
             }
+            // 立即更新 UI，不依赖 onstop 的异步回调时机
+            setActiveRecordingIndex(null);
+            setRecordingIndices(prev => new Set([...prev, index]));
             return;
         }
-        // 如果正在录音其他字幕，先停止
+        // 如果正在录音其他字幕，先停止（onstop 会保存数据，这里只更新 UI）
         if (activeRecordingIndex !== null && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+            const prevIndex = activeRecordingIndex;
             mediaRecorderRef.current.stop();
+            setRecordingIndices(prev => new Set([...prev, prevIndex]));
         }
         // 请求麦克风权限并开始录音
         try {
@@ -1769,14 +1774,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
                 if (e.data.size > 0) recordingChunksRef.current.push(e.data);
             };
             recorder.onstop = async () => {
-                const chunks = recordingChunksRef.current;
-                // 立即更新 UI，不等待异步保存完成
+                // UI 已在 handleRecordClick 中同步更新，这里只负责保存数据
                 mediaStreamRef.current?.getTracks().forEach(t => t.stop());
                 mediaStreamRef.current = null;
-                setActiveRecordingIndex(null);
+                const chunks = recordingChunksRef.current;
                 if (chunks.length > 0 && videoData) {
                     const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-                    setRecordingIndices(prev => new Set([...prev, index]));
                     await recordingStorage.save(videoData.id, index, blob);
                 }
             };
