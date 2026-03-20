@@ -1770,14 +1770,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
             };
             recorder.onstop = async () => {
                 const chunks = recordingChunksRef.current;
-                if (chunks.length > 0 && videoData) {
-                    const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-                    await recordingStorage.save(videoData.id, index, blob);
-                    setRecordingIndices(prev => new Set([...prev, index]));
-                }
+                // 立即更新 UI，不等待异步保存完成
                 mediaStreamRef.current?.getTracks().forEach(t => t.stop());
                 mediaStreamRef.current = null;
                 setActiveRecordingIndex(null);
+                if (chunks.length > 0 && videoData) {
+                    const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+                    setRecordingIndices(prev => new Set([...prev, index]));
+                    await recordingStorage.save(videoData.id, index, blob);
+                }
             };
             setActiveRecordingIndex(index);
             recorder.start();
