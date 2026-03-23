@@ -20,6 +20,12 @@ const request = async (endpoint, options = {}) => {
         headers,
     });
     const data = await response.json();
+    if (response.status === 401 && data.error === 'device_removed') {
+        clearToken();
+        alert('您的账号已在其他设备登录，当前设备已退出。');
+        window.location.href = '/auth';
+        return;
+    }
     if (!response.ok) {
         throw new Error(data.error || 'Request failed');
     }

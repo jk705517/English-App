@@ -45,20 +45,38 @@ app.use((req, res, next) => {
 });
 
 // JWT 验证中间件
-const authMiddleware = (req, res, next) => {
+const authMiddleware = async (req, res, next) => {
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return res.status(401).json({ success: false, error: 'No token provided' });
   }
 
   const token = authHeader.substring(7);
+  let decoded;
   try {
-    const decoded = jwt.verify(token, JWT_SECRET);
-    req.user = decoded;
-    next();
+    decoded = jwt.verify(token, JWT_SECRET);
   } catch (error) {
     return res.status(401).json({ success: false, error: 'Invalid token' });
   }
+
+  // 验证设备是否仍在授权列表中
+  if (decoded.deviceId) {
+    try {
+      const deviceCheck = await pool.query(
+        'SELECT id FROM user_devices WHERE user_id = $1 AND device_id = $2',
+        [decoded.userId, decoded.deviceId]
+      );
+      if (deviceCheck.rows.length === 0) {
+        return res.status(401).json({ success: false, error: 'device_removed' });
+      }
+    } catch (err) {
+      console.error('设备验证查询失败:', err);
+      // 数据库异常时放行，避免基础设施问题导致所有用户被锁
+    }
+  }
+
+  req.user = decoded;
+  next();
 };
 
 // ============ 间隔重复算法 ============
@@ -227,9 +245,9 @@ app.post('/api/auth/login', async (req, res) => {
     const finalDeviceName = deviceName || 'Unknown Device';
     await manageDeviceLogin(user.id, finalDeviceId, finalDeviceName);
 
-    // 生成 JWT
+    // 生成 JWT（含 deviceId，用于设备验证）
     const token = jwt.sign(
-      { userId: user.id, phone: user.phone },
+      { userId: user.id, phone: user.phone, deviceId: finalDeviceId },
       JWT_SECRET,
       { expiresIn: '7d' }
     );
