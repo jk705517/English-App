@@ -253,6 +253,7 @@ export const notebookService = {
                 }
 
                 return {
+                    notebookItemId: item.id,  // 用于 DELETE API（主键）
                     sentenceId: item.item_id,
                     videoId: item.video_id,
                     en: sentence?.text || sentence?.en || '',
@@ -314,6 +315,7 @@ export const notebookService = {
                 }
 
                 return {
+                    notebookItemId: item.id,  // 用于 DELETE API（主键）
                     vocabId: item.item_id,
                     videoId: item.video_id,
                     word: vocabItem?.word || '',

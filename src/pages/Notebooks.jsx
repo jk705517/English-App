@@ -468,17 +468,17 @@ function Notebooks() {
         setRenaming(false);
     };
 
-    const handleRemoveSentence = async (sentenceId) => {
+    const handleRemoveSentence = async (notebookItemId) => {
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
             itemType: 'sentence',
-            itemId: sentenceId
+            itemId: notebookItemId
         });
 
         if (success) {
             setNotebookDetail(prev => ({
                 ...prev,
-                sentences: prev.sentences.filter(s => s.sentenceId !== sentenceId)
+                sentences: prev.sentences.filter(s => s.notebookItemId !== notebookItemId)
             }));
             setNotebooks(prev => prev.map(nb =>
                 nb.id === selectedNotebook.id
@@ -492,17 +492,17 @@ function Notebooks() {
         }
     };
 
-    const handleRemoveVocab = async (vocabId) => {
+    const handleRemoveVocab = async (notebookItemId) => {
         const success = await notebookService.removeItemFromNotebook(user, {
             notebookId: selectedNotebook.id,
             itemType: 'vocab',
-            itemId: vocabId
+            itemId: notebookItemId
         });
 
         if (success) {
             setNotebookDetail(prev => ({
                 ...prev,
-                vocabs: prev.vocabs.filter(v => v.vocabId !== vocabId)
+                vocabs: prev.vocabs.filter(v => v.notebookItemId !== notebookItemId)
             }));
             setNotebooks(prev => prev.map(nb =>
                 nb.id === selectedNotebook.id
@@ -523,9 +523,9 @@ function Notebooks() {
         if (type === 'notebook') {
             await handleDeleteNotebook(data.id);
         } else if (type === 'sentence') {
-            await handleRemoveSentence(data.sentenceId);
+            await handleRemoveSentence(data.notebookItemId);
         } else if (type === 'vocab') {
-            await handleRemoveVocab(data.vocabId);
+            await handleRemoveVocab(data.notebookItemId);
         }
         setDeleteConfirm({ isOpen: false, type: null, data: null });
     };
