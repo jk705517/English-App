@@ -4,7 +4,7 @@ import VideoDetail from './VideoDetail';
 import * as demoStorage from '../services/demoStorage';
 
 const DEMO_PASSWORD = 'biubiured2026';
-const DEMO_EPISODE = 29;
+const DEMO_EPISODE = 104;
 const XIAOHONGSHU_LINK = 'https://xhslink.com/m/61lw0enbqKQ';
 
 const DemoPage = () => {
@@ -126,7 +126,7 @@ const DemoPage = () => {
 
             {/* 视频详情内容 - 使用 Demo 模式 */}
             <div className="flex-1">
-                <VideoDetail isDemo={true} demoEpisode={29} />
+                <VideoDetail isDemo={true} demoEpisode={DEMO_EPISODE} />
             </div>
 
             {/* 底部固定引导栏 */}

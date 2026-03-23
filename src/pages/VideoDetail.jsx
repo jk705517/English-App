@@ -381,7 +381,7 @@ const ShadowPanel = React.memo(({
     );
 });
 
-const VideoDetail = ({ isDemo = false, demoEpisode = 29 }) => {
+const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
