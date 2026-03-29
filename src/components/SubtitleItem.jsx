@@ -22,6 +22,8 @@ const SubtitleItem = memo(({
     videoId,
     // 词汇导航 prop
     onVocabNavigate,
+    // 普通词点击查词 prop
+    onWordClick,
     abMode = 0,
     onSetAbPoint,
     isAbPointA = false,
@@ -204,6 +206,7 @@ const SubtitleItem = memo(({
                                 text={item.text}
                                 highlights={vocab || []}
                                 onVocabNavigate={onVocabNavigate}
+                                onWordClick={onWordClick}
                             />
                         )
                     )}

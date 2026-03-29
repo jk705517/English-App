@@ -186,10 +186,11 @@ export const notebookService = {
             const rawItems = Array.isArray(response.data) ? response.data : [];
             console.log('📓 loadNotebookDetail - rawItems:', rawItems);
 
-            // 分离句子和词汇
+            // 分离句子、重点词汇和查词词汇
             const sentenceItems = rawItems.filter(item => item.item_type === 'sentence');
             const vocabItems = rawItems.filter(item => item.item_type === 'vocab');
-            console.log('📓 loadNotebookDetail - sentenceItems:', sentenceItems.length, 'vocabItems:', vocabItems.length);
+            const wordItems = rawItems.filter(item => item.item_type === 'word');
+            console.log('📓 loadNotebookDetail - sentenceItems:', sentenceItems.length, 'vocabItems:', vocabItems.length, 'wordItems:', wordItems.length);
 
             // 如果没有任何项目，直接返回
             if (rawItems.length === 0) {
@@ -327,13 +328,34 @@ export const notebookService = {
                 };
             }).filter(v => v.word); // 过滤掉找不到内容的
 
+            // 丰富查词数据（dict_cache 字段已由后端 JOIN 返回，直接规范化）
+            const enrichedWords = wordItems.map(item => ({
+                notebookItemId: item.id,
+                vocabId: item.item_id,
+                videoId: item.video_id,
+                word: item.item_id,
+                meaning: item.definition || '',
+                phonetic: item.phonetic_us || '',
+                ipa_us: item.phonetic_us || '',
+                ipa_uk: item.phonetic_uk || '',
+                type: item.pos || '',
+                examples: item.example_en
+                    ? [{ en: item.example_en, cn: item.example_zh || '' }]
+                    : [],
+                collocations: Array.isArray(item.collocations) ? item.collocations : [],
+                episode: videoMap[item.video_id]?.episode || 0,
+                title: videoMap[item.video_id]?.title || '',
+                reviewState: null,
+                isWordItem: true,
+            })).filter(w => w.word);
+
             console.log('📓 loadNotebookDetail - enrichedSentences:', enrichedSentences.length);
-            console.log('📓 loadNotebookDetail - enrichedVocabs:', enrichedVocabs.length);
+            console.log('📓 loadNotebookDetail - enrichedVocabs:', enrichedVocabs.length, 'enrichedWords:', enrichedWords.length);
 
             return {
                 notebook: { id: notebookId, name: '', color: '#3B82F6' },
                 sentences: enrichedSentences,
-                vocabs: enrichedVocabs,
+                vocabs: [...enrichedVocabs, ...enrichedWords],
             };
         } catch (error) {
             console.error('加载笔记本详情失败:', error);
@@ -365,13 +387,13 @@ export const notebookService = {
             // API 返回的是一个扁平数组
             const rawItems = Array.isArray(itemsResponse.data) ? itemsResponse.data : [];
             const vocabItems = rawItems.filter(item => item.item_type === 'vocab');
+            const wordItems = rawItems.filter(item => item.item_type === 'word');
 
-            // 构建复习状态映射表（使用 item_type + item_id 作为 key）
+            // 构建复习状态映射表（vocab 和 word 两种类型都包含）
             const reviewStatesMap = new Map();
             if (reviewStatesResponse.success && Array.isArray(reviewStatesResponse.data)) {
                 reviewStatesResponse.data.forEach(state => {
-                    if (state.item_type === 'vocab') {
-                        // 使用 item_id 作为 key（支持多种格式匹配）
+                    if (state.item_type === 'vocab' || state.item_type === 'word') {
                         const key = String(state.item_id);
                         reviewStatesMap.set(key, state);
                     }
@@ -379,7 +401,7 @@ export const notebookService = {
             }
             console.log('[loadNotebookVocabsForReview] reviewStatesMap size:', reviewStatesMap.size);
 
-            if (vocabItems.length === 0) {
+            if (vocabItems.length === 0 && wordItems.length === 0) {
                 return {
                     notebook: { id: notebookId, name: '' },
                     vocabs: [],
@@ -389,7 +411,8 @@ export const notebookService = {
             }
 
             // 使用 videoAPI 获取视频数据
-            const videoIds = [...new Set(vocabItems.map(item => item.video_id).filter(Boolean))];
+            const allItems = [...vocabItems, ...wordItems];
+            const videoIds = [...new Set(allItems.map(item => item.video_id).filter(Boolean))];
             let videoMap = {};
             for (const videoId of videoIds) {
                 try {
@@ -402,7 +425,7 @@ export const notebookService = {
                 }
             }
 
-            // 丰富词汇数据
+            // 丰富词汇数据（vocab 类型，从视频 vocab 数组查找）
             const enrichedVocabs = vocabItems.map(item => {
                 const video = videoMap[item.video_id];
                 if (!video || !video.vocab) {
@@ -480,14 +503,37 @@ export const notebookService = {
                 };
             }).filter(Boolean);
 
-            console.log('[loadNotebookVocabsForReview] enrichedVocabs with reviewState:',
-                enrichedVocabs.filter(v => v.reviewState != null).length, '/', enrichedVocabs.length);
+            // 丰富查词数据（word 类型，dict_cache 字段已由后端 JOIN 返回）
+            const enrichedWords = wordItems.map(item => {
+                const reviewState = reviewStatesMap.get(String(item.item_id)) || null;
+                return {
+                    id: item.id,
+                    vocabId: item.item_id,
+                    videoId: item.video_id,
+                    vocabIndex: -1,
+                    word: item.item_id,
+                    type: item.pos || '',
+                    ipa_us: item.phonetic_us || '',
+                    ipa_uk: item.phonetic_uk || '',
+                    meaning: item.definition || '',
+                    examples: item.example_en ? [{ en: item.example_en, cn: item.example_zh || '' }] : [],
+                    collocations: Array.isArray(item.collocations) ? item.collocations : [],
+                    episode: videoMap[item.video_id]?.episode || 0,
+                    title: videoMap[item.video_id]?.title || '',
+                    reviewState,
+                    isWordItem: true,
+                };
+            }).filter(w => w.word);
+
+            const allVocabs = [...enrichedVocabs, ...enrichedWords];
+
+            console.log('[loadNotebookVocabsForReview] enrichedVocabs:', enrichedVocabs.length, 'enrichedWords:', enrichedWords.length);
 
             // 计算到期的词汇数量
             const now = new Date();
             let dueCount = 0;
 
-            enrichedVocabs.forEach(vocab => {
+            allVocabs.forEach(vocab => {
                 if (!vocab.reviewState || !vocab.reviewState.next_review_at) {
                     dueCount++;
                 } else {
@@ -500,8 +546,8 @@ export const notebookService = {
 
             return {
                 notebook: { id: notebookId, name: '' },
-                vocabs: enrichedVocabs,
-                totalVocabCount: enrichedVocabs.length,
+                vocabs: allVocabs,
+                totalVocabCount: allVocabs.length,
                 dueCount,
             };
         } catch (error) {

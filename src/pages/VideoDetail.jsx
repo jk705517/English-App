@@ -1,7 +1,7 @@
 ﻿import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 // Note: ReactPlayer import removed - using native <video> element for custom controls
-import { videoAPI, vocabOccurrencesAPI, notesAPI, progressAPI } from '../services/api';
+import { videoAPI, vocabOccurrencesAPI, notesAPI, progressAPI, dictAPI } from '../services/api';
 import { recordingStorage } from '../utils/recordingStorage';
 import { useAuth } from '../contexts/AuthContext';
 import { progressService } from '../services/progressService';
@@ -190,6 +190,7 @@ const ShadowPanel = React.memo(({
     onAddToNotebook,
     onSwitchToDictation,
     onVocabNavigate,
+    onWordClick,
     note = null,
     onNoteClick,
     videoId,
@@ -305,6 +306,7 @@ const ShadowPanel = React.memo(({
                         text={currentSub.text}
                         highlights={vocab}
                         onVocabNavigate={onVocabNavigate}
+                        onWordClick={onWordClick}
                     />
                 </div>
                 <div
@@ -397,8 +399,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const vocabIdFromQuery = searchParams.get('vocabId');
     const modeFromQuery = searchParams.get('mode');
     // New params for notebook navigation (index-based)
-    const typeFromQuery = searchParams.get('type'); // 'sentence' | 'vocab'
+    const typeFromQuery = searchParams.get('type'); // 'sentence' | 'vocab' | 'word'
     const indexFromQuery = searchParams.get('index');
+    const wordFromQuery = searchParams.get('word'); // for type=word
     const playerRef = useRef(null);
     const playerContainerRef = useRef(null);
     const tabBarRef = useRef(null);
@@ -419,6 +422,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const [vocabDetailIndex, setVocabDetailIndex] = useState(null);
     // 词汇弹窗（点击高亮词汇弹出）
     const [vocabPopup, setVocabPopup] = useState(null); // { index, item }
+    // 查词弹窗（点击普通词弹出）
+    const [dictPopup, setDictPopup] = useState(null); // { word, subtitleIndex, loading, data, error }
     // 跟读模式 - 英文/中文模糊切换
     const [shadowEnBlurred, setShadowEnBlurred] = useState(false);
     const [shadowCnBlurred, setShadowCnBlurred] = useState(false);
@@ -700,7 +705,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 视频数据加载后，恢复上次播放位置（无URL导航参数时）
     useEffect(() => {
         if (!videoData?.transcript?.length) return;
-        if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || scrollToParam) return;
+        if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || wordFromQuery || scrollToParam) return;
 
         const savedIndex = localStorage.getItem(`lastSentence_${videoData.id}`);
         if (!savedIndex) return;
@@ -887,46 +892,53 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     useEffect(() => {
         if (!videoData) return;
 
-        // New: Handle index-based navigation from Notebooks page
+        // 辅助：搜索 transcript 中第一句含某词的句子索引
+        const findTranscriptIndexByWord = (word) => {
+            if (!word || !videoData.transcript) return -1;
+            const escaped = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const re = new RegExp(`\\b${escaped}\\b`, 'i');
+            return videoData.transcript.findIndex(s => re.test(s.text));
+        };
+
+        // 辅助：滚动到指定字幕行并 seek 视频
+        const scrollToTranscriptRow = (transcriptIdx) => {
+            if (transcriptIdx < 0) return;
+            setActiveIndex(transcriptIdx);
+            setTimeout(() => {
+                if (transcriptRefs.current[transcriptIdx]) {
+                    transcriptRefs.current[transcriptIdx].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+                const sentence = videoData.transcript[transcriptIdx];
+                if (sentence && playerRef.current) {
+                    playerRef.current.currentTime = sentence.start;
+                }
+            }, 300);
+        };
+
+        // Handle index-based navigation from Notebooks / Favorites / Review page
         if (typeFromQuery && indexFromQuery !== null) {
             const idx = parseInt(indexFromQuery, 10);
             if (!isNaN(idx)) {
                 if (typeFromQuery === 'sentence' && videoData.transcript?.[idx]) {
-                    // Navigate to sentence by index
-                    setActiveIndex(idx);
-                    setTimeout(() => {
-                        if (transcriptRefs.current[idx]) {
-                            transcriptRefs.current[idx].scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                        }
-                        // Seek video to sentence start time
-                        const sentence = videoData.transcript[idx];
-                        if (sentence && playerRef.current) {
-                            playerRef.current.currentTime = sentence.start;
-                        }
-                    }, 300);
-                    return; // Don't process other params
-                } else if (typeFromQuery === 'vocab' && videoData.vocab?.[idx]) {
-                    // Navigate to vocab by index
-                    setTimeout(() => {
-                        const vocabElement = document.querySelector(`[data-vocab-index="${idx}"]`);
-                        if (vocabElement) {
-                            vocabElement.scrollIntoView({
-                                behavior: 'smooth',
-                                block: 'center'
-                            });
-                            // Add highlight effect
-                            vocabElement.classList.add('ring-2', 'ring-violet-400', 'ring-offset-2');
-                            setTimeout(() => {
-                                vocabElement.classList.remove('ring-2', 'ring-violet-400', 'ring-offset-2');
-                            }, 3000);
-                        }
-                    }, 500);
-                    return; // Don't process other params
+                    scrollToTranscriptRow(idx);
+                    return;
+                } else if (typeFromQuery === 'vocab') {
+                    // 定位到该词汇在 transcript 中第一次出现的字幕行
+                    const vocabItem = videoData.vocab?.[idx];
+                    if (vocabItem?.word) {
+                        const transcriptIdx = findTranscriptIndexByWord(vocabItem.word);
+                        scrollToTranscriptRow(transcriptIdx);
+                    }
+                    return;
                 }
             }
+        }
+
+        // Handle word-string navigation (dict-lookup words added to notebook)
+        if (typeFromQuery === 'word' && wordFromQuery) {
+            const transcriptIdx = findTranscriptIndexByWord(wordFromQuery);
+            scrollToTranscriptRow(transcriptIdx);
+            return;
         }
 
         // Handle sentence navigation (legacy - ID-based from Favorites)
@@ -972,7 +984,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 }
             }, 500);
         }
-    }, [videoData, sentenceIdFromQuery, vocabIdFromQuery, typeFromQuery, indexFromQuery]);
+    }, [videoData, sentenceIdFromQuery, vocabIdFromQuery, typeFromQuery, indexFromQuery, wordFromQuery]);
 
     // Handle scrollTo vocab navigation from other pages
     const [urlSearchParams] = useSearchParams();
@@ -1350,6 +1362,21 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             setTimeout(() => setIsSeeking(false), 300);
         }
     }, [mode, isSentenceLooping, videoData, activeIndex]);
+
+    // 普通词点击查词
+    const handleWordClick = useCallback(async (word, subtitleIndex) => {
+        setDictPopup({ word, subtitleIndex, loading: true, data: null, error: null });
+        try {
+            const result = await dictAPI.lookup(word, videoData?.id, subtitleIndex);
+            if (result && result.success) {
+                setDictPopup(prev => prev && prev.word === word ? { ...prev, loading: false, data: result.data } : prev);
+            } else {
+                setDictPopup(prev => prev && prev.word === word ? { ...prev, loading: false, error: result?.error || '查词失败' } : prev);
+            }
+        } catch (e) {
+            setDictPopup(prev => prev && prev.word === word ? { ...prev, loading: false, error: '查词失败，请重试' } : prev);
+        }
+    }, [videoData?.id]);
 
     // 词汇收藏切换 (moved before renderClozeText to fix initialization order)
     const handleToggleVocabFavorite = async (vocabId) => {
@@ -2798,6 +2825,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                     const vItem = (videoData.vocab || [])[vocabIndex];
                                     if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                 }}
+                                onWordClick={(word) => handleWordClick(word, activeIndex >= 0 ? activeIndex : 0)}
                                 note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
                                 onNoteClick={handleNoteClick}
                                 videoId={videoData.id}
@@ -3025,6 +3053,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                                 const vItem = (videoData.vocab || [])[vocabIndex];
                                                 if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                             }}
+                                            onWordClick={(word) => handleWordClick(word, activeIndex >= 0 ? activeIndex : 0)}
                                             note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
                                             onNoteClick={handleNoteClick}
                                             videoId={videoData.id}
@@ -3282,6 +3311,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                                 const vItem = vList[vocabIndex];
                                                 if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
                                             }}
+                                            onWordClick={(word) => handleWordClick(word, index)}
                                             abMode={abMode}
                                             onSetAbPoint={handleSetAbPoint}
                                             isAbPointA={index === abIndexA}
@@ -3588,6 +3618,133 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         有道词典
                                     </a>
                                 </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
+            {/* 查词弹窗 */}
+            {dictPopup && (() => {
+                const pc = { bg: '#E8D5FF', text: '#7C3AED' };
+                return (
+                    <div
+                        className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
+                        onClick={() => setDictPopup(null)}
+                    >
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        <div
+                            className="relative w-full sm:max-w-[400px] bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
+                            onClick={(e) => e.stopPropagation()}
+                        >
+                            {/* 彩色标题区 */}
+                            <div className="relative px-5 pt-4 pb-4" style={{ backgroundColor: pc.bg }}>
+                                <div className="sm:hidden flex justify-center mb-3 -mt-1">
+                                    <div className="w-9 h-1 rounded-full opacity-40" style={{ backgroundColor: pc.text }} />
+                                </div>
+                                {/* 右上角：本子 + 关闭 */}
+                                <div className="absolute right-3 top-3 flex items-center gap-0.5">
+                                    {!dictPopup.loading && dictPopup.data && (
+                                        <button
+                                            onClick={() => {
+                                                if (!user && !isDemo) { alert('登录后才能使用本子功能'); return; }
+                                                setNotebookDialogItem({ itemType: 'word', itemId: dictPopup.word, videoId: Number(videoData.id) });
+                                                setNotebookDialogOpen(true);
+                                            }}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                                            style={{ color: pc.text, backgroundColor: 'transparent' }}
+                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
+                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                            title="加入本子"
+                                        >
+                                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
+                                        </button>
+                                    )}
+                                    <button
+                                        onClick={() => setDictPopup(null)}
+                                        className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
+                                        style={{ color: pc.text, backgroundColor: 'transparent' }}
+                                        onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
+                                        onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                                        title="关闭"
+                                    >
+                                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12"/></svg>
+                                    </button>
+                                </div>
+                                {/* 单词标题 + 词性 */}
+                                <div className="flex items-center gap-2 flex-wrap pr-24">
+                                    <h3 className="text-2xl font-bold" style={{ color: pc.text }}>{dictPopup.word}</h3>
+                                    {dictPopup.data?.pos && (
+                                        <span className="px-2 py-0.5 text-xs font-medium rounded-full" style={{ backgroundColor: 'rgba(0,0,0,0.1)', color: pc.text }}>{dictPopup.data.pos}</span>
+                                    )}
+                                </div>
+                            </div>
+
+                            {/* 正文内容 */}
+                            <div className="px-5 pt-4 pb-5">
+                                {dictPopup.loading ? (
+                                    <div className="flex items-center justify-center py-8 gap-2">
+                                        <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-violet-400" />
+                                        <span className="text-sm text-gray-500 dark:text-gray-400">查询中...</span>
+                                    </div>
+                                ) : dictPopup.error ? (
+                                    <div className="py-4 text-sm text-red-500 dark:text-red-400">{dictPopup.error}</div>
+                                ) : dictPopup.data && (
+                                    <>
+                                        {/* 音标 + 发音按钮 */}
+                                        {(dictPopup.data.phonetic_us || dictPopup.data.phonetic_uk) && (
+                                            <div className="flex flex-wrap gap-3 mb-4">
+                                                {dictPopup.data.phonetic_us && (
+                                                    <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                                        <span className="text-gray-400 dark:text-gray-500 text-xs">US</span>
+                                                        <span className="font-mono">{dictPopup.data.phonetic_us}</span>
+                                                        <button onClick={() => speak(dictPopup.word, 'en-US')} className="p-1 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                                {dictPopup.data.phonetic_uk && (
+                                                    <div className="flex items-center gap-1.5 text-sm text-gray-500 dark:text-gray-400">
+                                                        <span className="text-gray-400 dark:text-gray-500 text-xs">UK</span>
+                                                        <span className="font-mono">{dictPopup.data.phonetic_uk}</span>
+                                                        <button onClick={() => speak(dictPopup.word, 'en-GB')} className="p-1 hover:bg-violet-100 dark:hover:bg-violet-900/40 rounded-full text-violet-400 hover:text-violet-500 transition-colors">
+                                                            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* 中文释义 */}
+                                        {dictPopup.data.definition && (
+                                            <p className="text-gray-800 dark:text-gray-200 mb-4" style={{ fontSize: '15px', lineHeight: '1.6' }}>{dictPopup.data.definition}</p>
+                                        )}
+
+                                        {/* 例句 */}
+                                        {(dictPopup.data.example_en || dictPopup.data.example_zh) && (
+                                            <div className="border-l-2 pl-3 mb-4" style={{ borderColor: pc.bg }}>
+                                                {dictPopup.data.example_en && (
+                                                    <p className="text-gray-700 dark:text-gray-300" style={{ fontSize: '14px', lineHeight: '1.6' }}>{dictPopup.data.example_en}</p>
+                                                )}
+                                                {dictPopup.data.example_zh && (
+                                                    <p className="text-gray-400 dark:text-gray-500 mt-0.5" style={{ fontSize: '14px', lineHeight: '1.6' }}>{dictPopup.data.example_zh}</p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* 常见搭配 */}
+                                        {dictPopup.data.collocations?.length > 0 && (
+                                            <div className="mb-2">
+                                                <p className="text-xs text-gray-400 dark:text-gray-500 mb-1.5">常见搭配</p>
+                                                <div className="flex flex-wrap gap-1.5">
+                                                    {dictPopup.data.collocations.map((c, i) => (
+                                                        <span key={i} className="px-2 py-0.5 text-xs rounded-full" style={{ backgroundColor: pc.bg, color: pc.text }}>{c}</span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </>
+                                )}
                             </div>
                         </div>
                     </div>

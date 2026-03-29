@@ -979,9 +979,9 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
 
     // 获取每个笔记本的统计信息（包括待复习数量）
     const notebooks = await Promise.all(result.rows.map(async (notebook) => {
-      // 获取词汇数量
+      // 获取词汇数量（包含重点词 vocab 和查词 word 两种类型）
       const vocabResult = await pool.query(
-        "SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'vocab'",
+        "SELECT COUNT(*) as count FROM user_notebook_items WHERE notebook_id = $1 AND item_type IN ('vocab', 'word')",
         [notebook.id]
       );
       // 获取句子数量
@@ -994,9 +994,9 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
       const sentenceCount = parseInt(sentenceResult.rows[0].count);
 
       // ========== 计算待复习数量 ==========
-      // 获取本子里所有词汇的 item_id
+      // 获取本子里所有词汇（vocab + word 两种类型）的 item_id
       const vocabItemsResult = await pool.query(
-        "SELECT item_id FROM user_notebook_items WHERE notebook_id = $1 AND item_type = 'vocab'",
+        "SELECT item_id, item_type FROM user_notebook_items WHERE notebook_id = $1 AND item_type IN ('vocab', 'word')",
         [notebook.id]
       );
       const vocabItemIds = vocabItemsResult.rows.map(r => r.item_id);
@@ -1017,10 +1017,10 @@ app.get('/api/user/notebooks', authMiddleware, async (req, res) => {
       todayEnd.setHours(23, 59, 59, 999);
 
       if (vocabItemIds.length > 0) {
-        // 查询这些词汇的复习状态
+        // 查询这些词汇的复习状态（涵盖 vocab 和 word 两种类型）
         const vocabStatesResult = await pool.query(
-          `SELECT item_id, next_review_at FROM user_review_states 
-           WHERE user_id = $1 AND item_type = 'vocab' AND item_id = ANY($2)`,
+          `SELECT item_id, next_review_at FROM user_review_states
+           WHERE user_id = $1 AND item_type IN ('vocab', 'word') AND item_id = ANY($2)`,
           [userId, vocabItemIds]
         );
 
@@ -1174,7 +1174,13 @@ app.get('/api/user/notebooks/:id/items', authMiddleware, async (req, res) => {
     const notebookId = req.params.id;
 
     const result = await pool.query(
-      'SELECT id, item_type, item_id, video_id, created_at FROM user_notebook_items WHERE notebook_id = $1 AND user_id = $2 ORDER BY created_at DESC',
+      `SELECT ni.id, ni.item_type, ni.item_id, ni.video_id, ni.created_at,
+              dc.phonetic_us, dc.phonetic_uk, dc.pos, dc.definition,
+              dc.example_en, dc.example_zh, dc.collocations
+       FROM user_notebook_items ni
+       LEFT JOIN dict_cache dc ON ni.item_type = 'word' AND LOWER(ni.item_id) = dc.word
+       WHERE ni.notebook_id = $1 AND ni.user_id = $2
+       ORDER BY ni.created_at DESC`,
       [notebookId, userId]
     );
 
@@ -1471,6 +1477,138 @@ app.delete('/api/notes/:videoId/:subtitleIndex', authMiddleware, async (req, res
   } catch (error) {
     console.error('删除笔记失败:', error);
     res.status(500).json({ error: '删除笔记失败' });
+  }
+});
+
+// ============ 词典查词 API ============
+
+// 初始化 dict_cache 表
+pool.query(`
+  CREATE TABLE IF NOT EXISTS dict_cache (
+    word TEXT PRIMARY KEY,
+    phonetic_us TEXT,
+    phonetic_uk TEXT,
+    pos TEXT,
+    definition TEXT,
+    example_en TEXT,
+    example_zh TEXT,
+    collocations JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+  )
+`).catch(err => console.error('创建 dict_cache 表失败:', err));
+
+// POST /api/dict/lookup - 查词（先查缓存，无缓存则调用 DeepSeek）
+app.post('/api/dict/lookup', async (req, res) => {
+  try {
+    const { word } = req.body;
+    if (!word || typeof word !== 'string') {
+      return res.status(400).json({ success: false, error: '缺少 word 参数' });
+    }
+
+    const cleanWord = word.trim().toLowerCase();
+
+    // 查缓存
+    const cached = await pool.query(
+      'SELECT * FROM dict_cache WHERE word = $1',
+      [cleanWord]
+    );
+
+    if (cached.rows.length > 0) {
+      const row = cached.rows[0];
+      return res.json({
+        success: true,
+        data: {
+          word: row.word,
+          phonetic_us: row.phonetic_us,
+          phonetic_uk: row.phonetic_uk,
+          pos: row.pos,
+          definition: row.definition,
+          example_en: row.example_en,
+          example_zh: row.example_zh,
+          collocations: row.collocations || [],
+        }
+      });
+    }
+
+    // 调用 DeepSeek API
+    const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY;
+    if (!DEEPSEEK_API_KEY) {
+      return res.status(500).json({ success: false, error: 'DEEPSEEK_API_KEY 未配置' });
+    }
+
+    const prompt = `请为英语单词或短语 "${cleanWord}" 提供词典释义，以 JSON 格式返回，字段如下：
+- word: 单词原形（字符串）
+- phonetic_us: 美式音标，格式如 /ˈvɔɪsmeɪl/（字符串，若无则为 null）
+- phonetic_uk: 英式音标（字符串，若无则为 null）
+- pos: 词性缩写，如 n. / v. / adj. / adv. 等（字符串）
+- definition: 中文释义，简洁准确（字符串）
+- example_en: 一个常见英文例句（字符串）
+- example_zh: 例句的中文翻译（字符串）
+- collocations: 常见搭配数组，2-4个（字符串数组）
+
+只返回 JSON，不要其他内容。`;
+
+    const deepseekRes = await fetch('https://api.deepseek.com/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${DEEPSEEK_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'deepseek-chat',
+        messages: [{ role: 'user', content: prompt }],
+        response_format: { type: 'json_object' },
+        temperature: 0.3,
+      }),
+    });
+
+    if (!deepseekRes.ok) {
+      const errText = await deepseekRes.text();
+      console.error('DeepSeek API 错误:', deepseekRes.status, errText);
+      return res.status(500).json({ success: false, error: `DeepSeek API 错误: ${deepseekRes.status}` });
+    }
+
+    const deepseekData = await deepseekRes.json();
+    const content = deepseekData.choices?.[0]?.message?.content;
+    if (!content) {
+      return res.status(500).json({ success: false, error: 'DeepSeek 返回空内容' });
+    }
+
+    const dictData = JSON.parse(content);
+
+    // 存入缓存
+    await pool.query(
+      `INSERT INTO dict_cache (word, phonetic_us, phonetic_uk, pos, definition, example_en, example_zh, collocations)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+       ON CONFLICT (word) DO NOTHING`,
+      [
+        cleanWord,
+        dictData.phonetic_us || null,
+        dictData.phonetic_uk || null,
+        dictData.pos || null,
+        dictData.definition || null,
+        dictData.example_en || null,
+        dictData.example_zh || null,
+        JSON.stringify(dictData.collocations || []),
+      ]
+    );
+
+    res.json({
+      success: true,
+      data: {
+        word: cleanWord,
+        phonetic_us: dictData.phonetic_us || null,
+        phonetic_uk: dictData.phonetic_uk || null,
+        pos: dictData.pos || null,
+        definition: dictData.definition || null,
+        example_en: dictData.example_en || null,
+        example_zh: dictData.example_zh || null,
+        collocations: dictData.collocations || [],
+      }
+    });
+  } catch (error) {
+    console.error('查词失败:', error);
+    res.status(500).json({ success: false, error: '查词失败: ' + error.message });
   }
 });
 

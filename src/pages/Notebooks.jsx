@@ -999,6 +999,10 @@ function Notebooks() {
                                                             )}
                                                             <button
                                                                 onClick={() => {
+                                                                    if (vocab.isWordItem) {
+                                                                        navigate(`/episode/${vocab.episode}?mode=dual&type=word&word=${encodeURIComponent(vocab.word)}`);
+                                                                        return;
+                                                                    }
                                                                     const vid = vocab.vocabId;
                                                                     let index;
                                                                     if (typeof vid === 'string' && vid.includes('-vocab-')) {

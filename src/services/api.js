@@ -215,6 +215,15 @@ export const notesAPI = {
         request(`/api/notes/${videoId}/${subtitleIndex}`, { method: 'DELETE' }),
 };
 
+// 词典查词 API
+export const dictAPI = {
+    lookup: (word, videoId, subtitleIndex) =>
+        request('/api/dict/lookup', {
+            method: 'POST',
+            body: JSON.stringify({ word, videoId, subtitleIndex }),
+        }),
+};
+
 // 绠＄悊鍛?API
 export const adminAPI = {
     generateLink: async (phone, adminPassword) => {
