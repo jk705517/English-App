@@ -1904,6 +1904,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (!transcript || !playerRef.current) return;
         const item = transcript[index];
         if (!item) return;
+        // 重置暂停标记，让句子暂停逻辑在重播时重新触发（跟读模式下防止重播播完后跳到下一句）
+        lastPausedSentenceIndex.current = -1;
         const startTime = item.start;
         const endTime = item.end ?? (transcript[index + 1]?.start ?? startTime + 5);
         const duration = Math.max(0.5, endTime - startTime);
