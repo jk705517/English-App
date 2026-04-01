@@ -2768,7 +2768,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </span>
                                         <span className="text-xs leading-none">上一句</span>
                                     </button>
-                                    <button onClick={mode === 'dictation' ? handleReplayDictation : handleTogglePlay} className="flex flex-col items-center gap-0.5">
+                                    <button onClick={mode === 'dictation' ? handleReplayDictation : mode === 'shadow' ? () => isPlaying ? handleTogglePlay() : handlePlayOriginal(activeIndex) : handleTogglePlay} className="flex flex-col items-center gap-0.5">
                                         <span className="w-11 h-11 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
                                             {isPlaying ? (
                                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
@@ -4182,7 +4182,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </span>
                                         <span className="text-gray-500 dark:text-gray-400 text-[9px] leading-none mt-0.5">上一句</span>
                                     </button>
-                                    <button onClick={handleTogglePlay}>
+                                    <button onClick={mode === 'shadow' ? () => isPlaying ? handleTogglePlay() : handlePlayOriginal(activeIndex) : handleTogglePlay}>
                                         <span className="w-10 h-10 rounded-full bg-violet-500 flex items-center justify-center shadow-lg">
                                             {isPlaying ? (
                                                 <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24"><path d="M6 4h4v16H6V4zm8 0h4v16h-4V4z"/></svg>
