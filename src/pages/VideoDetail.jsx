@@ -548,6 +548,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 单句循环倒计时
     const [loopCountdown, setLoopCountdown] = useState(null);
     const loopCountdownRef = useRef(null);
+    // 精听循环次数计数器
+    const loopRepeatCountRef = useRef(0); // 当前句已播放次数
+    const loopBoundaryFiredForIndexRef = useRef(-1); // 防止同一边界重复触发
+    const isIntensiveSeekingRef = useRef(false); // 精听专用 seeking 守卫，不受全局 isSeeking 干扰
 
     // 精听设置（手机端面板）
     const [showJingTingPanel, setShowJingTingPanel] = useState(false);
@@ -1143,7 +1147,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // Handle video progress
     const handleProgress = useCallback((state) => {
-        if (isSeeking) return;
+        // 单句循环时使用独立的 isIntensiveSeekingRef，不受全局 isSeeking 干扰
+        if (isSeeking && !isSentenceLooping) return;
         setCurrentTime(state.playedSeconds);
 
         if (!videoData?.transcript || mode === 'dictation') return;
@@ -1153,23 +1158,84 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             return state.playedSeconds >= item.start && (!nextItem || state.playedSeconds < nextItem.start);
         });
 
-        // Intensive Mode Loop Logic - High Priority (单句循环)
-        if (mode === 'intensive' && isSentenceLooping && activeIndex >= 0) {
+        // 单句循环逻辑（精听/挖空等开启 isSentenceLooping 的模式）
+        if (isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
 
-            // 参考单句暂停的修复：使用 nextSub.start - 0.4 作为检测时机
-            if (nextSub && state.playedSeconds >= nextSub.start - 0.4) {
-                if (playerRef.current) {
-                    playerRef.current.currentTime = currentSub.start;
-                    playerRef.current.play();
-                }
+            const shouldLoop = (nextSub && state.playedSeconds >= nextSub.start - 0.4) ||
+                (!nextSub && currentSub && state.playedSeconds >= currentSub.end - 0.1);
+
+            const boundaryFiredForThis = loopBoundaryFiredForIndexRef.current === activeIndex;
+
+            // 回到句子中间时重置边界守卫
+            if (!shouldLoop && boundaryFiredForThis) {
+                loopBoundaryFiredForIndexRef.current = -1;
             }
-            // 处理最后一句（没有 nextSub 的情况）
-            if (!nextSub && currentSub && state.playedSeconds >= currentSub.end - 0.1) {
-                if (playerRef.current) {
-                    playerRef.current.currentTime = currentSub.start;
-                    playerRef.current.play();
+
+            if (shouldLoop && !boundaryFiredForThis && !loopCountdownRef.current && !isIntensiveSeekingRef.current) {
+                loopBoundaryFiredForIndexRef.current = activeIndex;
+                loopRepeatCountRef.current += 1;
+
+                const loopCount = jingTingSettings.loopCount; // null = 无限循环
+                const shouldAdvance = loopCount !== null && loopRepeatCountRef.current >= loopCount;
+                const nextIndex = Math.min(videoData.transcript.length - 1, activeIndex + 1);
+                const canAdvance = shouldAdvance && nextIndex !== activeIndex;
+
+                if (canAdvance) {
+                    // 已播放足够次数，跳到下一句
+                    loopRepeatCountRef.current = 0;
+                    loopBoundaryFiredForIndexRef.current = -1;
+                    setActiveIndex(nextIndex);
+                    setVisitedSet(prev => new Set(prev).add(nextIndex));
+                    if (isAutoScrollEnabled && transcriptRefs.current[nextIndex]) {
+                        transcriptRefs.current[nextIndex].scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    }
+                    const nextSentence = videoData.transcript[nextIndex];
+                    isIntensiveSeekingRef.current = true;
+                    if (jingTingSettings.intervalSec > 0) {
+                        if (playerRef.current) { playerRef.current.pause(); setIsPlaying(false); }
+                        startLoopCountdown(jingTingSettings.intervalSec, () => {
+                            if (playerRef.current) {
+                                playerRef.current.currentTime = nextSentence.start + 0.05;
+                                playerRef.current.play();
+                                setIsPlaying(true);
+                            }
+                            isIntensiveSeekingRef.current = false;
+                        });
+                    } else {
+                        if (playerRef.current) {
+                            playerRef.current.currentTime = nextSentence.start + 0.05;
+                            playerRef.current.play();
+                        }
+                        setTimeout(() => { isIntensiveSeekingRef.current = false; }, 100);
+                    }
+                } else {
+                    // 继续循环当前句（含最后一句达到次数后重置计数继续循环）
+                    if (shouldAdvance) {
+                        // 已是最后一句，重置计数器继续循环
+                        loopRepeatCountRef.current = 0;
+                        loopBoundaryFiredForIndexRef.current = -1;
+                    }
+                    isIntensiveSeekingRef.current = true;
+                    if (jingTingSettings.intervalSec > 0) {
+                        if (playerRef.current) { playerRef.current.pause(); setIsPlaying(false); }
+                        startLoopCountdown(jingTingSettings.intervalSec, () => {
+                            loopBoundaryFiredForIndexRef.current = -1;
+                            if (playerRef.current) {
+                                playerRef.current.currentTime = currentSub.start;
+                                playerRef.current.play();
+                                setIsPlaying(true);
+                            }
+                            isIntensiveSeekingRef.current = false;
+                        });
+                    } else {
+                        if (playerRef.current) {
+                            playerRef.current.currentTime = currentSub.start;
+                            playerRef.current.play();
+                        }
+                        setTimeout(() => { isIntensiveSeekingRef.current = false; }, 100);
+                    }
                 }
             }
 
@@ -1552,6 +1618,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (!videoData?.transcript) return;
         const sentence = videoData.transcript[index];
         if (sentence) {
+            // 重置循环计数器
+            loopRepeatCountRef.current = 0;
+            loopBoundaryFiredForIndexRef.current = -1;
+            isIntensiveSeekingRef.current = false;
+            if (loopCountdownRef.current) {
+                clearInterval(loopCountdownRef.current);
+                loopCountdownRef.current = null;
+                setLoopCountdown(null);
+            }
             // 1. Update activeIndex
             setActiveIndex(index);
             // 2. Set looping
