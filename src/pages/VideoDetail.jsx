@@ -229,13 +229,12 @@ const ShadowPanel = React.memo(({
             setIsPlayingMyRec(false);
             return;
         }
-        let url = audioUrl;
-        if (!url) {
-            const blob = await recordingStorage.get(videoId, activeIndex);
-            if (!blob) return;
-            url = URL.createObjectURL(blob);
-            setAudioUrl(url);
-        }
+        // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        const blob = await recordingStorage.get(videoId, activeIndex);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
         const audio = new Audio(url);
         myAudioRef.current = audio;
         audio.onended = () => setIsPlayingMyRec(false);
@@ -1938,6 +1937,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         const nextIndex = activeIndex + 1;
         if (nextIndex >= videoData.transcript.length) return;
         const nextSub = videoData.transcript[nextIndex];
+        // 清除"重播"的旧定时器，防止它在下一句播放时触发暂停
+        if (playOriginalTimeoutRef.current) {
+            clearTimeout(playOriginalTimeoutRef.current);
+            playOriginalTimeoutRef.current = null;
+        }
         setActiveIndex(nextIndex);
         if (playerRef.current) {
             playerRef.current.currentTime = nextSub.start;

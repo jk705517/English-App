@@ -92,13 +92,12 @@ const SubtitleItem = memo(({
             setIsPlayingMyRecording(false);
             return;
         }
-        let url = audioUrl;
-        if (!url) {
-            const blob = await recordingStorage.get(videoId, index);
-            if (!blob) return;
-            url = URL.createObjectURL(blob);
-            setAudioUrl(url);
-        }
+        // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
+        if (audioUrl) URL.revokeObjectURL(audioUrl);
+        const blob = await recordingStorage.get(videoId, index);
+        if (!blob) return;
+        const url = URL.createObjectURL(blob);
+        setAudioUrl(url);
         const audio = new Audio(url);
         myAudioRef.current = audio;
         audio.onended = () => setIsPlayingMyRecording(false);
