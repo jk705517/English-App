@@ -68,6 +68,21 @@ const SubtitleItem = memo(({
         }
     }, [hasRecording]);
 
+    // 开始重新录音时清除缓存的 audioUrl，确保录完后能读到新录音
+    useEffect(() => {
+        if (isRecording) {
+            if (myAudioRef.current) {
+                myAudioRef.current.pause();
+                myAudioRef.current = null;
+            }
+            if (audioUrl) {
+                URL.revokeObjectURL(audioUrl);
+                setAudioUrl(null);
+            }
+            setIsPlayingMyRecording(false);
+        }
+    }, [isRecording]);
+
     // 播放我的录音
     const handlePlayMyRecording = async (e) => {
         e.stopPropagation();

@@ -211,6 +211,18 @@ const ShadowPanel = React.memo(({
         if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); }
     }, [activeIndex]);
 
+    // 开始重新录音时清除缓存的 audioUrl，确保录完后能读到新录音
+    useEffect(() => {
+        if (isRecording) {
+            if (myAudioRef.current) {
+                myAudioRef.current.pause();
+                myAudioRef.current = null;
+            }
+            if (audioUrl) { URL.revokeObjectURL(audioUrl); setAudioUrl(null); }
+            setIsPlayingMyRec(false);
+        }
+    }, [isRecording]);
+
     const handlePlayMyRec = async () => {
         if (isPlayingMyRec && myAudioRef.current) {
             myAudioRef.current.pause();
