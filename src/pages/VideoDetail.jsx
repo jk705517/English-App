@@ -3437,6 +3437,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             })
                         )}
 
+                        {/* 版本号标识 */}
+                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-1</div>
+
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
                             <h3 className="text-lg font-bold mb-3 text-violet-500">重点词汇</h3>
