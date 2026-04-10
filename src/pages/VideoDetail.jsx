@@ -245,9 +245,13 @@ const ShadowPanel = React.memo(({
         alert('PLAY-BLOB: size=' + blob.size + ' type=' + blob.type + ' url=' + url.substring(0, 80));
         const audio = new Audio(url);
         myAudioRef.current = audio;
-        audio.onended = () => setIsPlayingMyRec(false);
-        audio.onpause = () => setIsPlayingMyRec(false);
-        audio.play().then(() => setIsPlayingMyRec(true)).catch(() => {});
+        audio.onplay = () => alert('EVENT-PLAY: started playing');
+        audio.onpause = () => alert('EVENT-PAUSE: paused! currentTime=' + audio.currentTime + ' duration=' + audio.duration);
+        audio.onended = () => alert('EVENT-ENDED: finished');
+        audio.onerror = (e) => alert('EVENT-ERROR: ' + (audio.error?.message || e.type));
+        audio.play()
+            .then(() => alert('PLAY-PROMISE: resolved OK, paused=' + audio.paused + ' currentTime=' + audio.currentTime))
+            .catch(e => alert('PLAY-PROMISE: rejected! ' + e.message));
     };
 
     if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
@@ -3448,7 +3452,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         )}
 
                         {/* 版本号标识 */}
-                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-3</div>
+                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-4</div>
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
