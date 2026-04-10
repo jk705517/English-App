@@ -224,17 +224,25 @@ const ShadowPanel = React.memo(({
     }, [isRecording]);
 
     const handlePlayMyRec = async () => {
+        alert('PLAY-START: ' + JSON.stringify({
+            index: activeIndex,
+            isPlayingMyRec: isPlayingMyRec,
+            hasMyAudioRef: !!myAudioRef.current,
+            myAudioRefSrc: myAudioRef.current?.src?.substring(0, 80) || 'none'
+        }));
         if (isPlayingMyRec && myAudioRef.current) {
             myAudioRef.current.pause();
             setIsPlayingMyRec(false);
             return;
         }
         // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
+        alert('CLEANUP: oldSrc=' + (myAudioRef.current?.src?.substring(0, 80) || 'none'));
         if (audioUrl) URL.revokeObjectURL(audioUrl);
         const blob = await recordingStorage.get(videoId, activeIndex);
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
+        alert('PLAY-BLOB: size=' + blob.size + ' type=' + blob.type + ' url=' + url.substring(0, 80));
         const audio = new Audio(url);
         myAudioRef.current = audio;
         audio.onended = () => setIsPlayingMyRec(false);
@@ -3440,7 +3448,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         )}
 
                         {/* 版本号标识 */}
-                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-2</div>
+                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-3</div>
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
