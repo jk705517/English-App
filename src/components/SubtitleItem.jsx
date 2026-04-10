@@ -41,6 +41,7 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    isDebug = false,
 }) => {
     // Helper: generate stable ID for sentence
     const getSentenceId = () => {
@@ -86,6 +87,7 @@ const SubtitleItem = memo(({
     // 播放我的录音
     const handlePlayMyRecording = async (e) => {
         e?.stopPropagation();
+        if (isDebug) alert(`1.入口: index=${index}, isPlaying=${isPlayingMyRecording}, hasRef=${!!myAudioRef.current}`);
 
         // 先彻底清理旧的 Audio 对象和 URL
         if (myAudioRef.current) {
@@ -99,6 +101,7 @@ const SubtitleItem = memo(({
 
         // 如果之前是播放状态，点击就是停止，不再重新播放
         if (isPlayingMyRecording) {
+            if (isDebug) alert('2.走了暂停分支 return');
             setIsPlayingMyRecording(false);
             return;
         }
@@ -106,6 +109,7 @@ const SubtitleItem = memo(({
         // 从 IndexedDB 加载录音
         try {
             const blob = await recordingStorage.get(videoId, index);
+            if (isDebug) alert(`3.读取: blob=${blob ? 'size='+blob.size : 'null'}`);
             if (!blob) return;
 
             const url = URL.createObjectURL(blob);
@@ -123,8 +127,10 @@ const SubtitleItem = memo(({
             };
 
             await audio.play();
+            if (isDebug) alert('4.播放成功');
             setIsPlayingMyRecording(true);
         } catch (err) {
+            if (isDebug) alert(`5.出错: ${err.message}`);
             setIsPlayingMyRecording(false);
             myAudioRef.current = null;
         }
