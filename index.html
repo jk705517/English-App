@@ -2,6 +2,15 @@
 <html lang="zh-CN">
 
 <head>
+  <script>
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(function(registrations) {
+        for (let registration of registrations) {
+          registration.unregister();
+        }
+      });
+    }
+  </script>
   <meta charset="UTF-8" />
   <link rel="icon" type="image/png" href="/logo-32.png" />
   <link rel="apple-touch-icon" href="/logo-180.png" />
