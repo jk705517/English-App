@@ -41,6 +41,7 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    isDebug = false,
 }) => {
     // Helper: generate stable ID for sentence
     const getSentenceId = () => {
@@ -86,8 +87,10 @@ const SubtitleItem = memo(({
     // 播放我的录音
     const handlePlayMyRecording = async (e) => {
         e.stopPropagation();
+        if (isDebug) alert(`播放入口: index=${index}, isPlaying=${isPlayingMyRecording}, hasAudioRef=${!!myAudioRef.current}`);
         // 暂停中则继续播放，播放中则暂停
         if (isPlayingMyRecording && myAudioRef.current) {
+            if (isDebug) alert('走了暂停分支');
             myAudioRef.current.pause();
             setIsPlayingMyRecording(false);
             return;
@@ -95,6 +98,7 @@ const SubtitleItem = memo(({
         // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
         if (audioUrl) URL.revokeObjectURL(audioUrl);
         const blob = await recordingStorage.get(videoId, index);
+        if (isDebug) alert(`IndexedDB读取: blob=${blob ? 'size=' + blob.size + ' type=' + blob.type : 'null'}`);
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
@@ -102,7 +106,11 @@ const SubtitleItem = memo(({
         myAudioRef.current = audio;
         audio.onended = () => setIsPlayingMyRecording(false);
         audio.onpause = () => setIsPlayingMyRecording(false);
-        audio.play().then(() => setIsPlayingMyRecording(true)).catch(() => {});
+        audio.onerror = () => { if (isDebug) alert(`播放出错: ${audio.error?.message || 'unknown'}`); };
+        audio.play().then(() => {
+            if (isDebug) alert('播放开始');
+            setIsPlayingMyRecording(true);
+        }).catch(() => {});
     };
 
     // 点击收藏按钮
