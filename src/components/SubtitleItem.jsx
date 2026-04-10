@@ -41,6 +41,7 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    onDebugLog,
 }) => {
     // Helper: generate stable ID for sentence
     const getSentenceId = () => {
@@ -95,7 +96,11 @@ const SubtitleItem = memo(({
         // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
         if (audioUrl) URL.revokeObjectURL(audioUrl);
         const blob = await recordingStorage.get(videoId, index);
-        if (!blob) return;
+        if (!blob) {
+            onDebugLog && onDebugLog(`playRecording(${index}): IndexedDB 返回 null`);
+            return;
+        }
+        onDebugLog && onDebugLog(`playRecording(${index}): blob=${blob.size}B type="${blob.type}"`);
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
         const audio = new Audio(url);
