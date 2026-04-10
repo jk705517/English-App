@@ -1868,6 +1868,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 录音：开始/停止
     const handleRecordClick = useCallback(async (index) => {
+        alert('RE-RECORD: chunks before clear=' + recordingChunksRef.current.length + ' activeRecordingIndex=' + activeRecordingIndex + ' clickedIndex=' + index);
         // 如果当前正在录音这条字幕，则停止
         if (activeRecordingIndex === index) {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -1893,8 +1894,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
             mediaRecorderRef.current = recorder;
             recordingChunksRef.current = [];
+            recorder.onstart = () => {
+                alert('REC-START: recorder state=' + recorder.state);
+            };
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordingChunksRef.current.push(e.data);
+                alert('REC-DATA: chunk size=' + e.data.size + ' chunks count=' + recordingChunksRef.current.length);
             };
             const currentStream = stream;
             recorder.onstop = async () => {
@@ -1904,6 +1909,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
+                alert('REC-STOP: total chunks=' + chunks.length + ' total size=' + chunks.reduce((a, b) => a + b.size, 0));
                 try {
                     if (chunks.length > 0 && videoData) {
                         const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
@@ -3452,7 +3458,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         )}
 
                         {/* 版本号标识 */}
-                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-4</div>
+                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-5</div>
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
