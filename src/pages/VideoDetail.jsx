@@ -395,7 +395,6 @@ const ShadowPanel = React.memo(({
 });
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
-    const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
@@ -1861,16 +1860,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
                 mediaRecorderRef.current.stop();
             }
-            // 立即更新 UI，不依赖 onstop 的异步回调时机
+            // setRecordingIndices 移到 onstop 的 save 完成后，确保按钮出现时数据已就绪
             setActiveRecordingIndex(null);
-            setRecordingIndices(prev => new Set([...prev, index]));
             return;
         }
-        // 如果正在录音其他字幕，先停止（onstop 会保存数据，这里只更新 UI）
+        // 如果正在录音其他字幕，先停止（setRecordingIndices 同样在 onstop save 后执行）
         if (activeRecordingIndex !== null && mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
-            const prevIndex = activeRecordingIndex;
             mediaRecorderRef.current.stop();
-            setRecordingIndices(prev => new Set([...prev, prevIndex]));
         }
         // 请求麦克风权限并开始录音
         try {
@@ -1889,20 +1885,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             };
             const currentStream = stream;
             recorder.onstop = async () => {
-                // UI 已在 handleRecordClick 中同步更新，这里只负责保存数据
                 // 用闭包捕获的 currentStream，避免 onstop 延迟触发时 ref 已指向新录音的 stream
                 currentStream.getTracks().forEach(t => t.stop());
                 if (mediaStreamRef.current === currentStream) {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                if (isDebug) {
-                    const totalSize = chunks.reduce((sum, c) => sum + c.size, 0);
-                    alert(`onstop: chunks=${chunks.length}, size=${totalSize}, tracks=${currentStream?.getTracks().map(t => t.readyState).join(',')}`);
-                }
                 if (chunks.length > 0 && videoData) {
                     const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
                     await recordingStorage.save(videoData.id, index, blob);
+                    // 保存完成后才让"我的录音"按钮出现，确保点击时数据已就绪
+                    setRecordingIndices(prev => new Set([...prev, index]));
                 }
             };
             setActiveRecordingIndex(index);
@@ -1915,7 +1908,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 alert('录音失败，请检查麦克风设备');
             }
         }
-    }, [activeRecordingIndex, videoData, isDebug]);
+    }, [activeRecordingIndex, videoData]);
 
     // 录音：播放原音片段
     const handlePlayOriginal = useCallback((index) => {
@@ -3431,7 +3424,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
-                                            isDebug={isDebug}
                                         />
                                     </div>
                                 );
