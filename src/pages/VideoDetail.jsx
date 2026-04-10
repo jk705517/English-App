@@ -1891,11 +1891,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                if (chunks.length > 0 && videoData) {
-                    const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-                    await recordingStorage.save(videoData.id, index, blob);
-                    // 保存完成后才让"我的录音"按钮出现，确保点击时数据已就绪
-                    setRecordingIndices(prev => new Set([...prev, index]));
+                try {
+                    if (chunks.length > 0 && videoData) {
+                        const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+                        await recordingStorage.save(videoData.id, index, blob);
+                    }
+                } catch (err) {
+                    console.error('录音保存失败:', err);
+                } finally {
+                    // 无论保存成功还是失败，都要让播放条出现
+                    if (chunks.length > 0) {
+                        setRecordingIndices(prev => new Set([...prev, index]));
+                    }
                 }
             };
             setActiveRecordingIndex(index);
