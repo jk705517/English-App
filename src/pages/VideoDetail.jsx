@@ -395,7 +395,6 @@ const ShadowPanel = React.memo(({
 });
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
-    const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
@@ -540,6 +539,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const recordingChunksRef = useRef([]);
     const mediaStreamRef = useRef(null);
     const playOriginalTimeoutRef = useRef(null);
+    const latestRecordingBlobRef = useRef({}); // { [subtitleIndex]: Blob } 内存缓存，播放时优先使用
 
     // 词汇关联期数状态
     const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
@@ -1896,12 +1896,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                if (isDebug) {
-                    const totalSize = chunks.reduce((sum, c) => sum + c.size, 0);
-                    alert(`onstop: chunks=${chunks.length}, size=${totalSize}, tracks=${currentStream?.getTracks().map(t => t.readyState).join(',')}`);
-                }
                 if (chunks.length > 0 && videoData) {
                     const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+                    // 同步写入内存缓存，播放时可立即使用，无需等待 IndexedDB 写完
+                    latestRecordingBlobRef.current[index] = blob;
+                    // 异步持久化到 IndexedDB（作为刷新后的备份）
                     await recordingStorage.save(videoData.id, index, blob);
                 }
             };
@@ -1915,7 +1914,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 alert('录音失败，请检查麦克风设备');
             }
         }
-    }, [activeRecordingIndex, videoData, isDebug]);
+    }, [activeRecordingIndex, videoData]);
 
     // 录音：播放原音片段
     const handlePlayOriginal = useCallback((index) => {
@@ -3431,7 +3430,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
-                                            isDebug={isDebug}
+                                            latestRecordingBlobRef={latestRecordingBlobRef}
                                         />
                                     </div>
                                 );

@@ -41,7 +41,7 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
-    isDebug = false,
+    latestRecordingBlobRef,
 }) => {
     // Helper: generate stable ID for sentence
     const getSentenceId = () => {
@@ -93,12 +93,10 @@ const SubtitleItem = memo(({
             setIsPlayingMyRecording(false);
             return;
         }
-        // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
         if (audioUrl) URL.revokeObjectURL(audioUrl);
-        const blob = await recordingStorage.get(videoId, index);
-        if (isDebug) {
-            alert(`播放: blob=${blob ? blob.size : 'null'}, type=${blob?.type}`);
-        }
+        // 优先用内存缓存（onstop 同步写入，无需等 IndexedDB），刷新后降级到 IndexedDB
+        const blob = latestRecordingBlobRef?.current?.[index]
+            ?? await recordingStorage.get(videoId, index);
         if (!blob) return;
         const url = URL.createObjectURL(blob);
         setAudioUrl(url);
