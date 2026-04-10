@@ -25,10 +25,25 @@ class RecordingStorage {
     }
 
     async save(videoId, idx, blob) {
+        // 把 Blob 转成 ArrayBuffer 再存，兼容 iOS Safari 等不支持直接存 Blob 的浏览器
+        let arrayBuffer;
+        if (blob.arrayBuffer) {
+            arrayBuffer = await blob.arrayBuffer();
+        } else {
+            arrayBuffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(blob);
+            });
+        }
         const db = await this.open();
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readwrite');
-            const req = tx.objectStore(STORE_NAME).put(blob, this.key(videoId, idx));
+            const req = tx.objectStore(STORE_NAME).put(
+                { data: arrayBuffer, type: blob.type },
+                this.key(videoId, idx)
+            );
             req.onsuccess = () => resolve();
             req.onerror = (e) => reject(e.target.error);
         });
@@ -39,7 +54,21 @@ class RecordingStorage {
         return new Promise((resolve, reject) => {
             const tx = db.transaction(STORE_NAME, 'readonly');
             const req = tx.objectStore(STORE_NAME).get(this.key(videoId, idx));
-            req.onsuccess = (e) => resolve(e.target.result || null);
+            req.onsuccess = (e) => {
+                const result = e.target.result;
+                if (!result) { resolve(null); return; }
+                // 新格式：{ data: ArrayBuffer, type }
+                if (result.data instanceof ArrayBuffer) {
+                    resolve(new Blob([result.data], { type: result.type || 'audio/webm' }));
+                    return;
+                }
+                // 旧格式：直接存的 Blob（兼容已有录音数据）
+                if (result instanceof Blob) {
+                    resolve(result);
+                    return;
+                }
+                resolve(null);
+            };
             req.onerror = (e) => reject(e.target.error);
         });
     }

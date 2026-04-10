@@ -395,7 +395,6 @@ const ShadowPanel = React.memo(({
 });
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
-    const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
@@ -1892,19 +1891,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                if (isDebug) alert(`onstop: chunks=${chunks.length}, videoData=${!!videoData}, videoId=${videoData?.id}, index=${index}`);
                 try {
                     if (chunks.length > 0 && videoData) {
                         const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
-                        if (isDebug) alert(`准备save: videoId=${videoData.id}, index=${index}, blobSize=${blob.size}`);
                         await recordingStorage.save(videoData.id, index, blob);
-                        if (isDebug) alert('save完成');
-                    } else {
-                        if (isDebug) alert(`跳过save: chunks=${chunks.length}, videoData=${!!videoData}`);
                     }
                 } catch (err) {
                     console.error('录音保存失败:', err);
-                    if (isDebug) alert(`save报错: ${err.message}`);
                 } finally {
                     // 无论保存成功还是失败，都要让播放条出现
                     if (chunks.length > 0) {
