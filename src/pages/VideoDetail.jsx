@@ -1886,10 +1886,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordingChunksRef.current.push(e.data);
             };
+            const currentStream = stream;
             recorder.onstop = async () => {
                 // UI 已在 handleRecordClick 中同步更新，这里只负责保存数据
-                mediaStreamRef.current?.getTracks().forEach(t => t.stop());
-                mediaStreamRef.current = null;
+                // 用闭包捕获的 currentStream，避免 onstop 延迟触发时 ref 已指向新录音的 stream
+                currentStream.getTracks().forEach(t => t.stop());
+                if (mediaStreamRef.current === currentStream) {
+                    mediaStreamRef.current = null;
+                }
                 const chunks = recordingChunksRef.current;
                 if (chunks.length > 0 && videoData) {
                     const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
