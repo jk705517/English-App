@@ -395,6 +395,7 @@ const ShadowPanel = React.memo(({
 });
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
+    const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
@@ -539,16 +540,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const recordingChunksRef = useRef([]);
     const mediaStreamRef = useRef(null);
     const playOriginalTimeoutRef = useRef(null);
-
-    // 录音调试日志（页面内面板，方便手机测试）
-    const [debugLogs, setDebugLogs] = useState([]);
-    const [showDebugPanel, setShowDebugPanel] = useState(true);
-    const addDebugLog = useCallback((msg) => {
-        const time = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 });
-        const line = `[${time}] ${msg}`;
-        console.log('[REC DEBUG]', line);
-        setDebugLogs(prev => [line, ...prev].slice(0, 50));
-    }, []);
 
     // 词汇关联期数状态
     const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
@@ -1865,7 +1856,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 录音：开始/停止
     const handleRecordClick = useCallback(async (index) => {
-        addDebugLog(`handleRecordClick(${index}) activeRecordingIndex=${activeRecordingIndex}`);
         // 如果当前正在录音这条字幕，则停止
         if (activeRecordingIndex === index) {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -1886,8 +1876,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
             mediaStreamRef.current = stream;
-            const trackStates = stream.getTracks().map(t => `${t.kind}:${t.readyState}`).join(',');
-            addDebugLog(`getUserMedia OK tracks=[${trackStates}]`);
             const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
                 ? 'audio/webm;codecs=opus'
                 : MediaRecorder.isTypeSupported('audio/webm')
@@ -1897,10 +1885,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             mediaRecorderRef.current = recorder;
             recordingChunksRef.current = [];
             recorder.ondataavailable = (e) => {
-                if (e.data.size > 0) {
-                    recordingChunksRef.current.push(e.data);
-                    addDebugLog(`ondataavailable chunk=${e.data.size}B total=${recordingChunksRef.current.length}`);
-                }
+                if (e.data.size > 0) recordingChunksRef.current.push(e.data);
             };
             const currentStream = stream;
             recorder.onstop = async () => {
@@ -1911,8 +1896,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                const totalSize = chunks.reduce((s, c) => s + c.size, 0);
-                addDebugLog(`onstop chunks=${chunks.length} totalSize=${totalSize}B`);
+                if (isDebug) {
+                    const totalSize = chunks.reduce((sum, c) => sum + c.size, 0);
+                    alert(`onstop: chunks=${chunks.length}, size=${totalSize}, tracks=${currentStream?.getTracks().map(t => t.readyState).join(',')}`);
+                }
                 if (chunks.length > 0 && videoData) {
                     const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
                     await recordingStorage.save(videoData.id, index, blob);
@@ -1928,7 +1915,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 alert('录音失败，请检查麦克风设备');
             }
         }
-    }, [activeRecordingIndex, videoData, addDebugLog]);
+    }, [activeRecordingIndex, videoData, isDebug]);
 
     // 录音：播放原音片段
     const handlePlayOriginal = useCallback((index) => {
@@ -3398,75 +3385,57 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 />
                             </>
                         ) : (
-                            <>
-                                {/* 跟读模式录音调试面板 */}
-                                {mode === 'shadow' && showDebugPanel && (
-                                    <div className="mx-2 mb-2 rounded-lg overflow-hidden" style={{ background: 'rgba(0,0,0,0.75)' }}>
-                                        <div className="flex items-center justify-between px-2 py-1 border-b border-white/20">
-                                            <span className="text-white/60 font-mono" style={{ fontSize: 11 }}>录音调试</span>
-                                            <button onClick={() => setShowDebugPanel(false)} className="text-white/50 hover:text-white/90 px-1" style={{ fontSize: 11 }}>✕</button>
-                                        </div>
-                                        <div className="overflow-y-auto p-2 space-y-0.5" style={{ maxHeight: 120 }}>
-                                            {debugLogs.length === 0 ? (
-                                                <div className="text-white/40 font-mono" style={{ fontSize: 11 }}>（等待录音操作…）</div>
-                                            ) : debugLogs.map((log, i) => (
-                                                <div key={i} className="text-white font-mono break-all leading-relaxed" style={{ fontSize: 11 }}>{log}</div>
-                                            ))}
-                                        </div>
+                            videoData.transcript.map((item, index) => {
+                                const isActive = index === activeIndex;
+                                // Generate stable sentence ID (use existing or fallback)
+                                const sentenceId = item.id !== undefined && item.id !== null
+                                    ? item.id
+                                    : `${videoData.id}-${index}`;
+                                return (
+                                    <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
+                                        <SubtitleItem
+                                            item={item}
+                                            index={index}
+                                            isActive={isActive}
+                                            mode={mode}
+                                            clozePattern={null}
+                                            vocab={videoData.vocab}
+                                            onSeek={handleSeek}
+                                            playerRef={playerRef}
+                                            renderClozeText={renderClozeText}
+                                            onSetIsPlaying={setIsPlaying}
+                                            isFavorite={favoriteSentenceIds.some(fid => String(fid) === String(sentenceId))}
+                                            onToggleFavorite={handleToggleSentenceFavorite}
+                                            videoId={Number(videoData.id)}
+                                            subtitleFontSize={subtitleFontSize}
+                                            onVocabNavigate={(vocabIndex) => {
+                                                const vList = videoData.vocab || [];
+                                                const vItem = vList[vocabIndex];
+                                                if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
+                                            }}
+                                            onWordClick={(word) => handleWordClick(word, index)}
+                                            abMode={abMode}
+                                            onSetAbPoint={handleSetAbPoint}
+                                            isAbPointA={index === abIndexA}
+                                            isAbPointB={index === abIndexB}
+                                            loopCountdown={isActive ? loopCountdown : null}
+                                            note={!isDemo ? (notes[index] || null) : null}
+                                            onNoteClick={!isDemo ? handleNoteClick : null}
+                                            onAddToNotebook={!isDemo ? (sentenceId) => {
+                                                if (!user) { alert('登录后才能使用本子功能'); return; }
+                                                setNotebookDialogItem({ itemType: 'sentence', itemId: sentenceId, videoId: Number(videoData.id) });
+                                                setNotebookDialogOpen(true);
+                                            } : null}
+                                            hasRecording={recordingIndices.has(index)}
+                                            isRecording={activeRecordingIndex === index}
+                                            onRecordClick={handleRecordClick}
+                                            onPlayOriginal={handlePlayOriginal}
+                                            onDeleteRecording={handleDeleteRecording}
+                                            isDebug={isDebug}
+                                        />
                                     </div>
-                                )}
-                                {videoData.transcript.map((item, index) => {
-                                    const isActive = index === activeIndex;
-                                    // Generate stable sentence ID (use existing or fallback)
-                                    const sentenceId = item.id !== undefined && item.id !== null
-                                        ? item.id
-                                        : `${videoData.id}-${index}`;
-                                    return (
-                                        <div key={index} ref={(el) => transcriptRefs.current[index] = el}>
-                                            <SubtitleItem
-                                                item={item}
-                                                index={index}
-                                                isActive={isActive}
-                                                mode={mode}
-                                                clozePattern={null}
-                                                vocab={videoData.vocab}
-                                                onSeek={handleSeek}
-                                                playerRef={playerRef}
-                                                renderClozeText={renderClozeText}
-                                                onSetIsPlaying={setIsPlaying}
-                                                isFavorite={favoriteSentenceIds.some(fid => String(fid) === String(sentenceId))}
-                                                onToggleFavorite={handleToggleSentenceFavorite}
-                                                videoId={Number(videoData.id)}
-                                                subtitleFontSize={subtitleFontSize}
-                                                onVocabNavigate={(vocabIndex) => {
-                                                    const vList = videoData.vocab || [];
-                                                    const vItem = vList[vocabIndex];
-                                                    if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
-                                                }}
-                                                onWordClick={(word) => handleWordClick(word, index)}
-                                                abMode={abMode}
-                                                onSetAbPoint={handleSetAbPoint}
-                                                isAbPointA={index === abIndexA}
-                                                isAbPointB={index === abIndexB}
-                                                loopCountdown={isActive ? loopCountdown : null}
-                                                note={!isDemo ? (notes[index] || null) : null}
-                                                onNoteClick={!isDemo ? handleNoteClick : null}
-                                                onAddToNotebook={!isDemo ? (sentenceId) => {
-                                                    if (!user) { alert('登录后才能使用本子功能'); return; }
-                                                    setNotebookDialogItem({ itemType: 'sentence', itemId: sentenceId, videoId: Number(videoData.id) });
-                                                    setNotebookDialogOpen(true);
-                                                } : null}
-                                                hasRecording={recordingIndices.has(index)}
-                                                isRecording={activeRecordingIndex === index}
-                                                onRecordClick={handleRecordClick}
-                                                onPlayOriginal={handlePlayOriginal}
-                                                onDeleteRecording={handleDeleteRecording}
-                                                onDebugLog={addDebugLog}
-                                            />
-                                        </div>
-                                    );
-                                })}
-                            </>
+                                );
+                            })
                         )}
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
