@@ -87,16 +87,9 @@ const SubtitleItem = memo(({
     // 播放我的录音
     const handlePlayMyRecording = async (e) => {
         e?.stopPropagation();
-        alert('PLAY-START: ' + JSON.stringify({
-            index: index,
-            isPlayingMyRecording: isPlayingMyRecording,
-            hasMyAudioRef: !!myAudioRef.current,
-            myAudioRefSrc: myAudioRef.current?.src?.substring(0, 80) || 'none'
-        }));
         if (isDebug) alert(`1.入口: index=${index}, isPlaying=${isPlayingMyRecording}, hasRef=${!!myAudioRef.current}`);
 
         // 先彻底清理旧的 Audio 对象和 URL
-        alert('CLEANUP: oldSrc=' + (myAudioRef.current?.src?.substring(0, 80) || 'none'));
         if (myAudioRef.current) {
             myAudioRef.current.pause();
             myAudioRef.current = null;
@@ -121,7 +114,6 @@ const SubtitleItem = memo(({
 
             const url = URL.createObjectURL(blob);
             setAudioUrl(url);
-            alert('PLAY-BLOB: size=' + blob.size + ' type=' + blob.type + ' url=' + url.substring(0, 80));
             const audio = new Audio(url);
             myAudioRef.current = audio;
 

@@ -199,6 +199,7 @@ const ShadowPanel = React.memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    recordingCacheRef,
     showNavButtons = false,
     onNextSentence,
 }) => {
@@ -223,35 +224,43 @@ const ShadowPanel = React.memo(({
         }
     }, [isRecording]);
 
-    const handlePlayMyRec = async () => {
-        alert('PLAY-START: ' + JSON.stringify({
-            index: activeIndex,
-            isPlayingMyRec: isPlayingMyRec,
-            hasMyAudioRef: !!myAudioRef.current,
-            myAudioRefSrc: myAudioRef.current?.src?.substring(0, 80) || 'none'
-        }));
+    const handlePlayMyRec = () => {
         if (isPlayingMyRec && myAudioRef.current) {
             myAudioRef.current.pause();
             setIsPlayingMyRec(false);
             return;
         }
-        // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
-        alert('CLEANUP: oldSrc=' + (myAudioRef.current?.src?.substring(0, 80) || 'none'));
-        if (audioUrl) URL.revokeObjectURL(audioUrl);
-        const blob = await recordingStorage.get(videoId, activeIndex);
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-        alert('PLAY-BLOB: size=' + blob.size + ' type=' + blob.type + ' url=' + url.substring(0, 80));
-        const audio = new Audio(url);
-        myAudioRef.current = audio;
-        audio.onplay = () => alert('EVENT-PLAY: started playing');
-        audio.onpause = () => alert('EVENT-PAUSE: paused! currentTime=' + audio.currentTime + ' duration=' + audio.duration);
-        audio.onended = () => alert('EVENT-ENDED: finished');
-        audio.onerror = (e) => alert('EVENT-ERROR: ' + (audio.error?.message || e.type));
-        audio.play()
-            .then(() => alert('PLAY-PROMISE: resolved OK, paused=' + audio.paused + ' currentTime=' + audio.currentTime))
-            .catch(e => alert('PLAY-PROMISE: rejected! ' + e.message));
+        if (myAudioRef.current) {
+            myAudioRef.current.pause();
+            myAudioRef.current = null;
+        }
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+            setAudioUrl(null);
+        }
+
+        const startPlayback = (blob) => {
+            const url = URL.createObjectURL(blob);
+            setAudioUrl(url);
+            const audio = new Audio(url);
+            myAudioRef.current = audio;
+            audio.onended = () => { setIsPlayingMyRec(false); myAudioRef.current = null; };
+            audio.onerror = () => { setIsPlayingMyRec(false); myAudioRef.current = null; };
+            audio.play().then(() => setIsPlayingMyRec(true)).catch(() => setIsPlayingMyRec(false));
+        };
+
+        const cachedBlob = recordingCacheRef?.current?.[activeIndex];
+        if (cachedBlob) {
+            // 同步路径：直接用内存缓存的 Blob，iOS Safari 不会拒绝 play()
+            startPlayback(cachedBlob);
+        } else {
+            // 降级路径：从 IndexedDB 异步读取（刷新后首次播放前预加载未完成时触发）
+            recordingStorage.get(videoId, activeIndex).then(blob => {
+                if (!blob) return;
+                if (recordingCacheRef?.current) recordingCacheRef.current[activeIndex] = blob;
+                startPlayback(blob);
+            });
+        }
     };
 
     if (!currentSub) return <div className="p-8 text-center text-gray-400">暂无字幕</div>;
@@ -552,6 +561,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const recordingChunksRef = useRef([]);
     const mediaStreamRef = useRef(null);
     const playOriginalTimeoutRef = useRef(null);
+    const recordingCacheRef = useRef({});
 
     // 词汇关联期数状态
     const [vocabOccurrences, setVocabOccurrences] = useState({});  // { word: { total, occurrences } }
@@ -835,11 +845,19 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         loadVocabFavorites();
     }, [user, videoData?.id, isDemo]);
 
-    // 加载录音索引
+    // 加载录音索引，并预加载 Blob 到内存 cache（供 iOS 同步播放使用）
     useEffect(() => {
         if (!videoData) return;
         recordingStorage.getIndicesForVideo(videoData.id)
-            .then(indices => setRecordingIndices(new Set(indices)))
+            .then(async (indices) => {
+                setRecordingIndices(new Set(indices));
+                for (const idx of indices) {
+                    try {
+                        const blob = await recordingStorage.get(videoData.id, idx);
+                        if (blob) recordingCacheRef.current[idx] = blob;
+                    } catch (_) {}
+                }
+            })
             .catch(err => console.error('Failed to load recording indices:', err));
     }, [videoData?.id]);
 
@@ -1868,7 +1886,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 录音：开始/停止
     const handleRecordClick = useCallback(async (index) => {
-        alert('RE-RECORD: chunks before clear=' + recordingChunksRef.current.length + ' activeRecordingIndex=' + activeRecordingIndex + ' clickedIndex=' + index);
         // 如果当前正在录音这条字幕，则停止
         if (activeRecordingIndex === index) {
             if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
@@ -1894,12 +1911,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
             mediaRecorderRef.current = recorder;
             recordingChunksRef.current = [];
-            recorder.onstart = () => {
-                alert('REC-START: recorder state=' + recorder.state);
-            };
             recorder.ondataavailable = (e) => {
                 if (e.data.size > 0) recordingChunksRef.current.push(e.data);
-                alert('REC-DATA: chunk size=' + e.data.size + ' chunks count=' + recordingChunksRef.current.length);
             };
             const currentStream = stream;
             recorder.onstop = async () => {
@@ -1909,10 +1922,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     mediaStreamRef.current = null;
                 }
                 const chunks = recordingChunksRef.current;
-                alert('REC-STOP: total chunks=' + chunks.length + ' total size=' + chunks.reduce((a, b) => a + b.size, 0));
                 try {
                     if (chunks.length > 0 && videoData) {
                         const blob = new Blob(chunks, { type: mimeType || 'audio/webm' });
+                        recordingCacheRef.current[index] = blob;
                         await recordingStorage.save(videoData.id, index, blob);
                     }
                 } catch (err) {
@@ -1983,6 +1996,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (!videoData) return;
         try {
             await recordingStorage.delete(videoData.id, index);
+            delete recordingCacheRef.current[index];
             setRecordingIndices(prev => { const next = new Set(prev); next.delete(index); return next; });
         } catch (err) {
             console.error('Failed to delete recording:', err);
@@ -2955,6 +2969,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onRecordClick={handleRecordClick}
                                 onPlayOriginal={handlePlayOriginal}
                                 onDeleteRecording={handleDeleteRecording}
+                                recordingCacheRef={recordingCacheRef}
                             />
                         </div>
                     );
@@ -3183,6 +3198,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
+                                            recordingCacheRef={recordingCacheRef}
                                             showNavButtons={true}
                                             onNextSentence={handleShadowNextSentence}
                                         />
@@ -3458,7 +3474,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         )}
 
                         {/* 版本号标识 */}
-                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-5</div>
+                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-6</div>
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
