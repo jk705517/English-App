@@ -395,7 +395,6 @@ const ShadowPanel = React.memo(({
 });
 
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
-    const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
     const episode = isDemo ? demoEpisode : urlEpisode;
     const location = useLocation();
@@ -3432,7 +3431,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
-                                            isDebug={isDebug}
                                         />
                                     </div>
                                 );

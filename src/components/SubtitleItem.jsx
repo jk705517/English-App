@@ -41,7 +41,6 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
-    isDebug = false,
 }) => {
     // Helper: generate stable ID for sentence
     const getSentenceId = () => {
@@ -86,31 +85,49 @@ const SubtitleItem = memo(({
 
     // 播放我的录音
     const handlePlayMyRecording = async (e) => {
-        e.stopPropagation();
-        if (isDebug) alert(`播放入口: index=${index}, isPlaying=${isPlayingMyRecording}, hasAudioRef=${!!myAudioRef.current}`);
-        // 暂停中则继续播放，播放中则暂停
-        if (isPlayingMyRecording && myAudioRef.current) {
-            if (isDebug) alert('走了暂停分支');
+        e?.stopPropagation();
+
+        // 先彻底清理旧的 Audio 对象和 URL
+        if (myAudioRef.current) {
             myAudioRef.current.pause();
+            myAudioRef.current = null;
+        }
+        if (audioUrl) {
+            URL.revokeObjectURL(audioUrl);
+            setAudioUrl(null);
+        }
+
+        // 如果之前是播放状态，点击就是停止，不再重新播放
+        if (isPlayingMyRecording) {
             setIsPlayingMyRecording(false);
             return;
         }
-        // 每次点击都从 IndexedDB 读取最新录音，避免重录后仍播放旧录音
-        if (audioUrl) URL.revokeObjectURL(audioUrl);
-        const blob = await recordingStorage.get(videoId, index);
-        if (isDebug) alert(`IndexedDB读取: blob=${blob ? 'size=' + blob.size + ' type=' + blob.type : 'null'}`);
-        if (!blob) return;
-        const url = URL.createObjectURL(blob);
-        setAudioUrl(url);
-        const audio = new Audio(url);
-        myAudioRef.current = audio;
-        audio.onended = () => setIsPlayingMyRecording(false);
-        audio.onpause = () => setIsPlayingMyRecording(false);
-        audio.onerror = () => { if (isDebug) alert(`播放出错: ${audio.error?.message || 'unknown'}`); };
-        audio.play().then(() => {
-            if (isDebug) alert('播放开始');
+
+        // 从 IndexedDB 加载录音
+        try {
+            const blob = await recordingStorage.get(videoId, index);
+            if (!blob) return;
+
+            const url = URL.createObjectURL(blob);
+            setAudioUrl(url);
+            const audio = new Audio(url);
+            myAudioRef.current = audio;
+
+            audio.onended = () => {
+                setIsPlayingMyRecording(false);
+                myAudioRef.current = null;
+            };
+            audio.onerror = () => {
+                setIsPlayingMyRecording(false);
+                myAudioRef.current = null;
+            };
+
+            await audio.play();
             setIsPlayingMyRecording(true);
-        }).catch(() => {});
+        } catch (err) {
+            setIsPlayingMyRecording(false);
+            myAudioRef.current = null;
+        }
     };
 
     // 点击收藏按钮
