@@ -355,16 +355,6 @@ const SubtitleItem = memo(({
                         {/* 分隔 */}
                         <div className="w-px h-4 bg-red-200 dark:bg-red-800 mx-0.5" />
 
-                        {/* 🔊 播放原音 */}
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onPlayOriginal && onPlayOriginal(index); }}
-                            className="flex items-center gap-1 px-2 py-1 rounded-md text-gray-500 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-xs"
-                            title="播放原音"
-                        >
-                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z"/></svg>
-                            原音
-                        </button>
-
                         <div className="flex-1" />
 
                         {/* 🔄 重录 */}

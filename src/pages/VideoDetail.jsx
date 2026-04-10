@@ -366,13 +366,6 @@ const ShadowPanel = React.memo(({
                     </button>
                     <span className="text-gray-300">|</span>
                     <button
-                        onClick={() => onPlayOriginal && onPlayOriginal(activeIndex)}
-                        className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700"
-                    >
-                        🔊 原音
-                    </button>
-                    <span className="text-gray-300">|</span>
-                    <button
                         onClick={() => onRecordClick && onRecordClick(activeIndex)}
                         className="text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700"
                     >
