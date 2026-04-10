@@ -389,7 +389,7 @@ const ShadowPanel = React.memo(({
             )}
             {/* 手机端跟读操作按钮 */}
             {showNavButtons && (
-                <div className="shrink-0 flex items-center justify-center gap-3 px-4 pb-3">
+                <div className="shrink-0 flex items-center justify-center gap-3 px-4 pt-3 pb-3">
                     <button
                         onClick={() => onPlayOriginal && onPlayOriginal(activeIndex)}
                         className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-200 text-sm font-medium active:bg-gray-200 dark:active:bg-gray-600 transition-colors"
@@ -3472,9 +3472,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 );
                             })
                         )}
-
-                        {/* 版本号标识 */}
-                        <div className="text-center text-gray-300 dark:text-gray-600 text-xs py-2">v20260410-6</div>
 
                         {/* 重点词汇 - 只在词卡Tab列表页显示 */}
                         <div className={`xl:hidden mt-6 p-4 bg-violet-50 rounded-lg ${mode !== 'vocab' || vocabDetailIndex !== null || isMobile ? 'hidden' : ''}`}>
