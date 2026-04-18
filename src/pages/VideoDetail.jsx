@@ -3135,7 +3135,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                                 firstTry: prev.firstTry + (firstTry ? 1 : 0),
                                                 corrected: prev.corrected + (firstTry ? 0 : 1),
                                             }));
-                                            setTimeout(() => handleNextDictation(), 800);
                                         }}
                                         onSkip={() => {
                                             setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));

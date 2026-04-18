@@ -1,29 +1,73 @@
 import { useState, useRef, useEffect } from 'react';
 
+function levenshtein(a, b) {
+    const n = a.length, m = b.length;
+    if (n === 0) return m;
+    if (m === 0) return n;
+    let prev = Array.from({ length: m + 1 }, (_, j) => j);
+    for (let i = 1; i <= n; i++) {
+        const cur = new Array(m + 1);
+        cur[0] = i;
+        for (let j = 1; j <= m; j++) {
+            cur[j] = a[i - 1] === b[j - 1]
+                ? prev[j - 1]
+                : 1 + Math.min(prev[j - 1], prev[j], cur[j - 1]);
+        }
+        prev = cur;
+    }
+    return prev[m];
+}
+
+function tokenize(text) {
+    return text
+        .toLowerCase()
+        .replace(/[.,!?;:'"()]/g, ' ')
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+}
+
 /**
- * 逐词对比：返回对比结果数组
- * type: 'correct' | 'wrong' | 'missing' | 'extra'
+ * 词级对齐（Needleman-Wunsch）
+ * 返回 { type: 'correct' | 'close' | 'wrong' | 'missing' | 'extra', ... }[]
  */
 function compareSentences(userText, correctText) {
-    const normalize = (word) => word.toLowerCase().replace(/[.,!?;:'"()]/g, '');
-    const userWords = userText.trim().split(/\s+/).filter(Boolean);
-    const correctWords = correctText.trim().split(/\s+/).filter(Boolean);
-    const results = [];
-    const maxLen = Math.max(userWords.length, correctWords.length);
-    for (let i = 0; i < maxLen; i++) {
-        const u = userWords[i] || null;
-        const c = correctWords[i] || null;
-        if (!u && c) {
-            results.push({ type: 'missing', correct: c });
-        } else if (u && !c) {
-            results.push({ type: 'extra', user: u });
-        } else if (normalize(u) === normalize(c)) {
-            results.push({ type: 'correct', word: u });
-        } else {
-            results.push({ type: 'wrong', user: u, correct: c });
+    const userWords = tokenize(userText);
+    const correctWords = tokenize(correctText);
+    const n = userWords.length, m = correctWords.length;
+    if (n === 0 && m === 0) return [];
+
+    const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+    for (let i = 0; i <= n; i++) dp[i][0] = i;
+    for (let j = 0; j <= m; j++) dp[0][j] = j;
+    for (let i = 1; i <= n; i++) {
+        for (let j = 1; j <= m; j++) {
+            const cost = userWords[i - 1] === correctWords[j - 1] ? 0 : 1;
+            dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
         }
     }
-    return results;
+
+    const result = [];
+    let i = n, j = m;
+    while (i > 0 || j > 0) {
+        if (i > 0 && j > 0 && userWords[i - 1] === correctWords[j - 1]) {
+            result.unshift({ type: 'correct', word: userWords[i - 1] });
+            i--; j--;
+        } else if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+            const user = userWords[i - 1], correct = correctWords[j - 1];
+            // close: 差 ≤1 字母 且两者都 ≥3 字母（避免 i/a 这种短词被算接近）
+            const isClose = levenshtein(user, correct) <= 1 && Math.min(user.length, correct.length) >= 3;
+            result.unshift({ type: isClose ? 'close' : 'wrong', user, correct });
+            i--; j--;
+        } else if (i > 0 && (j === 0 || dp[i][j] === dp[i - 1][j] + 1)) {
+            result.unshift({ type: 'extra', user: userWords[i - 1] });
+            i--;
+        } else {
+            result.unshift({ type: 'missing', correct: correctWords[j - 1] });
+            j--;
+        }
+    }
+    return result;
 }
 
 /**
@@ -46,7 +90,6 @@ const DictationInput = ({
     const hasBeenWrong = useRef(false);
     const inputRef = useRef(null);
 
-    // 挂载后自动聚焦（每次新句子 key 变化时组件重挂，自动触发）
     useEffect(() => {
         inputRef.current?.focus();
     }, []);
@@ -54,9 +97,10 @@ const DictationInput = ({
     const handleSubmit = () => {
         if (!userInput.trim()) return;
         const result = compareSentences(userInput, correctAnswer);
-        const allCorrect = result.every(r => r.type === 'correct');
+        // correct 和 close（差 1 字母）都算通过
+        const passed = result.length > 0 && result.every(r => r.type === 'correct' || r.type === 'close');
         setDiffResult(result);
-        if (allCorrect) {
+        if (passed) {
             setStatus('correct');
             onCorrect?.({ firstTry: !hasBeenWrong.current });
         } else {
@@ -107,18 +151,41 @@ const DictationInput = ({
                                 </span>
                             );
                         }
+                        if (item.type === 'close') {
+                            return (
+                                <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 px-1.5 rounded bg-yellow-200 dark:bg-yellow-900/40 border border-yellow-300 dark:border-yellow-800"
+                                    title={`拼写接近正确！应为 ${item.correct}`}
+                                >
+                                    <span className="text-yellow-800 dark:text-yellow-300 font-medium">{item.user}</span>
+                                    <span className="text-xs text-yellow-700 dark:text-yellow-400">→</span>
+                                    <span className="text-yellow-800 dark:text-yellow-300 font-semibold">{item.correct}</span>
+                                </span>
+                            );
+                        }
                         if (item.type === 'wrong') {
                             return (
-                                <span key={i} className="inline-flex items-center gap-1">
-                                    <span className="text-red-500 line-through opacity-75">{item.user}</span>
-                                    <span className="text-green-600 dark:text-green-400 font-bold">{item.correct}</span>
+                                <span
+                                    key={i}
+                                    className="inline-flex items-center gap-1 px-1.5 rounded bg-red-200 dark:bg-red-900/30 border border-red-300 dark:border-red-800"
+                                    title={`写错：应为 ${item.correct}`}
+                                >
+                                    <span className="text-red-700 dark:text-red-400 line-through opacity-80">{item.user}</span>
+                                    <span className="text-xs text-red-600 dark:text-red-400">→</span>
+                                    <span className="text-green-700 dark:text-green-400 font-bold">{item.correct}</span>
                                 </span>
                             );
                         }
                         if (item.type === 'missing') {
                             return (
-                                <span key={i} className="text-green-600 dark:text-green-400 font-bold underline decoration-dotted">
-                                    {item.correct}
+                                <span
+                                    key={i}
+                                    className="inline-flex items-center gap-0.5 px-1.5 rounded bg-blue-200 dark:bg-blue-900/40 border border-blue-300 dark:border-blue-800"
+                                    title={`漏写：${item.correct}`}
+                                >
+                                    <span className="text-blue-700 dark:text-blue-300 font-bold">+</span>
+                                    <span className="text-blue-800 dark:text-blue-300 font-bold">{item.correct}</span>
                                 </span>
                             );
                         }
@@ -157,15 +224,20 @@ const DictationInput = ({
                 )}
             </div>
 
-            {/* 答对反馈 */}
+            {/* 答对反馈（含标准写法） */}
             {status === 'correct' && (
-                <div className="flex items-center gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
-                    <svg className="w-5 h-5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
+                <div className="flex items-start gap-2 text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-900/20 p-3 rounded-lg">
+                    <svg className="w-5 h-5 flex-shrink-0 mt-0.5" fill="currentColor" viewBox="0 0 20 20">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                     </svg>
-                    <span className="font-medium">
-                        {hasBeenWrong.current ? '修正正确！👍' : '太棒了！🎉'}
-                    </span>
+                    <div className="flex-1 min-w-0">
+                        <div className="font-medium">
+                            {hasBeenWrong.current ? '修正正确！👍' : '太棒了！🎉'}
+                        </div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400 mt-1 break-words">
+                            💡 标准写法：{correctAnswer}
+                        </div>
+                    </div>
                 </div>
             )}
 
