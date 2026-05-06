@@ -440,6 +440,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const [isPlaying, setIsPlaying] = useState(false);
     // 视频循环 - 整支视频播放完从头循环
     const [isVideoLooping, setIsVideoLooping] = useState(false);
+    // 顺序播放 - 当前视频结束自动播放下一个，最后一个时回到第一个；持久化以跨视频生效
+    const [isAutoPlayNext, setIsAutoPlayNext] = useState(() => {
+        return localStorage.getItem('bbEnglish_isAutoPlayNext') === 'true';
+    });
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
     const [isSentenceLooping, setIsSentenceLooping] = useState(false);
     // 单句暂停 - 每句结束自动暂停，方便跟读练习
@@ -633,6 +637,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     useEffect(() => {
         localStorage.setItem('bbEnglish_jingTing', JSON.stringify(jingTingSettings));
     }, [jingTingSettings]);
+
+    // 顺序播放设置持久化
+    useEffect(() => {
+        localStorage.setItem('bbEnglish_isAutoPlayNext', String(isAutoPlayNext));
+    }, [isAutoPlayNext]);
+
+    // 视频循环 / 顺序播放 互斥切换
+    const toggleVideoLooping = () => {
+        const next = !isVideoLooping;
+        setIsVideoLooping(next);
+        if (next) setIsAutoPlayNext(false);
+    };
+    const toggleAutoPlayNext = () => {
+        const next = !isAutoPlayNext;
+        setIsAutoPlayNext(next);
+        if (next) setIsVideoLooping(false);
+    };
 
     // 单句循环倒计时 - 清理
     useEffect(() => {
@@ -908,6 +929,21 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [videoData?.vocab, videoData?.id]);
 
+    // 顺序播放跳转后的「下一期自动播放」标记
+    // 用 ref 跨 episode 切换持久化（state 会因为重渲染时机不可控不可靠）
+    const autoplayPendingRef = useRef(false);
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('autoplay') === '1') {
+            autoplayPendingRef.current = true;
+            // 立即清掉 URL 参数，避免刷新时再次触发自动播放
+            params.delete('autoplay');
+            const qs = params.toString();
+            const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
+            window.history.replaceState({}, '', newUrl);
+        }
+    }, [episode]);
+
     // Fetch video data
     useEffect(() => {
         const fetchVideoData = async () => {
@@ -1180,6 +1216,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         };
     }, [mode, videoData]);
 
+    // 当前活跃句的播放进度（0-100），用于字幕行底部紫色横条的卡拉 OK 效果
+    // 只 active 那一句的 prop 在变，其他 item 永远收到 0 → memo 拦住不 re-render
+    const activeProgressPercent = useMemo(() => {
+        if (activeIndex < 0 || !videoData?.transcript?.[activeIndex]) return 0;
+        const sub = videoData.transcript[activeIndex];
+        const span = sub.end - sub.start;
+        if (span <= 0) return 0;
+        return Math.max(0, Math.min(100, ((currentTime - sub.start) / span) * 100));
+    }, [activeIndex, currentTime, videoData]);
+
     // Handle video progress
     const handleProgress = useCallback((state) => {
         // 单句循环时使用独立的 isIntensiveSeekingRef，不受全局 isSeeking 干扰
@@ -1411,6 +1457,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     };
 
     // A/B点：点击字幕行设置点位
+    // A = 该句 start（从该句开头开始播）；B = 该句 end（播完该句再循环回 A），让 B 点所在句被完整播完
     const handleSetAbPoint = useCallback((time, index) => {
         if (abMode === 1) {
             setAbPointA(time);
@@ -1418,7 +1465,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             setAbMode(2);
         } else if (abMode === 2) {
             if (index !== abIndexA) {
-                const bTime = time > abPointA ? time : abPointA + 0.1;
+                const subEnd = videoData?.transcript?.[index]?.end;
+                const endTime = typeof subEnd === 'number' ? subEnd : time;
+                const bTime = endTime > abPointA ? endTime : abPointA + 0.1;
                 setAbPointB(bTime);
                 setAbIndexB(index);
                 setAbMode(3);
@@ -1429,7 +1478,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 setIsPlaying(true);
             }
         }
-    }, [abMode, abIndexA, abPointA]);
+    }, [abMode, abIndexA, abPointA, videoData]);
 
     // Handle seek
     const handleSeek = useCallback((time) => {
@@ -2236,19 +2285,44 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [videoData]); // 当视频数据加载完成时初始化
 
-    // 视频结束处理（整视频循环优先级低于单句循环）
-    const handleVideoEnded = () => {
+    // 视频结束处理（优先级：单句循环 > 视频循环 > 顺序播放 > 停止）
+    const handleVideoEnded = async () => {
         if (isVideoLooping && !isSentenceLooping) {
             // 整视频循环：从头播放
             if (playerRef.current) {
                 playerRef.current.currentTime = 0;
                 playerRef.current.play();
             }
-        } else {
-            // 非循环：视频结束，显示覆盖按钮
+            return;
+        }
+        if (isAutoPlayNext && !isSentenceLooping && !isDemo) {
+            // 顺序播放：跳下一个；没有下一个则查询所有视频跳第一个
+            // ?autoplay=1 让目标页加载后自动开始播放（仅顺序播放触发，手动「下一期」按钮不带）
+            if (nextVideo) {
+                navigate(`/episode/${nextVideo.episode}?autoplay=1`);
+                return;
+            }
+            try {
+                const response = await videoAPI.getAll();
+                if (response?.success && Array.isArray(response.data) && response.data.length > 0) {
+                    const sorted = [...response.data].sort((a, b) => Number(a.episode) - Number(b.episode));
+                    const firstEp = sorted[0].episode;
+                    if (Number(firstEp) !== Number(episode)) {
+                        navigate(`/episode/${firstEp}?autoplay=1`);
+                        return;
+                    }
+                }
+            } catch (err) {
+                console.error('顺序播放获取首集失败:', err);
+            }
+            // 兜底：找不到下一集或仅有一集，停止
             setIsPlaying(false);
             setShowControls(true);
+            return;
         }
+        // 非循环：视频结束，显示覆盖按钮
+        setIsPlaying(false);
+        setShowControls(true);
     };
 
     // 点击视频区域切换播放/暂停 + 显示控制条
@@ -2523,7 +2597,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
-                                                    setIsVideoLooping(!isVideoLooping);
+                                                    toggleVideoLooping();
                                                 }}
                                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVideoLooping ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
                                             >
@@ -2531,7 +2605,24 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             </button>
                                         </div>
 
-                                        
+                                        {/* 顺序播放开关 */}
+                                        {!isDemo && (
+                                            <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
+                                                <div>
+                                                    <span className="text-white text-sm block">顺序播放</span>
+                                                    <span className="text-white/40 text-[10px]">播完自动下一个</span>
+                                                </div>
+                                                <button
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        toggleAutoPlayNext();
+                                                    }}
+                                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAutoPlayNext ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
+                                                >
+                                                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isAutoPlayNext ? 'translate-x-6' : 'translate-x-1'}`} />
+                                                </button>
+                                            </div>
+                                        )}
 
                                         {/* 单句循环开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
@@ -2723,7 +2814,19 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 x5-playsinline="true"
                                 preload="auto"
                                 onContextMenu={(e) => e.preventDefault()}
-                                onLoadedMetadata={(e) => setDuration(e.target.duration)}
+                                onLoadedMetadata={(e) => {
+                                    setDuration(e.target.duration);
+                                    // 顺序播放跳转后的自动播放（iOS 拒绝就静默回退到等用户点）
+                                    if (autoplayPendingRef.current) {
+                                        autoplayPendingRef.current = false;
+                                        if (playerRef.current) {
+                                            const p = playerRef.current.play();
+                                            if (p && typeof p.catch === 'function') {
+                                                p.catch(() => { /* 浏览器拒绝自动播放，不报错 */ });
+                                            }
+                                        }
+                                    }
+                                }}
                                 onPlay={() => {
                                     setIsPlaying(true);
                                     resetControlsTimeout();
@@ -2985,6 +3088,19 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onPodcastClick={handlePodcastClick}
                                 hasPodcast={!!videoData.podcast_url}
                             />
+                            {/* A/B 点引导提示（手机端嵌在 Tab 栏内，跟着 fixed/sticky 一起定位；
+                                ResizeObserver 监听 tabBarRef 高度，提示出现/消失时占位自动伸缩） */}
+                            {(abMode === 1 || abMode === 2) && (
+                                <div className="-mx-2 -mb-2 mt-2 px-4 py-2 bg-violet-50 dark:bg-violet-900/30 border-t border-violet-200 dark:border-violet-800 flex items-center gap-2 text-sm text-violet-700 dark:text-violet-300">
+                                    <svg className="w-4 h-4 shrink-0 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    {abMode === 1
+                                        ? <span>请点击字幕行设置 <strong>A 点</strong>（循环起点）</span>
+                                        : <span>A 点已设置，请点击字幕行设置 <strong>B 点</strong>（循环终点）</span>
+                                    }
+                                </div>
+                            )}
                         </div>
                         {/* 手机端：Tab栏fixed脱离文档流，占位保持布局高度 */}
                         {isPhone && <div style={{ height: tabBarHeight }} />}
@@ -2997,8 +3113,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             {/* Right Side Container Start */}
             <div className="flex-1 bg-[#f5f5f5] dark:bg-gray-800 border-t xl:border-t-0 xl:border-l border-gray-200 dark:border-gray-700 flex flex-col relative" onClick={() => setPlayerActive(false)}>
                 <div className="flex-1 overflow-y-auto pb-32 md:pb-24">
-                    {/* A/B点引导提示条 */}
-                    {(abMode === 1 || abMode === 2) && (
+                    {/* A/B点引导提示条（仅 PC：sticky 在右侧滚动容器顶部）
+                        手机端有自己的版本嵌在固定 Tab 栏里，避免重复渲染 */}
+                    {!isMobile && (abMode === 1 || abMode === 2) && (
                         <div className="sticky top-0 z-10 bg-violet-50 border-b border-violet-200 px-4 py-2 flex items-center gap-2 text-sm text-violet-700">
                             <svg className="w-4 h-4 shrink-0 text-violet-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -3424,6 +3541,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             item={item}
                                             index={index}
                                             isActive={isActive}
+                                            progressPercent={isActive ? activeProgressPercent : 0}
                                             mode={mode}
                                             clozePattern={null}
                                             vocab={videoData.vocab}
@@ -3933,12 +4051,28 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         <div className="flex items-center justify-between py-3 border-t border-white/10">
                             <span className="text-white text-sm">视频循环</span>
                             <button
-                                onClick={() => setIsVideoLooping(!isVideoLooping)}
+                                onClick={toggleVideoLooping}
                                 className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isVideoLooping ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
                             >
                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isVideoLooping ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
+
+                        {/* 顺序播放 */}
+                        {!isDemo && (
+                            <div className="flex items-center justify-between py-3 border-t border-white/10">
+                                <div>
+                                    <span className="text-white text-sm block">顺序播放</span>
+                                    <span className="text-white/40 text-[10px]">播完自动下一个</span>
+                                </div>
+                                <button
+                                    onClick={toggleAutoPlayNext}
+                                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${isAutoPlayNext ? 'bg-violet-400' : 'bg-neutral-500/70'}`}
+                                >
+                                    <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isAutoPlayNext ? 'translate-x-6' : 'translate-x-1'}`} />
+                                </button>
+                            </div>
+                        )}
 
                         {/* 单句循环 */}
                         <div className="flex items-center justify-between py-3 border-t border-white/10">

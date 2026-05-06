@@ -8,6 +8,7 @@ const SubtitleItem = memo(({
     item,
     index,
     isActive,
+    progressPercent = 0,
     mode,
     clozePattern,
     vocab,
@@ -163,6 +164,20 @@ const SubtitleItem = memo(({
                 isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
             }`}
         >
+            {/* 活跃句视觉指示：左侧 4px 紫条 + 底部 2px 卡拉 OK 进度条
+                AB 点上不渲染（让黄/绿 ring 主导，避免视觉冲突） */}
+            {isActive && !isAbPointA && !isAbPointB && (
+                <>
+                    <div className="absolute left-0 top-0 bottom-0 w-1 bg-violet-500 rounded-l-lg pointer-events-none" />
+                    <div className="absolute left-0 right-0 bottom-0 h-0.5 bg-violet-100 dark:bg-violet-900/40 rounded-b-lg overflow-hidden pointer-events-none">
+                        <div
+                            className="h-full bg-violet-500 transition-[width] duration-200 ease-linear"
+                            style={{ width: `${progressPercent}%` }}
+                        />
+                    </div>
+                </>
+            )}
+
             {/* 字幕行编号 */}
             <span className="absolute left-2 top-3 text-xs font-medium text-gray-400 dark:text-gray-500">
                 {index + 1}
