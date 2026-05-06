@@ -741,9 +741,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [videoData]);
 
+    // 顺序播放跳转后的「下一期自动播放」标记，跨 episode 切换持久化
+    const autoplayPendingRef = useRef(false);
+
     // 记录当前播放句子，用于下次恢复
+    // 视频切换时（videoData.id 变）跳过第一次写入：此时 activeIndex 还是上一个视频的值，
+    // 不加守卫会把旧 activeIndex 写到新视频的 lastSentence，导致下面的 resume 立刻跳到错误位置
+    const lastSeenVideoIdRef = useRef(null);
     useEffect(() => {
-        if (videoData?.id && activeIndex > 0) {
+        if (!videoData?.id) return;
+        if (lastSeenVideoIdRef.current !== videoData.id) {
+            lastSeenVideoIdRef.current = videoData.id;
+            return;
+        }
+        if (activeIndex > 0) {
             localStorage.setItem(`lastSentence_${videoData.id}`, String(activeIndex));
             localStorage.setItem('lastVisitedVideo', JSON.stringify({
                 video_id: videoData.id,
@@ -754,10 +765,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [activeIndex, videoData]);
 
+    // episode 切换时立即重置活跃句和当前时间，避免上一视频的 activeIndex 让新视频的对应行被瞬间高亮
+    useEffect(() => {
+        setActiveIndex(-1);
+        setCurrentTime(0);
+    }, [episode]);
+
     // 视频数据加载后，恢复上次播放位置（无URL导航参数时）
+    // 顺序播放跳转过来的（autoplayPendingRef）应从头开始，不恢复
     useEffect(() => {
         if (!videoData?.transcript?.length) return;
         if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || wordFromQuery || scrollToParam) return;
+        if (autoplayPendingRef.current) return;
 
         const savedIndex = localStorage.getItem(`lastSentence_${videoData.id}`);
         if (!savedIndex) return;
@@ -929,9 +948,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [videoData?.vocab, videoData?.id]);
 
-    // 顺序播放跳转后的「下一期自动播放」标记
-    // 用 ref 跨 episode 切换持久化（state 会因为重渲染时机不可控不可靠）
-    const autoplayPendingRef = useRef(false);
+    // 顺序播放跳转后从 URL 读 ?autoplay=1 → 设置 autoplayPendingRef，由 onLoadedMetadata 消费
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         if (params.get('autoplay') === '1') {
