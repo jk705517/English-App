@@ -478,6 +478,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const [clozeData, setClozeData] = useState({});
     const [clozeResults, setClozeResults] = useState({}); // { `${lineIndex}-${clozeIndex}`: 'correct' | 'revealed' }
     const pausedByCloze = useRef(false);
+    // 词义弹窗（dictPopup/vocabPopup）打开时若视频在播，先暂停；关闭后恢复
+    const pausedByPopup = useRef(false);
     // 单句暂停：记录上次暂停的句子索引，避免同一句重复暂停
     const lastPausedSentenceIndex = useRef(-1);
 
@@ -1530,8 +1532,43 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [mode, isSentenceLooping, videoData, activeIndex]);
 
+    // 词义弹窗打开时若视频在播放则暂停（直接读 video element 的 paused，比 React state 更可靠）
+    const pauseVideoForPopup = useCallback(() => {
+        if (pausedByPopup.current) return;
+        const player = playerRef.current;
+        if (player && !player.paused) {
+            player.pause();
+            setIsPlaying(false);
+            pausedByPopup.current = true;
+        }
+    }, []);
+
+    // 关闭词义弹窗：若打开前视频在播则恢复播放
+    const closeWordPopup = useCallback(() => {
+        setDictPopup(null);
+        setVocabPopup(null);
+        if (pausedByPopup.current) {
+            const player = playerRef.current;
+            if (player) {
+                const p = player.play();
+                if (p && typeof p.catch === 'function') p.catch(() => {});
+            }
+            setIsPlaying(true);
+            pausedByPopup.current = false;
+        }
+    }, []);
+
+    // 高亮词点击：打开词条详情弹窗
+    const openVocabPopup = useCallback((vocabIndex) => {
+        const vItem = (videoData?.vocab || [])[vocabIndex];
+        if (!vItem) return;
+        pauseVideoForPopup();
+        setVocabPopup({ index: vocabIndex, item: vItem });
+    }, [videoData, pauseVideoForPopup]);
+
     // 普通词点击查词
     const handleWordClick = useCallback(async (word, subtitleIndex) => {
+        pauseVideoForPopup();
         setDictPopup({ word, subtitleIndex, loading: true, data: null, error: null });
         try {
             const result = await dictAPI.lookup(word, videoData?.id, subtitleIndex);
@@ -1543,7 +1580,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         } catch (e) {
             setDictPopup(prev => prev && prev.word === word ? { ...prev, loading: false, error: '查词失败，请重试' } : prev);
         }
-    }, [videoData?.id]);
+    }, [videoData?.id, pauseVideoForPopup]);
 
     // 词汇收藏切换 (moved before renderClozeText to fix initialization order)
     const handleToggleVocabFavorite = async (vocabId) => {
@@ -3069,10 +3106,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                     setNotebookDialogOpen(true);
                                 }}
                                 onSwitchToDictation={() => handleModeChange('dictation')}
-                                onVocabNavigate={(vocabIndex) => {
-                                    const vItem = (videoData.vocab || [])[vocabIndex];
-                                    if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
-                                }}
+                                onVocabNavigate={openVocabPopup}
                                 onWordClick={(word) => handleWordClick(word, activeIndex >= 0 ? activeIndex : 0)}
                                 note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
                                 onNoteClick={handleNoteClick}
@@ -3311,10 +3345,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                                 setNotebookDialogOpen(true);
                                             }}
                                             onSwitchToDictation={() => handleModeChange('dictation')}
-                                            onVocabNavigate={(vocabIndex) => {
-                                                const vItem = (videoData.vocab || [])[vocabIndex];
-                                                if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
-                                            }}
+                                            onVocabNavigate={openVocabPopup}
                                             onWordClick={(word) => handleWordClick(word, activeIndex >= 0 ? activeIndex : 0)}
                                             note={notes[activeIndex >= 0 ? activeIndex : 0] || null}
                                             onNoteClick={handleNoteClick}
@@ -3570,11 +3601,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onToggleFavorite={handleToggleSentenceFavorite}
                                             videoId={Number(videoData.id)}
                                             subtitleFontSize={subtitleFontSize}
-                                            onVocabNavigate={(vocabIndex) => {
-                                                const vList = videoData.vocab || [];
-                                                const vItem = vList[vocabIndex];
-                                                if (vItem) setVocabPopup({ index: vocabIndex, item: vItem });
-                                            }}
+                                            onVocabNavigate={openVocabPopup}
                                             onWordClick={(word) => handleWordClick(word, index)}
                                             abMode={abMode}
                                             onSetAbPoint={handleSetAbPoint}
@@ -3758,10 +3785,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 return (
                     <div
                         className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
-                        onClick={() => setVocabPopup(null)}
+                        onClick={closeWordPopup}
                     >
                         {/* 半透明遮罩 */}
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
                         {/* 弹窗卡片 */}
                         <div
                             className="relative w-full sm:max-w-[400px] bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
@@ -3800,7 +3827,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         <svg className="w-4 h-4" fill={popupIsFav ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"/></svg>
                                     </button>
                                     <button
-                                        onClick={() => setVocabPopup(null)}
+                                        onClick={closeWordPopup}
                                         className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
                                         style={{ color: pc.text, backgroundColor: 'transparent' }}
                                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
@@ -3895,9 +3922,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 return (
                     <div
                         className="fixed inset-0 z-[200] flex items-end sm:items-center justify-center p-0 sm:p-4"
-                        onClick={() => setDictPopup(null)}
+                        onClick={closeWordPopup}
                     >
-                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+                        <div className="absolute inset-0 bg-black/20 backdrop-blur-[2px]" />
                         <div
                             className="relative w-full sm:max-w-[400px] bg-white dark:bg-gray-800 rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden"
                             onClick={(e) => e.stopPropagation()}
@@ -3926,7 +3953,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </button>
                                     )}
                                     <button
-                                        onClick={() => setDictPopup(null)}
+                                        onClick={closeWordPopup}
                                         className="w-8 h-8 flex items-center justify-center rounded-full transition-colors"
                                         style={{ color: pc.text, backgroundColor: 'transparent' }}
                                         onMouseEnter={e => e.currentTarget.style.backgroundColor = 'rgba(0,0,0,0.08)'}
