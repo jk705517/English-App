@@ -2614,6 +2614,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </svg>
                                     </button>
                                 </div>
+                                <button
+                                    onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }}
+                                    className="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
+                                    title={isFullscreen ? "退出全屏" : "全屏播放"}
+                                >
+                                    {isFullscreen ? (
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+                                    ) : (
+                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+                                    )}
+                                </button>
                             </div>
 
                             {/* 手机端更多设置面板 - 底部弹窗 */}
@@ -2708,23 +2719,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isSentencePauseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                                             </button>
                                         </div>
-
-                                        {/* 全屏 */}
-                                        {document.fullscreenEnabled && (
-                                            <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
-                                                <span className="text-white text-sm">全屏播放</span>
-                                                <button
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleToggleFullscreen();
-                                                        setShowMobileSettings(false);
-                                                    }}
-                                                    className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors"
-                                                >
-                                                    {isFullscreen ? '退出全屏' : '进入全屏'}
-                                                </button>
-                                            </div>
-                                        )}
 
                                         {/* 画面字幕开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
@@ -2916,8 +2910,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             </div>
                             {/* 按钮行：左组 | 中组 | 右组 */}
                             <div className="flex items-center justify-center gap-10">
-                                {/* 左组：倍速 / 隐藏 / 全屏 */}
-                                <div className="flex items-center gap-3">
+                                {/* 左组：倍速 / 隐藏 */}
+                                <div className="flex items-center gap-3 justify-end min-w-[168px]">
                                     {/* 倍速 */}
                                     <div className="relative">
                                         <button
@@ -2951,20 +2945,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
                                         <span className="text-xs leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
                                     </button>
-                                    {/* 全屏 */}
-                                    {document.fullscreenEnabled && (
-                                        <button
-                                            onClick={handleToggleFullscreen}
-                                            className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors min-w-[48px]"
-                                        >
-                                            {isFullscreen ? (
-                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
-                                            ) : (
-                                                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                                            )}
-                                            <span className="text-xs leading-none">{isFullscreen ? '退出' : '全屏'}</span>
-                                        </button>
-                                    )}
                                 </div>
                                 {/* 分隔线 */}
                                 <div className="h-8 w-px bg-gray-200" />
@@ -4142,19 +4122,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 <span className={`inline-block h-4 w-4 rounded-full bg-white shadow transform transition-transform ${isSentencePauseEnabled ? 'translate-x-6' : 'translate-x-1'}`} />
                             </button>
                         </div>
-
-                        {/* 全屏 */}
-                        {document.fullscreenEnabled && (
-                            <div className="flex items-center justify-between py-3 border-t border-white/10">
-                                <span className="text-white text-sm">全屏播放</span>
-                                <button
-                                    onClick={() => { handleToggleFullscreen(); setShowDesktopSettings(false); }}
-                                    className="px-4 py-1.5 bg-white/10 hover:bg-white/20 text-white text-sm rounded-lg transition-colors"
-                                >
-                                    {isFullscreen ? '退出全屏' : '进入全屏'}
-                                </button>
-                            </div>
-                        )}
 
                         {/* 画面字幕 */}
                         <div className="flex items-center justify-between py-3 border-t border-white/10">
