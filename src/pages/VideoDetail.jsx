@@ -745,6 +745,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 顺序播放跳转后的「下一期自动播放」标记，跨 episode 切换持久化
     const autoplayPendingRef = useRef(false);
+    // 「上一期/下一期」按钮手动跳转标记：跳过恢复进度，从第 1 行开始（但不自动播放）
+    const fromNavPendingRef = useRef(false);
 
     // 记录当前播放句子，用于下次恢复
     // 视频切换时（videoData.id 变）跳过第一次写入：此时 activeIndex 还是上一个视频的值，
@@ -779,6 +781,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (!videoData?.transcript?.length) return;
         if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || wordFromQuery || scrollToParam) return;
         if (autoplayPendingRef.current) return;
+        if (fromNavPendingRef.current) {
+            fromNavPendingRef.current = false;
+            return;
+        }
 
         const savedIndex = localStorage.getItem(`lastSentence_${videoData.id}`);
         if (!savedIndex) return;
@@ -950,13 +956,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [videoData?.vocab, videoData?.id]);
 
-    // 顺序播放跳转后从 URL 读 ?autoplay=1 → 设置 autoplayPendingRef，由 onLoadedMetadata 消费
+    // 跨视频跳转的 URL 标记：?autoplay=1（顺序播放，跳过恢复+自动播放）/ ?fromnav=1（上一期/下一期按钮，仅跳过恢复）
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
+        let changed = false;
         if (params.get('autoplay') === '1') {
             autoplayPendingRef.current = true;
-            // 立即清掉 URL 参数，避免刷新时再次触发自动播放
             params.delete('autoplay');
+            changed = true;
+        }
+        if (params.get('fromnav') === '1') {
+            fromNavPendingRef.current = true;
+            params.delete('fromnav');
+            changed = true;
+        }
+        if (changed) {
+            // 立即清掉 URL 参数，避免刷新时再次触发
             const qs = params.toString();
             const newUrl = window.location.pathname + (qs ? `?${qs}` : '') + window.location.hash;
             window.history.replaceState({}, '', newUrl);
@@ -2421,7 +2436,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     <div className="flex items-center gap-2 shrink-0">
                         {prevVideo && !isDemo && (
                             <button
-                                onClick={() => navigate(`/episode/${prevVideo.episode}`)}
+                                onClick={() => navigate(`/episode/${prevVideo.episode}?fromnav=1`)}
                                 className="flex items-center gap-1 px-3 py-1 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-full text-sm font-medium hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2432,7 +2447,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         )}
                         {nextVideo && !isDemo && (
                             <button
-                                onClick={() => navigate(`/episode/${nextVideo.episode}`)}
+                                onClick={() => navigate(`/episode/${nextVideo.episode}?fromnav=1`)}
                                 className="flex items-center gap-1 px-3 py-1 bg-violet-500 text-white rounded-full text-sm font-medium hover:bg-violet-600 transition-colors"
                             >
                                 下一期
@@ -2546,7 +2561,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         <>
                                         {prevVideo && (
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/episode/${prevVideo.episode}`); }}
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/episode/${prevVideo.episode}?fromnav=1`); }}
                                                 className="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
                                                 title="上一期"
                                             >
@@ -2557,7 +2572,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         )}
                                         {nextVideo && (
                                             <button
-                                                onClick={(e) => { e.stopPropagation(); navigate(`/episode/${nextVideo.episode}`); }}
+                                                onClick={(e) => { e.stopPropagation(); navigate(`/episode/${nextVideo.episode}?fromnav=1`); }}
                                                 className="w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
                                                 title="下一期"
                                             >
