@@ -446,7 +446,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     });
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
     const [isSentenceLooping, setIsSentenceLooping] = useState(false);
-    // 单句暂停 - 每句结束自动暂停，方便跟读练习
+    // 句末暂停 - 每句结束自动暂停（与单句循环可共存：开两个 = 循环 N 次后再暂停）
     const [isSentencePauseEnabled, setIsSentencePauseEnabled] = useState(false);
     // 词卡详情索引（null=列表, number=详情页）
     const [vocabDetailIndex, setVocabDetailIndex] = useState(null);
@@ -480,7 +480,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const pausedByCloze = useRef(false);
     // 词义弹窗（dictPopup/vocabPopup）打开时若视频在播，先暂停；关闭后恢复
     const pausedByPopup = useRef(false);
-    // 单句暂停：记录上次暂停的句子索引，避免同一句重复暂停
+    // 句末暂停：记录上次暂停的句子索引，避免同一句重复暂停
     const lastPausedSentenceIndex = useRef(-1);
 
     // 绉诲姩绔細鏄惁涓洪娆″姞杞斤紙淇濊瘉鍒濆杩涘叆椤甸潰鏃舵樉绀烘爣棰樺尯锛?
@@ -1308,7 +1308,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     }
                     const nextSentence = videoData.transcript[nextIndex];
                     isIntensiveSeekingRef.current = true;
-                    if (jingTingSettings.intervalSec > 0) {
+                    if (isSentencePauseEnabled) {
+                        // 句末暂停 + 单句循环：循环 N 次后跳到下一句开头但不自动播，等用户手动继续
+                        if (playerRef.current) {
+                            playerRef.current.pause();
+                            playerRef.current.currentTime = nextSentence.start;
+                        }
+                        setIsPlaying(false);
+                        setTimeout(() => { isIntensiveSeekingRef.current = false; }, 100);
+                    } else if (jingTingSettings.intervalSec > 0) {
                         if (playerRef.current) { playerRef.current.pause(); setIsPlaying(false); }
                         startLoopCountdown(jingTingSettings.intervalSec, () => {
                             if (playerRef.current) {
@@ -1328,9 +1336,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 } else {
                     // 继续循环当前句（含最后一句达到次数后重置计数继续循环）
                     if (shouldAdvance) {
-                        // 已是最后一句，重置计数器继续循环
+                        // 已是最后一句，重置计数器
                         loopRepeatCountRef.current = 0;
                         loopBoundaryFiredForIndexRef.current = -1;
+                        // 句末暂停 + 单句循环：最后一句循环 N 次后停下，不再继续循环
+                        if (isSentencePauseEnabled) {
+                            if (playerRef.current) playerRef.current.pause();
+                            setIsPlaying(false);
+                            isIntensiveSeekingRef.current = false;
+                            return;
+                        }
                     }
                     isIntensiveSeekingRef.current = true;
                     if (jingTingSettings.intervalSec > 0) {
@@ -1361,7 +1376,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             return;
         }
 
-        // 单句暂停逻辑：参考单句循环，用 nextSub.start - 0.4 检测时机
+        // 句末暂停逻辑（仅单句循环关闭时走这里；开启时由上方单句循环路径在「循环 N 次后」分支处理）
         if ((isSentencePauseEnabled || mode === 'shadow') && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
@@ -1518,7 +1533,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const handleSeek = useCallback((time) => {
         setIsSeeking(true);
         setCurrentTime(time);
-        lastPausedSentenceIndex.current = -1; // 重置单句暂停标记，允许重新触发
+        lastPausedSentenceIndex.current = -1; // 重置句末暂停标记，允许重新触发
 
         // 🔧 修复单句循环点击问题：当开启单句循环时，点击字幕行需要更新 activeIndex
         // 这样循环目标会切换到被点击的句子，而不是停留在原来的句子
@@ -2331,20 +2346,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     }, [videoData]); // 依赖 videoData 确保 playerRef.current 已挂载
 
     // 控制条自动隐藏逻辑
+    // 注意：用 video.paused 而不是 isPlaying state 判断 —— onPlay 内调用时 setIsPlaying(true)
+    // 还没生效，闭包里的 isPlaying 是 stale 的 false，会导致顺序播放跳期后控制条不自动消失
     const resetControlsTimeout = useCallback(() => {
         setShowControls(true);
         if (controlsTimeoutRef.current) {
             clearTimeout(controlsTimeoutRef.current);
         }
-        // 2.5秒后自动隐藏（如果正在播放）
-        if (isPlaying) {
+        const isCurrentlyPlaying = playerRef.current && !playerRef.current.paused;
+        if (isCurrentlyPlaying) {
             controlsTimeoutRef.current = setTimeout(() => {
                 setShowControls(false);
                 setShowSpeedPanel(false);
                 setShowVolumeSlider(false);
             }, 2500);
         }
-    }, [isPlaying]);
+    }, []);
 
     // 初始化音量和倍速到视频元素
     useEffect(() => {
@@ -2718,10 +2735,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             </button>
                                         </div>
 
-                                        {/* 单句暂停开关 */}
+                                        {/* 句末暂停开关 */}
                                         <div className="flex items-center justify-between py-3 border-t border-white/10" onClick={(e) => e.stopPropagation()}>
                                             <div>
-                                                <span className="text-white text-sm block">逐句暂停</span>
+                                                <span className="text-white text-sm block">句末暂停</span>
                                                 <span className="text-white/40 text-[10px]">每句结束自动暂停</span>
                                             </div>
                                             <button
@@ -2990,7 +3007,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 </div>
                                 {/* 分隔线 */}
                                 <div className="h-8 w-px bg-gray-200" />
-                                {/* 右组：A/B点 / 单句循环 / 间隔Xs / 单句暂停 */}
+                                {/* 右组：A/B点 / 单句循环 / 间隔Xs / 句末暂停 */}
                                 <div className="flex items-center gap-3">
                                     {/* A/B点 */}
                                     <button
@@ -3055,13 +3072,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             <span className="text-xs text-gray-500 dark:text-gray-400 leading-none">间隔</span>
                                         </div>
                                     )}
-                                    {/* 单句暂停 */}
+                                    {/* 句末暂停 */}
                                     <button
                                         onClick={() => setIsSentencePauseEnabled(v => !v)}
                                         className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${isSentencePauseEnabled ? 'text-violet-500 bg-gray-100 dark:bg-gray-700' : 'text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'}`}
                                     >
                                         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="4" width="4" height="16" rx="1"/><rect x="13" y="4" width="4" height="16" rx="1"/><circle cx="20" cy="6" r="3"/></svg>
-                                        <span className="text-xs leading-none">逐句暂停</span>
+                                        <span className="text-xs leading-none">句末暂停</span>
                                     </button>
                                 </div>
                             </div>
@@ -4124,10 +4141,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             </button>
                         </div>
 
-                        {/* 逐句暂停 */}
+                        {/* 句末暂停 */}
                         <div className="flex items-center justify-between py-3 border-t border-white/10">
                             <div>
-                                <span className="text-white text-sm block">逐句暂停</span>
+                                <span className="text-white text-sm block">句末暂停</span>
                                 <span className="text-white/40 text-[10px]">每句结束自动暂停</span>
                             </div>
                             <button
@@ -4497,19 +4514,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${isSentenceLooping ? 'translate-x-5' : 'translate-x-0.5'}`} />
                             </button>
                         </div>
-                        {/* 隐藏字幕 */}
+                        {/* 句末暂停 */}
                         <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">隐藏字幕</span>
-                            <button
-                                onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
-                                className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.hideSubtitles ? 'bg-violet-500' : 'bg-gray-600'}`}
-                            >
-                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.hideSubtitles ? 'translate-x-5' : 'translate-x-0.5'}`} />
-                            </button>
-                        </div>
-                        {/* 逐句暂停 */}
-                        <div className="flex items-center justify-between py-3 border-b border-white/10">
-                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">逐句暂停</span>
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">句末暂停</span>
                             <button
                                 onClick={() => setIsSentencePauseEnabled(v => !v)}
                                 className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${isSentencePauseEnabled ? 'bg-violet-500' : 'bg-gray-600'}`}
@@ -4527,13 +4534,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             </div>
                         </div>
                         {/* 循环次数 */}
-                        <div className="flex items-center justify-between py-3">
+                        <div className="flex items-center justify-between py-3 border-b border-white/10">
                             <span className="text-white/80 text-sm">循环次数</span>
                             <div className="flex items-center gap-3">
                                 <button onClick={() => setJingTingSettings(s => ({ ...s, loopCount: s.loopCount === null ? 10 : Math.max(1, s.loopCount - 1) }))} className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/25 text-lg leading-none">-</button>
                                 <span className="text-white font-medium w-6 text-center">{jingTingSettings.loopCount === null ? '∞' : jingTingSettings.loopCount}</span>
                                 <button onClick={() => setJingTingSettings(s => ({ ...s, loopCount: s.loopCount !== null && s.loopCount >= 10 ? null : s.loopCount === null ? null : s.loopCount + 1 }))} className="w-7 h-7 rounded-full bg-white/15 text-white flex items-center justify-center hover:bg-white/25 text-lg leading-none">+</button>
                             </div>
+                        </div>
+                        {/* 隐藏字幕 */}
+                        <div className="flex items-center justify-between py-3">
+                            <span className="text-white/80 text-sm flex-1 min-w-0 mr-3">隐藏字幕</span>
+                            <button
+                                onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
+                                className={`w-11 h-6 rounded-full shrink-0 transition-colors relative ${jingTingSettings.hideSubtitles ? 'bg-violet-500' : 'bg-gray-600'}`}
+                            >
+                                <span className={`absolute left-0 top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform ${jingTingSettings.hideSubtitles ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                            </button>
                         </div>
                         <button
                             onClick={() => setShowJingTingPanel(false)}
