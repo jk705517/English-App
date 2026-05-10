@@ -468,9 +468,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 绉诲姩绔細鏆傚仠鍚庢槸鍚﹀凡婊氬姩锛堢敤浜庡欢杩熷垏鎹㈠皬绐楀彛妯″紡锛?
     // hasScrolledAfterPause removed (Task 0B)
     // 妫€娴嬫槸鍚︿负绉诲姩绔?
-    const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 1024);
-    // 检测是否为手机/平板端（<= 1024px，用于固定播放器行为）
-    const [isPhone, setIsPhone] = useState(() => typeof window !== 'undefined' && window.innerWidth <= 1024);
+    // 与 Tailwind xl: 媒体查询对齐：分栏需要「宽 ≥1024 + 横屏」；竖屏一律走手机布局（即便宽 ≥1024）
+    const [isMobile, setIsMobile] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !(window.innerWidth >= 1024 && window.innerWidth > window.innerHeight);
+    });
+    const [isPhone, setIsPhone] = useState(() => {
+        if (typeof window === 'undefined') return false;
+        return !(window.innerWidth >= 1024 && window.innerWidth > window.innerHeight);
+    });
     // 绉诲姩绔細鏄惁鍦ㄩ〉闈㈤《閮紙鐢ㄤ簬鏍囬鍖烘樉绀烘帶鍒讹級
     const [isAtTop, setIsAtTop] = useState(true);
 
@@ -596,14 +602,20 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     });
 
     // 妫€娴嬬Щ鍔ㄧ
+    // 检测移动端：与 Tailwind xl: 对齐 —— 分栏要求「宽 ≥1024 + 横屏」，竖屏一律走手机布局
     useEffect(() => {
         const checkMobile = () => {
-            setIsMobile(window.innerWidth <= 1024);
-            setIsPhone(window.innerWidth <= 1024);
+            const isWideLandscape = window.innerWidth >= 1024 && window.innerWidth > window.innerHeight;
+            setIsMobile(!isWideLandscape);
+            setIsPhone(!isWideLandscape);
         };
         checkMobile();
         window.addEventListener('resize', checkMobile);
-        return () => window.removeEventListener('resize', checkMobile);
+        window.addEventListener('orientationchange', checkMobile);
+        return () => {
+            window.removeEventListener('resize', checkMobile);
+            window.removeEventListener('orientationchange', checkMobile);
+        };
     }, []);
 
     // 任务1：进入视频页隐藏左侧导航栏，离开时恢复
@@ -2940,8 +2952,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                     {formatTime(currentTime)} / {formatTime(duration)}
                                 </span>
                             </div>
-                            {/* 按钮行：左组 | 中组 | 右组 */}
-                            <div className="flex items-center justify-center gap-10">
+                            {/* 按钮行：左组 | 中组 | 右组（justify-around 让按钮组均匀撑开，自适应视频宽度，所有 PC 布局视觉一致） */}
+                            <div className="flex items-center justify-around">
                                 {/* 左组：倍速 / 隐藏 */}
                                 <div className="flex items-center gap-3 justify-end min-w-[168px]">
                                     {/* 倍速 */}
@@ -2977,11 +2989,25 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d={isVideoHidden ? "M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" : "M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"} /></svg>
                                         <span className="text-xs leading-none">{isVideoHidden ? '显示' : '隐藏'}</span>
                                     </button>
+                                    {/* 全屏（与视频右下角悬浮按钮共享 handleToggleFullscreen，左组 3 按钮跟右组对称） */}
+                                    <button
+                                        onClick={handleToggleFullscreen}
+                                        className={`flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg transition-colors min-w-[48px] ${isFullscreen ? 'text-violet-500 bg-gray-200' : 'text-gray-600 hover:bg-gray-200'}`}
+                                    >
+                                        <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
+                                            {isFullscreen ? (
+                                                <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                                            ) : (
+                                                <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                                            )}
+                                        </svg>
+                                        <span className="text-xs leading-none">{isFullscreen ? '退出' : '全屏'}</span>
+                                    </button>
                                 </div>
                                 {/* 分隔线 */}
                                 <div className="h-8 w-px bg-gray-200" />
-                                {/* 中组：上一句 / ▶播放 / 下一句 */}
-                                <div className="flex items-center gap-5">
+                                {/* 中组：上一句 / ▶播放 / 下一句（窄屏紧凑） */}
+                                <div className="flex items-center gap-3 desk:gap-5">
                                     <button onClick={mode === 'dictation' ? handlePrevDictation : handleMobilePrevSentence} className="flex flex-col items-center gap-0.5 px-2 py-1 rounded-lg text-gray-600 hover:bg-gray-200 transition-colors">
                                         <span className="w-10 h-10 rounded-full bg-gray-200 flex items-center justify-center">
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M11 19l-7-7 7-7m8 14l-7-7 7-7"/></svg>

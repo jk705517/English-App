@@ -50,6 +50,15 @@ ffmpeg 输出 H.264 编码视频时，宽高必须是偶数，否则编码失败
 ### 5. PWA Service Worker 阻碍更新
 网站有 registerSW.js，会缓存旧代码导致用户拿不到新版本。已加入强制注销 SW 脚本。后续考虑彻底删除 PWA。
 
+### 6. Tailwind v4 配置在 CSS 文件里，不读 tailwind.config.js
+**问题**：项目用的是 Tailwind v4（`@import "tailwindcss"` + `@custom-variant` + `@theme` 是 v4 语法）。改 `tailwind.config.js` 的 `theme.screens` 完全没效果。
+**原因**：v4 默认不读 `tailwind.config.js`，breakpoints 必须写在 CSS 文件里的 `@theme` 块或用 `@custom-variant` 定义。
+**解决**：在 `src/index.css` 里用 `@custom-variant {name} (...)` 定义/覆盖断点。例如让 `xl:` 同时要求宽度 + 横屏：
+```css
+@custom-variant xl (@media (min-width: 1024px) and (orientation: landscape));
+```
+**规则**：改 Tailwind 断点 / 自定义 variant 一律改 `src/index.css`，不改 `tailwind.config.js`。
+
 ---
 
 ## CC 工作规范

@@ -3,6 +3,18 @@
 /* 启用基于 class 的深色模式（Tailwind v4） */
 @custom-variant dark (&:where(.dark, .dark *));
 
+/* 重定义 xl: 断点 —— 默认仅看宽度（≥1280px），改成「宽度≥1024 + 横屏」：
+   - iPad 横屏（1180×820、1366×1024 等）→ xl: 生效 → PC 分栏布局
+   - iPad 竖屏（1024×1366 等）→ xl: 不生效 → 手机布局（左右分栏太窄）
+   - 项目里 xl: 全为 PC 分栏布局，lg: 仅用于列表页 grid，两者不冲突 */
+@custom-variant xl (@media (min-width: 1024px) and (orientation: landscape));
+
+/* desk: 断点 —— 真 PC 大屏（≥1280 横屏），用于 PC 控制条等需要「宽松留白」的场景：
+   - iPad 横屏 1024-1279：xl 生效（走 PC 分栏）但 desk 不生效（控制条紧凑显示）
+   - 真 PC ≥1280：xl + desk 都生效（控制条宽松显示）
+   - 解决 iPad 横屏左半空间窄（590px）放不下 PC 控制条 8 个按钮的问题 */
+@custom-variant desk (@media (min-width: 1280px) and (orientation: landscape));
+
 /* Tailwind v4：覆盖默认 font-sans，将 Inter 排在第一位 */
 @theme {
     --font-sans: "Inter var", Inter, ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji";
