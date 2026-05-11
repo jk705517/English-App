@@ -444,7 +444,7 @@ export default function Auth() {
                         <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
                             <div>
                                 <p className="text-sm text-gray-500">小红书店铺</p>
-                                <p className="font-medium text-gray-800">BiuBiu英语</p>
+                                <p className="font-medium text-gray-800">BiuBiu学英语</p>
                             </div>
                             <a
                                 href="https://xhslink.com/m/2AOUeuRUVhZ"
