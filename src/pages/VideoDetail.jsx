@@ -2290,25 +2290,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     };
 
-    // 全屏切换 - 兼容 iOS/Android
+    // 全屏切换 - 优先把"容器"进入全屏（保留自定义 UI），iOS Safari 回退到 video 原生全屏
     const handleToggleFullscreen = async () => {
         const videoEl = playerRef.current;
+        const containerEl = playerContainerRef.current;
         if (!videoEl) return;
 
         try {
             if (!isFullscreen) {
-                // 进入全屏
-                if (videoEl.requestFullscreen) {
-                    await videoEl.requestFullscreen();
+                // 进入全屏：让"容器"全屏 → 我们自定义的覆盖层（进度条/时长/退出键）全部保留
+                if (containerEl?.requestFullscreen) {
+                    await containerEl.requestFullscreen();
+                } else if (containerEl?.webkitRequestFullscreen) {
+                    // Old Safari / iPad Safari 桌面模式
+                    containerEl.webkitRequestFullscreen();
                 } else if (videoEl.webkitEnterFullscreen) {
-                    // iOS Safari
+                    // iOS iPhone Safari 不支持容器全屏，只能交给系统原生播放器
                     videoEl.webkitEnterFullscreen();
-                } else if (videoEl.webkitRequestFullscreen) {
-                    // Old Safari
-                    videoEl.webkitRequestFullscreen();
-                } else if (playerContainerRef.current?.requestFullscreen) {
-                    // Fallback to container
-                    await playerContainerRef.current.requestFullscreen();
                 }
                 setIsFullscreen(true);
             } else {
@@ -2518,19 +2516,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     {!isPhone && isMobile && isPlaying && (
                         <div style={{ height: playerHeight + 50 }} className="w-full" />
                     )}
-                    {/* 视频播放器 - 手机端fixed固定顶部，平板播放时fixed，PC端sticky */}
+                    {/* 视频播放器 - 手机端fixed固定顶部，平板播放时fixed，PC端sticky；
+                        player-fs-container 是给 css 全屏规则用的 hook 类（src/index.css） */}
                     <div
                         ref={playerContainerRef}
                         className={`
-                            overflow-hidden shadow-2xl transition-all duration-300
+                            player-fs-container overflow-hidden shadow-2xl transition-all duration-300
                             ${isPhone ? 'fixed top-0 left-0 right-0 z-[80] bg-black' : 'bg-white dark:bg-gray-800 rounded-xl'}
                             ${!isPhone && isMobile && isPlaying ? 'fixed top-0 left-1/2 -translate-x-1/2 w-[50%] max-w-md z-[80]' : ''}
                             ${!isMobile && isPlaying ? 'sticky top-0 z-40' : ''}
                         `}
                     >
                         <div
-                            className="relative w-full"
-                            style={{ paddingTop: '56.25%' }}
+                            className="player-fs-inner relative w-full"
+                            style={isFullscreen
+                                ? { width: '100%', height: '100%' }
+                                : { paddingTop: '56.25%' }}
                             onClick={handleVideoAreaClick}
                             onMouseMove={resetControlsTimeout}
                             onTouchStart={resetControlsTimeout}
@@ -2548,7 +2549,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             )}
 
                             {showOverlaySubtitles && activeIndex >= 0 && videoData.transcript?.[activeIndex] && (
-                                <div className={`absolute left-0 right-0 z-10 flex justify-center pointer-events-none px-4 ${isMobile ? (showControls ? 'bottom-12' : 'bottom-4') : 'bottom-8'}`}>
+                                <div className={`absolute left-0 right-0 z-10 flex justify-center pointer-events-none px-4 ${showControls ? 'bottom-14' : (isMobile ? 'bottom-4' : 'bottom-8')}`}>
                                     <div className="max-w-[90%] md:max-w-[85%] text-center">
                                         {mode === 'cn' ? (
                                             <p className="text-white text-[14px] md:text-[20px] leading-relaxed md:leading-snug drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
@@ -2658,17 +2659,43 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </svg>
                                     </button>
                                 </div>
-                                <button
-                                    onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }}
-                                    className="absolute right-2 bottom-2 w-9 h-9 rounded-full bg-black/50 text-white flex items-center justify-center hover:bg-black/70 transition-colors"
-                                    title={isFullscreen ? "退出全屏" : "全屏播放"}
-                                >
-                                    {isFullscreen ? (
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
-                                    ) : (
-                                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
-                                    )}
-                                </button>
+                                {/* 视频内底部控制条：当前时间 + 进度条 + 总时长 + 全屏（仿 YouTube / B 站 移动端） */}
+                                <div className="custom-controls absolute left-0 right-0 bottom-0 px-2.5 pb-2 pt-8 bg-gradient-to-t from-black/60 via-black/25 to-transparent">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-white text-[11px] tabular-nums shrink-0 drop-shadow leading-none">
+                                            {formatTime(currentTime)}
+                                        </span>
+                                        <div
+                                            className="relative flex-1 cursor-pointer h-6 flex items-center group"
+                                            onClick={(e) => { e.stopPropagation(); handleProgressClick(e); }}
+                                        >
+                                            <div className="relative w-full h-1 bg-white/30 rounded">
+                                                <div
+                                                    className="h-full bg-violet-400 rounded relative"
+                                                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
+                                                >
+                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow" />
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <span className="text-white text-[11px] tabular-nums shrink-0 drop-shadow leading-none">
+                                            {formatTime(duration)}
+                                        </span>
+                                        <button
+                                            onClick={(e) => { e.stopPropagation(); handleToggleFullscreen(); }}
+                                            className="w-7 h-7 rounded-full bg-black/40 text-white flex items-center justify-center hover:bg-black/60 transition-colors shrink-0"
+                                            title={isFullscreen ? "退出全屏" : "全屏播放"}
+                                        >
+                                            <svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 24 24">
+                                                {isFullscreen ? (
+                                                    <path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/>
+                                                ) : (
+                                                    <path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/>
+                                                )}
+                                            </svg>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
 
                             {/* 手机端更多设置面板 - 底部弹窗 */}
@@ -2899,7 +2926,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             <video
                                 ref={playerRef}
                                 src={videoData.video_url}
-                                className={`absolute top-0 left-0 w-full h-full bg-black ${isVideoHidden ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
+                                className={`absolute top-0 left-0 w-full h-full bg-black object-contain ${isVideoHidden ? 'opacity-0' : 'opacity-100'} transition-opacity duration-300`}
                                 playsInline
                                 webkit-playsinline="true"
                                 x5-video-player-type="h5"
@@ -2934,24 +2961,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                         </div>
                     </div>
 
-                    {/* PC端控制条 - 视频下方独立一行（仅xl+） */}
+                    {/* PC端控制条 - 视频下方独立一行（仅xl+）；进度条+时长已移至视频内部覆盖层，跟主流 App 一致 */}
                     {!isMobile && (
-                        <div className="hidden xl:flex flex-col bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-b-xl px-4 pt-1.5 pb-2 shadow-xl -mt-1">
-                            {/* 进度条 */}
-                            <div
-                                className="relative w-full h-1 bg-gray-200 rounded cursor-pointer mb-2 group"
-                                onClick={handleProgressClick}
-                            >
-                                <div
-                                    className="h-full bg-violet-400 rounded relative"
-                                    style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                                >
-                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-3 h-3 bg-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-                                </div>
-                                <span className="absolute right-0 -top-5 text-gray-500 text-[10px] tabular-nums">
-                                    {formatTime(currentTime)} / {formatTime(duration)}
-                                </span>
-                            </div>
+                        <div className="hidden xl:flex flex-col bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-b-xl px-4 py-2 shadow-xl -mt-1">
                             {/* 按钮行：左组 | 中组 | 右组（justify-around 让按钮组均匀撑开，自适应视频宽度，所有 PC 布局视觉一致） */}
                             <div className="flex items-center justify-around">
                                 {/* 左组：倍速 / 隐藏 */}
@@ -4345,19 +4357,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     </>
                 )
             }
-            {/* 手机端底部控制条（替换底部导航栏） */}
+            {/* 手机端底部控制条（替换底部导航栏；进度条已移至视频内部，跟主流 App 一致） */}
             {isMobile && (
                 <div className="xl:hidden fixed bottom-0 left-0 right-0 z-[51] bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700">
-                    {/* 进度条 */}
-                    <div
-                        className="relative w-full h-1 bg-gray-200 cursor-pointer"
-                        onClick={handleProgressClick}
-                    >
-                        <div
-                            className="h-full bg-violet-400"
-                            style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
-                        />
-                    </div>
                     {/* 控制按钮 */}
                     <div className="flex items-center px-2 py-1.5">
                         {mode === 'dictation' ? (

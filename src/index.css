@@ -147,6 +147,24 @@
     color: #999 !important;
 }
 
+/* === 自定义全屏：让播放器"容器"进入全屏（不是 video 元素本身），
+       这样我们自定义的 React 覆盖层（进度条/时长/全屏键/顶部按钮）全部保留，
+       浏览器不会接管 UI；仿 YouTube / B 站 / TikTok 桌面端做法。
+       iOS Safari 不支持容器全屏，会回退到原生 video 全屏（系统接管）。
+       注意：内层 div 的 padding-top（16:9 比例）是通过 React state 关掉的，
+       不在这里用 :fullscreen 伪类覆盖（某些浏览器/模拟器的级联怪异，靠 React state 最稳）。 */
+.player-fs-container:fullscreen,
+.player-fs-container:-webkit-full-screen {
+    background: #000;
+    border-radius: 0;
+    width: 100vw;
+    height: 100vh;
+    /* 即使 React state 没切到位也兜底：把内层 div 居中，至少不会贴顶 */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
 /* Toast 提示样式 */
 .toast-message {
     position: fixed;
