@@ -508,6 +508,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const [duration, setDuration] = useState(0);
     // 全屏状态
     const [isFullscreen, setIsFullscreen] = useState(false);
+    // 进度条拖动状态（主流播放器的"按下预览 + 拖动跟手 + 松开 seek"模式）
+    const [isDraggingProgress, setIsDraggingProgress] = useState(false);
+    const progressBarRef = useRef(null);
     // 字幕叠加层开关
     const [showOverlaySubtitles, setShowOverlaySubtitles] = useState(false);
     // 控制条显示/隐藏
@@ -2270,6 +2273,22 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         handleSeek(newTime);
     };
 
+    // 进度条按下：开始拖动 —— 立即暂停（让用户能看清拖到哪），跳到按下位置作为预览
+    const handleProgressPointerDown = (e) => {
+        e.stopPropagation();
+        if (!duration) return;
+        setIsDraggingProgress(true);
+        // 拖动期间暂停播放（主流播放器的做法，避免画面继续跑）
+        if (playerRef.current) playerRef.current.pause();
+        // 立即跳到按下位置（预览）
+        const bar = progressBarRef.current || e.currentTarget;
+        const rect = bar.getBoundingClientRect();
+        const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+        const time = percent * duration;
+        setCurrentTime(time);
+        if (playerRef.current) playerRef.current.currentTime = time;
+    };
+
     // 音量变更
     const handleVolumeChange = (newVolume) => {
         setVolume(newVolume);
@@ -2354,6 +2373,42 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             }
         };
     }, [videoData]); // 依赖 videoData 确保 playerRef.current 已挂载
+
+    // 进度条拖动：监听全局 pointermove / pointerup（手指/鼠标可以拖出进度条范围）
+    useEffect(() => {
+        if (!isDraggingProgress) return;
+
+        const handleMove = (e) => {
+            const bar = progressBarRef.current;
+            if (!bar || !duration) return;
+            const rect = bar.getBoundingClientRect();
+            const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+            const time = percent * duration;
+            setCurrentTime(time);
+            if (playerRef.current) playerRef.current.currentTime = time;
+        };
+
+        const handleUp = (e) => {
+            const bar = progressBarRef.current;
+            if (bar && duration) {
+                const rect = bar.getBoundingClientRect();
+                const percent = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                // 走完整 handleSeek：处理单句循环 activeIndex、句末暂停标记、自动续播
+                handleSeek(percent * duration);
+            }
+            setIsDraggingProgress(false);
+        };
+
+        document.addEventListener('pointermove', handleMove);
+        document.addEventListener('pointerup', handleUp);
+        document.addEventListener('pointercancel', handleUp);
+
+        return () => {
+            document.removeEventListener('pointermove', handleMove);
+            document.removeEventListener('pointerup', handleUp);
+            document.removeEventListener('pointercancel', handleUp);
+        };
+    }, [isDraggingProgress, duration, handleSeek]);
 
     // 控制条自动隐藏逻辑
     // 注意：用 video.paused 而不是 isPlaying state 判断 —— onPlay 内调用时 setIsPlaying(true)
@@ -2666,15 +2721,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             {formatTime(currentTime)}
                                         </span>
                                         <div
-                                            className="relative flex-1 cursor-pointer h-6 flex items-center group"
-                                            onClick={(e) => { e.stopPropagation(); handleProgressClick(e); }}
+                                            ref={progressBarRef}
+                                            className="relative flex-1 cursor-pointer h-6 flex items-center group select-none"
+                                            style={{ touchAction: 'none' }}
+                                            onPointerDown={handleProgressPointerDown}
                                         >
                                             <div className="relative w-full h-1 bg-white/30 rounded">
                                                 <div
                                                     className="h-full bg-violet-400 rounded relative"
                                                     style={{ width: `${duration > 0 ? (currentTime / duration) * 100 : 0}%` }}
                                                 >
-                                                    <div className="absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 bg-white rounded-full shadow" />
+                                                    <div className={`absolute right-0 top-1/2 -translate-y-1/2 bg-white rounded-full shadow transition-[width,height] ${isDraggingProgress ? 'w-3.5 h-3.5' : 'w-2.5 h-2.5'}`} />
                                                 </div>
                                             </div>
                                         </div>
