@@ -1,10 +1,12 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
+import { toPng } from 'html-to-image';
 
 /* ==========================================================================
    听写分享卡 Modal（小红书"打卡日记"风）
    - 支持 4 种风格切换：暖桃 / 静谧蓝 / 牛奶白 / 抹茶绿
    - 努力 badge 文案根据 attemptCount 动态变化
    - 学到的词：从句子中自动提取最长的非常用词
+   - 保存图片：html-to-image 把卡片渲染为 PNG，pixelRatio=2 保证高清
    ========================================================================== */
 
 const CARD_THEMES = [
@@ -66,6 +68,8 @@ function getTodayCount() {
 const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
     const [themeIdx, setThemeIdx] = useState(0);
     const [copied, setCopied] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const cardRef = useRef(null);
     const theme = CARD_THEMES[themeIdx];
     const { date, time } = formatDate();
     const learnedWord = extractLearnedWord(sentence?.text || '');
@@ -101,9 +105,39 @@ const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
         }
     };
 
-    const handleSaveImage = () => {
-        // TODO: 真正实现时用 html2canvas 之类的把卡片转图片
-        alert('保存图片功能待实现\n（实施时用 html2canvas 把上方卡片导出 PNG）');
+    // 简单文件名：日期 + 句子前 20 字符，去掉非法字符
+    const buildFileName = () => {
+        const safeText = (sentence?.text || 'dictation')
+            .slice(0, 20)
+            .replace(/[\\/:*?"<>|]/g, '')
+            .trim() || 'dictation';
+        return `biubiu-${date.replace(/\./g, '-')}-${safeText}.png`;
+    };
+
+    const handleSaveImage = async () => {
+        if (!cardRef.current || saving) return;
+        setSaving(true);
+        try {
+            const dataUrl = await toPng(cardRef.current, {
+                // pixelRatio: 3 → ~864×1152 输出（接近小红书 1080×1440 推荐尺寸）
+                // 比 2x 大一倍文件（~60KB → ~120KB），但小红书全屏放大不再糊
+                pixelRatio: 3,
+                cacheBust: true,            // 防字体缓存导致的渲染异常
+                backgroundColor: '#ffffff', // 兜底底色
+            });
+
+            // 触发浏览器下载
+            // iOS Safari 对 download 属性支持有限，会改为在新标签打开图片 → 用户长按保存
+            const link = document.createElement('a');
+            link.download = buildFileName();
+            link.href = dataUrl;
+            link.click();
+        } catch (e) {
+            console.error('保存图片失败:', e);
+            alert('保存失败，请截图或重试');
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -122,8 +156,9 @@ const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
                     💌 分享我的听写日记
                 </div>
 
-                {/* 卡片预览（3:4 portrait，内部紧凑）*/}
+                {/* 卡片预览（3:4 portrait，内部紧凑）—— ref 用于导出图片 */}
                 <div
+                    ref={cardRef}
                     className={`aspect-[3/4] bg-gradient-to-br ${theme.from} ${theme.via} ${theme.to} rounded-2xl p-4 shadow-inner border ${theme.border} flex flex-col`}
                 >
                     {/* 顶部：日期 + 视频出处 */}
@@ -202,9 +237,10 @@ const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
                 <div className="grid grid-cols-2 gap-2 mt-3">
                     <button
                         onClick={handleSaveImage}
-                        className="py-2.5 bg-rose-500 hover:bg-rose-600 text-white font-medium rounded-xl transition-colors text-sm shadow-md shadow-rose-200 dark:shadow-rose-900/30"
+                        disabled={saving}
+                        className="py-2.5 bg-rose-500 hover:bg-rose-600 disabled:bg-rose-300 disabled:cursor-not-allowed text-white font-medium rounded-xl transition-colors text-sm shadow-md shadow-rose-200 dark:shadow-rose-900/30"
                     >
-                        📷 保存图片
+                        {saving ? '生成中…' : '📷 保存图片'}
                     </button>
                     <button
                         onClick={handleCopy}
