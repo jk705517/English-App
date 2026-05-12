@@ -129,11 +129,28 @@ const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
                 backgroundColor: '#ffffff', // JPEG 不支持透明，必须有底色
             });
 
-            // 触发浏览器下载
-            // iOS Safari 对 download 属性支持有限，会改为在新标签打开图片 → 用户长按"保存到相册"
-            // JPG 比 PNG 更易被 iOS 识别为"照片"而非"文件"
+            const fileName = buildFileName();
+
+            // 优先用 Web Share API：iOS 14+ / Android Chrome 75+ 支持
+            // 调起系统原生分享面板（含"保存图像" + WeChat / 小红书 / AirDrop ...）
+            // 跳过 iOS Safari 那个"在新标签打开 → 更多 → 保存"的黑色中转页
+            try {
+                const blob = await (await fetch(dataUrl)).blob();
+                const file = new File([blob], fileName, { type: 'image/jpeg' });
+                if (navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: '我的听写日记' });
+                    return; // 成功调起原生面板 → 退出
+                }
+            } catch (shareErr) {
+                // 用户主动取消分享（AbortError）：静默返回，不要再 fallback 到下载
+                if (shareErr && shareErr.name === 'AbortError') return;
+                // 其他失败（如不支持 files、权限被拒）→ fall through 走下载兜底
+                console.warn('Web Share 失败，回退到下载:', shareErr);
+            }
+
+            // 兜底：传统下载（桌面浏览器 / 不支持 Share API 的环境）
             const link = document.createElement('a');
-            link.download = buildFileName();
+            link.download = fileName;
             link.href = dataUrl;
             link.click();
         } catch (e) {
