@@ -42,6 +42,9 @@ const SubtitleItem = memo(({
     onRecordClick,
     onPlayOriginal,
     onDeleteRecording,
+    // 听写相关 props
+    isDictated = false,        // 这一句是否已 engaged（已听写过）
+    onDictateClick,            // (index) => void  点击 🎧 进入这句听写
     isDebug = false,
 }) => {
     // Helper: generate stable ID for sentence
@@ -158,7 +161,7 @@ const SubtitleItem = memo(({
                 onSeek(item.start);
             }}
             data-subtitle-index={index}
-            className={`relative pl-10 pr-3 md:pr-28 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
+            className={`relative pl-10 pr-3 md:pr-36 py-3 rounded-lg cursor-pointer transition-all duration-200 ${
                 isAbPointA ? 'bg-yellow-50 dark:bg-yellow-900/20 ring-1 ring-yellow-300' :
                 isAbPointB ? 'bg-green-50 dark:bg-green-900/20 ring-1 ring-green-300' :
                 isActive ? 'bg-white dark:bg-gray-700 shadow-md' : 'hover:bg-white/60 dark:hover:bg-gray-700/50'
@@ -188,6 +191,23 @@ const SubtitleItem = memo(({
                 <span className="absolute right-10 top-1/2 -translate-y-1/2 text-4xl font-bold text-violet-600 bg-violet-100 px-3 py-1 rounded-2xl tabular-nums z-10 shadow-sm">
                     {loopCountdown}s
                 </span>
+            )}
+
+            {/* 听写状态按钮（PC右侧最左，手机端隐藏）- 挖空模式不显示
+                听过 = 紫色 filled / 没听过 = 浅灰 outline / 点击 = 跳到该句听写 */}
+            {mode !== 'cloze' && onDictateClick && (
+                <button
+                    onClick={(e) => { e.stopPropagation(); onDictateClick(index); }}
+                    className={`hidden md:block absolute right-28 top-3 p-1 rounded-full transition-colors ${isDictated
+                        ? 'text-violet-500 hover:bg-violet-100'
+                        : 'text-gray-300 hover:text-gray-400 hover:bg-gray-100'
+                        }`}
+                    title={isDictated ? "已听写过 · 点击重做" : "点击听写这一句"}
+                >
+                    <svg className="w-4 h-4" fill={isDictated ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 00-14 0v3a2 2 0 002 2h2v-7H5m14 0h-2v7h2a2 2 0 002-2v-3" />
+                    </svg>
+                </button>
             )}
 
             {/* 录音按钮（PC右侧，手机端隐藏）- 挖空模式不显示 */}
@@ -326,6 +346,18 @@ const SubtitleItem = memo(({
                             >
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+                                </svg>
+                            </button>
+                        )}
+                        {/* 听写状态（紫色 = 已听过 / 灰色 = 未听过）*/}
+                        {onDictateClick && (
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onDictateClick(index); }}
+                                className={`p-1.5 rounded-full transition-colors ${isDictated ? 'text-violet-500' : 'text-gray-400 hover:text-gray-600'}`}
+                                title={isDictated ? "已听写过 · 点击重做" : "听写这一句"}
+                            >
+                                <svg className="w-4 h-4" fill={isDictated ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={2} viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 00-14 0v3a2 2 0 002 2h2v-7H5m14 0h-2v7h2a2 2 0 002-2v-3" />
                                 </svg>
                             </button>
                         )}

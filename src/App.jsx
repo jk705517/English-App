@@ -19,6 +19,7 @@ import Auth from './pages/Auth';
 import Activate from './pages/Activate';
 import AdminGenerateLink from './pages/AdminGenerateLink';
 import DemoPage from './pages/DemoPage';
+import DictationDemo from './pages/DictationDemo';
 
 function App() {
     return (
@@ -26,6 +27,9 @@ function App() {
             <Routes>
                 {/* Demo 试用页面 - 不需要登录 */}
                 <Route path="/demo" element={<DemoPage />} />
+
+                {/* 听写模式 v8 设计预览 - 不需要登录 */}
+                <Route path="/dictation-demo" element={<DictationDemo />} />
 
                 <Route path="/" element={<Layout />}>
                     {/* 需要登录才能访问的页面 */}

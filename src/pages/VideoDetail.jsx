@@ -526,10 +526,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     });
     const [isLearned, setIsLearned] = useState(false);
     const [isFavorite, setIsFavorite] = useState(false);
-    const [dictationStats, setDictationStats] = useState({ firstTry: 0, corrected: 0, skipped: 0 });
     const [dictationIndex, setDictationIndex] = useState(0);
     const [hasPlayedCurrent, setHasPlayedCurrent] = useState(false);
-    const [dictationResumePrompt, setDictationResumePrompt] = useState(null); // { currentIndex, stats } | null
+    // 听写已engaged的句子索引集合（已通过/已揭晓/已跳过 都算）
+    // 用于字幕模式 🎧 图标着色
+    const [dictationEngagedSet, setDictationEngagedSet] = useState(() => new Set());
 
     // 句子和词汇收藏状态
     const [favoriteSentenceIds, setFavoriteSentenceIds] = useState([]);
@@ -1142,60 +1143,40 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         return () => window.removeEventListener('scroll', handleScroll);
     }, [isMobile]);
 
-    // Save mode to localStorage and handle dictation mode switch
+    // 持久化 mode 到 localStorage
     useEffect(() => {
         localStorage.setItem('studyMode', mode);
+    }, [mode]);
 
+    // activeIndex 同步到 ref，避免下面 dictation 入场 useEffect 每次 activeIndex 变都 re-fire
+    const activeIndexRef = useRef(activeIndex);
+    useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
+
+    // 切换到听写模式：默认从当前播放句开始（不再有 "恢复进度" 弹窗）
+    // 用 activeIndexRef 读最新值，effect 只在 mode 真正变化时触发
+    // 注意：进入时只 seek + 暂停，不自动播放——让用户准备好再点播放按钮
+    useEffect(() => {
         if (mode === 'dictation' && videoData?.transcript) {
-            setDictationResumePrompt(null);
-            const saved = JSON.parse(localStorage.getItem(`dictation_${videoData.id}`) || 'null');
-            const hasSavedProgress = saved && saved.currentIndex > 0 && saved.currentIndex < videoData.transcript.length;
-
-            if (hasSavedProgress) {
-                // 恢复上次进度，先 seek，等用户选择继续或重新开始
-                const savedStats = {
-                    firstTry: saved.stats?.firstTry ?? saved.stats?.correct ?? 0,
-                    corrected: saved.stats?.corrected ?? 0,
-                    skipped: saved.stats?.skipped ?? 0,
-                };
-                setDictationIndex(saved.currentIndex);
-                setDictationStats(savedStats);
-                setHasPlayedCurrent(false);
-                setIsSeeking(true);
-                setIsPlaying(false);
-                setTimeout(() => {
-                    if (playerRef.current) {
-                        playerRef.current.currentTime = videoData.transcript[saved.currentIndex].start;
-                        setCurrentTime(videoData.transcript[saved.currentIndex].start);
-                    }
-                    setTimeout(() => setIsSeeking(false), 200);
-                }, 50);
-                setDictationResumePrompt({ currentIndex: saved.currentIndex, total: videoData.transcript.length });
-            } else {
-                // 全新开始 + 自动播放第一句
-                const firstTime = videoData.transcript[0].start;
-                setDictationIndex(0);
-                setDictationStats({ firstTry: 0, corrected: 0, skipped: 0 });
-                setHasPlayedCurrent(false);
-                setIsSeeking(true);
-                setIsPlaying(false);
-                setTimeout(() => {
-                    if (playerRef.current) {
-                        playerRef.current.currentTime = firstTime;
-                        setCurrentTime(firstTime);
-                    }
-                }, 50);
-                // 自动播放第一句
-                setTimeout(() => {
-                    setIsSeeking(false);
-                    setIsPlaying(true);
-                    if (playerRef.current) playerRef.current.play();
-                    setHasPlayedCurrent(true);
-                }, 400);
-            }
+            const startIdx = activeIndexRef.current >= 0 ? activeIndexRef.current : 0;
+            const safeIdx = Math.min(Math.max(startIdx, 0), videoData.transcript.length - 1);
+            const startTime = videoData.transcript[safeIdx].start;
+            setDictationIndex(safeIdx);
+            setHasPlayedCurrent(false);
+            setIsSeeking(true);
+            setIsPlaying(false);
+            if (playerRef.current) playerRef.current.pause();
+            setTimeout(() => {
+                if (playerRef.current) {
+                    playerRef.current.currentTime = startTime;
+                    setCurrentTime(startTime);
+                }
+                setIsSeeking(false);
+            }, 50);
         }
+    }, [mode, videoData]);
 
-        // 新增：挖空模式滚动到当前句子
+    // 挖空模式滚动到当前句子（独立 effect，不跟 dictation 入场绑在一起）
+    useEffect(() => {
         if (mode === 'cloze' && videoData?.transcript) {
             setTimeout(() => {
                 const activeElement = document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
@@ -1206,15 +1187,48 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [mode, videoData, activeIndex]);
 
-    // 听写进度自动存档（dictationIndex 或 dictationStats 变化时）
+    // 切换视频时加载该视频的"已engaged句子集合"
     useEffect(() => {
-        if (mode !== 'dictation' || !videoData?.id || dictationIndex <= 0) return;
-        localStorage.setItem(`dictation_${videoData.id}`, JSON.stringify({
-            currentIndex: dictationIndex,
-            stats: dictationStats,
-            timestamp: Date.now(),
-        }));
-    }, [dictationIndex, dictationStats, mode, videoData?.id]);
+        if (!videoData?.id) {
+            setDictationEngagedSet(new Set());
+            return;
+        }
+        try {
+            const saved = localStorage.getItem(`dictationStatus_${videoData.id}`);
+            if (saved) {
+                const arr = JSON.parse(saved);
+                setDictationEngagedSet(new Set(Array.isArray(arr) ? arr : []));
+            } else {
+                setDictationEngagedSet(new Set());
+            }
+        } catch {
+            setDictationEngagedSet(new Set());
+        }
+    }, [videoData?.id]);
+
+    // 标记某句已 engaged（通过/揭晓/跳过/切跟读 都算）
+    // 同时增加"今日累计听写句数"（按本机日期分桶，用于分享卡显示）
+    const markDictationEngaged = useCallback((idx) => {
+        if (typeof idx !== 'number' || idx < 0) return;
+        setDictationEngagedSet(prev => {
+            if (prev.has(idx)) return prev;
+            const next = new Set(prev);
+            next.add(idx);
+            if (videoData?.id) {
+                try {
+                    localStorage.setItem(`dictationStatus_${videoData.id}`, JSON.stringify([...next]));
+                } catch { /* ignore */ }
+            }
+            // 今日累计 +1（仅在该句首次 engage 时增加）
+            try {
+                const d = new Date();
+                const todayKey = `bb_dict_today_${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
+                const cur = parseInt(localStorage.getItem(todayKey) || '0', 10) || 0;
+                localStorage.setItem(todayKey, String(cur + 1));
+            } catch { /* ignore */ }
+            return next;
+        });
+    }, [videoData?.id]);
 
     // Calculate cloze data
     useEffect(() => {
@@ -1720,21 +1734,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const handleNextDictation = () => {
         if (!videoData?.transcript) return;
         const nextIndex = dictationIndex + 1;
-        if (nextIndex < videoData.transcript.length) {
-            setIsSeeking(true);
-            setDictationIndex(nextIndex);
-            setHasPlayedCurrent(false);
-            const nextTime = videoData.transcript[nextIndex].start;
-            setCurrentTime(nextTime);
-            if (playerRef.current) {
-                playerRef.current.currentTime = nextTime;
-            }
-            setIsPlaying(false);
-            setTimeout(() => setIsSeeking(false), 300);
-        } else {
-            // 全部完成，清除存档
-            localStorage.removeItem(`dictation_${videoData.id}`);
+        if (nextIndex >= videoData.transcript.length) {
+            // 已经是最后一句
+            return;
         }
+        setIsSeeking(true);
+        setDictationIndex(nextIndex);
+        setHasPlayedCurrent(false);
+        const nextTime = videoData.transcript[nextIndex].start;
+        setCurrentTime(nextTime);
+        if (playerRef.current) {
+            playerRef.current.currentTime = nextTime;
+        }
+        setIsPlaying(false);
+        // 自动播放下一句（v8：无缝过渡）
+        setTimeout(() => {
+            setIsSeeking(false);
+            setIsPlaying(true);
+            if (playerRef.current) playerRef.current.play();
+            setHasPlayedCurrent(true);
+        }, 350);
     };
 
     const handlePrevDictation = () => {
@@ -1749,34 +1768,39 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             playerRef.current.currentTime = prevTime;
         }
         setIsPlaying(false);
-        setTimeout(() => setIsSeeking(false), 300);
-    };
-
-    const handleDictationResume = () => {
-        setDictationResumePrompt(null);
-        setTimeout(() => {
-            setIsPlaying(true);
-            if (playerRef.current) playerRef.current.play();
-            setHasPlayedCurrent(true);
-        }, 100);
-    };
-
-    const handleDictationRestart = () => {
-        if (!videoData?.transcript) return;
-        localStorage.removeItem(`dictation_${videoData.id}`);
-        setDictationResumePrompt(null);
-        setDictationIndex(0);
-        setDictationStats({ firstTry: 0, corrected: 0, skipped: 0 });
-        setHasPlayedCurrent(false);
-        const firstTime = videoData.transcript[0].start;
-        setIsSeeking(true);
-        if (playerRef.current) playerRef.current.currentTime = firstTime;
+        // 自动播放上一句
         setTimeout(() => {
             setIsSeeking(false);
             setIsPlaying(true);
             if (playerRef.current) playerRef.current.play();
             setHasPlayedCurrent(true);
-        }, 300);
+        }, 350);
+    };
+
+    // 切换"用跟读练这一句"：保留当前 activeIndex（已经跟 dictationIndex 对齐），切到跟读
+    const handleDictationSwitchToShadow = () => {
+        markDictationEngaged(dictationIndex);
+        // 让 activeIndex 对齐到当前听写句，跟读才能定位
+        if (typeof dictationIndex === 'number') {
+            setActiveIndex(dictationIndex);
+        }
+        handleModeChange('shadow');
+    };
+
+    // 点击字幕行的 🎧 图标 → 跳到该句听写
+    // 不用 useCallback：handleModeChange 在本函数之后才声明，加入 deps 会触发 TDZ
+    const handleSubtitleDictate = (idx) => {
+        if (!videoData?.transcript?.[idx]) return;
+        const t = videoData.transcript[idx].start;
+        setActiveIndex(idx);
+        setIsSeeking(true);
+        if (playerRef.current) {
+            playerRef.current.currentTime = t;
+            setCurrentTime(t);
+        }
+        setTimeout(() => setIsSeeking(false), 200);
+        handleModeChange('dictation');
+        // 入场 effect 会用 activeIndexRef 读最新的 idx
     };
 
     const handleReplayDictation = () => {
@@ -1913,7 +1937,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (newStatus) {
             // 标记已学时清除学习进度记录
             localStorage.removeItem(`lastSentence_${videoData.id}`);
+            // 兼容旧 key + 清新 key
             localStorage.removeItem(`dictation_${videoData.id}`);
+            localStorage.removeItem(`dictationStatus_${videoData.id}`);
+            setDictationEngagedSet(new Set());
         }
         if (isDemo) {
             // Demo 模式：保存到 localStorage
@@ -3303,32 +3330,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             </div>
                         </div>
                     )}
-                    {mode === 'dictation' && (
-                        <div className="mx-3 mt-3 md:mx-4 md:mt-4 bg-gradient-to-r from-violet-50 to-violet-50 p-4 rounded-lg shadow-sm">
-                            <div className="flex justify-around">
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-green-600">{dictationStats.firstTry}</div>
-                                    <div className="text-xs text-gray-600">一次通过</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-blue-500">{dictationStats.corrected}</div>
-                                    <div className="text-xs text-gray-600">修改通过</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-gray-500">{dictationStats.skipped}</div>
-                                    <div className="text-xs text-gray-600">跳过</div>
-                                </div>
-                                <div className="text-center">
-                                    <div className="text-2xl font-bold text-violet-500">
-                                        {dictationStats.firstTry + dictationStats.corrected + dictationStats.skipped > 0
-                                            ? Math.round(((dictationStats.firstTry + dictationStats.corrected) / (dictationStats.firstTry + dictationStats.corrected + dictationStats.skipped)) * 100)
-                                            : 0}%
-                                    </div>
-                                    <div className="text-xs text-gray-600">正确率</div>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    {/* 听写模式 v8：不再展示 4 大格子统计；改为单句"对话式"练习 */}
 
                     <div className="relative">
                         <div className={jingTingSettings.hideSubtitles ? 'blur-sm pointer-events-none select-none' : ''}>
@@ -3375,56 +3377,23 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 </button>
                             </div>
                         ) : mode === 'dictation' ? (
-                            <div className="space-y-3">
-                                {/* 恢复进度提示 */}
-                                {dictationResumePrompt && (
-                                    <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700 rounded-lg p-4">
-                                        <p className="text-sm text-amber-800 dark:text-amber-300 mb-3">
-                                            🎯 检测到上次听写进度（第 {dictationResumePrompt.currentIndex + 1} / {dictationResumePrompt.total} 句），是否继续？
-                                        </p>
-                                        <div className="flex gap-2">
-                                            <button
-                                                onClick={handleDictationResume}
-                                                className="flex-1 bg-violet-400 text-white py-2 rounded-lg text-sm font-medium hover:bg-violet-500 transition-colors"
-                                            >
-                                                继续听写
-                                            </button>
-                                            <button
-                                                onClick={handleDictationRestart}
-                                                className="flex-1 bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 py-2 rounded-lg text-sm hover:bg-gray-50 dark:hover:bg-gray-600 transition-colors"
-                                            >
-                                                重新开始
-                                            </button>
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="bg-violet-50 dark:bg-violet-900/10 p-6 rounded-lg border-2 border-violet-200 dark:border-violet-800">
-                                    <DictationInput
-                                        key={dictationIndex}
-                                        correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
-                                        currentIndex={dictationIndex}
-                                        totalCount={videoData.transcript.length}
-                                        onCorrect={({ firstTry }) => {
-                                            setDictationStats(prev => ({
-                                                ...prev,
-                                                firstTry: prev.firstTry + (firstTry ? 1 : 0),
-                                                corrected: prev.corrected + (firstTry ? 0 : 1),
-                                            }));
-                                        }}
-                                        onSkip={() => {
-                                            setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 }));
-                                            handleNextDictation();
-                                        }}
-                                        onReplay={handleReplayDictation}
-                                        hasPlayed={hasPlayedCurrent}
-                                    />
-                                    <details className="mt-4">
-                                        <summary className="cursor-pointer text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 font-medium">
-                                            💡 显示中文翻译
-                                        </summary>
-                                        <p className="mt-2 text-gray-700 dark:text-gray-300 pl-4">{videoData.transcript[dictationIndex]?.cn}</p>
-                                    </details>
-                                </div>
+                            <div className="bg-violet-50/40 dark:bg-violet-900/10 p-3 md:p-4 rounded-2xl border border-violet-100 dark:border-violet-900/40">
+                                <DictationInput
+                                    key={dictationIndex}
+                                    correctAnswer={videoData.transcript[dictationIndex]?.text || ''}
+                                    cnText={videoData.transcript[dictationIndex]?.cn || ''}
+                                    currentIndex={dictationIndex}
+                                    totalCount={videoData.transcript.length}
+                                    videoTitle={videoData.title || ''}
+                                    hasPlayed={hasPlayedCurrent}
+                                    onCorrect={() => { markDictationEngaged(dictationIndex); }}
+                                    onSkip={() => { markDictationEngaged(dictationIndex); handleNextDictation(); }}
+                                    onAttempt={() => { markDictationEngaged(dictationIndex); }}
+                                    onReplay={handleReplayDictation}
+                                    onSwitchToShadow={handleDictationSwitchToShadow}
+                                    onNext={() => { markDictationEngaged(dictationIndex); handleNextDictation(); }}
+                                    onWordLookup={(word) => handleWordClick(word, dictationIndex)}
+                                />
                             </div>
                         ) : mode === 'shadow' ? (
                             (() => {
@@ -3727,6 +3696,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                             onRecordClick={handleRecordClick}
                                             onPlayOriginal={handlePlayOriginal}
                                             onDeleteRecording={handleDeleteRecording}
+                                            isDictated={dictationEngagedSet.has(index)}
+                                            onDictateClick={handleSubtitleDictate}
                                             isDebug={isDebug}
                                         />
                                     </div>
@@ -4450,7 +4421,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         </span>
                                     </button>
                                     <button
-                                        onClick={() => { setDictationStats(prev => ({ ...prev, skipped: prev.skipped + 1 })); handleNextDictation(); }}
+                                        onClick={() => { markDictationEngaged(dictationIndex); handleNextDictation(); }}
                                         className="flex flex-col items-center gap-0.5"
                                     >
                                         <span className="w-9 h-9 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-700 dark:text-gray-300">
