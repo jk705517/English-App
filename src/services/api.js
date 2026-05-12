@@ -62,6 +62,9 @@ export const authAPI = {
     },
 };
 // 瑙嗛 API
+// In-flight dedup：同一瞬间相同 videoId 的请求合并成一次（请求完即清，非缓存）
+const _videoInflight = new Map();
+
 export const videoAPI = {
     getAll: (filters = {}) => {
         const params = new URLSearchParams();
@@ -75,7 +78,13 @@ export const videoAPI = {
         const url = queryString ? `/api/videos?${queryString}` : '/api/videos';
         return request(url);
     },
-    getById: (id) => request(`/api/videos/${id}`),
+    getById: (id) => {
+        const key = String(id);
+        if (_videoInflight.has(key)) return _videoInflight.get(key);
+        const promise = request(`/api/videos/${id}`).finally(() => _videoInflight.delete(key));
+        _videoInflight.set(key, promise);
+        return promise;
+    },
     getByEpisode: (episode) => request(`/api/videos/episode/${episode}`),
 };
 // 鐢ㄦ埛杩涘害 API

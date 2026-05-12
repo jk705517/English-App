@@ -91,8 +91,9 @@ function Favorites() {
     // 从 API 读取收藏和已学习的视频 ID 列表
     useEffect(() => {
         const loadData = async () => {
+            // 200ms 后才显示 loading（数据已回来则不显示，避免 spinner 闪烁）
+            const loadingTimer = setTimeout(() => setLoading(true), 200);
             try {
-                setLoading(true);
                 setError(null);
 
                 // 并行获取收藏和已学习的视频ID
@@ -104,20 +105,19 @@ function Favorites() {
                 setFavoriteVideoIds(storedFavoriteIds);
                 setLearnedVideoIds(loadedLearnedIds);
 
-                // 如果有收藏的视频，使用 videoAPI 获取视频详情
+                // 如果有收藏的视频，并行获取视频详情（保持 favoriteIds 顺序）
                 if (storedFavoriteIds.length > 0) {
-                    const fetchedVideos = [];
-                    for (const videoId of storedFavoriteIds) {
-                        try {
-                            const response = await videoAPI.getById(videoId);
-                            if (response.success && response.data) {
-                                fetchedVideos.push(response.data);
-                            }
-                        } catch (err) {
-                            console.error(`获取视频 ${videoId} 失败:`, err);
+                    const results = await Promise.allSettled(
+                        storedFavoriteIds.map(videoId => videoAPI.getById(videoId))
+                    );
+                    const fetchedVideos = results.reduce((acc, result, idx) => {
+                        if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                            acc.push(result.value.data);
+                        } else if (result.status === 'rejected') {
+                            console.error(`获取视频 ${storedFavoriteIds[idx]} 失败:`, result.reason);
                         }
-                    }
-                    // 视频已按 favoriteIds 顺序获取
+                        return acc;
+                    }, []);
                     setVideos(fetchedVideos);
                 } else {
                     setVideos([]);
@@ -126,6 +126,7 @@ function Favorites() {
                 console.error('Error loading favorites:', err);
                 setError('加载收藏失败，请重试');
             } finally {
+                clearTimeout(loadingTimer);
                 setLoading(false);
             }
         };
@@ -136,13 +137,15 @@ function Favorites() {
     // 懒加载句子收藏
     useEffect(() => {
         if (activeTab === 'sentence' && !sentencesLoaded && user) {
-            setLoading(true);
+            const loadingTimer = setTimeout(() => setLoading(true), 200);
             favoritesService.loadFavoriteSentenceItems(user).then(data => {
                 setFavoriteSentences(data);
                 setSentencesLoaded(true);
+                clearTimeout(loadingTimer);
                 setLoading(false);
             }).catch(err => {
                 console.error('Error loading favorite sentences:', err);
+                clearTimeout(loadingTimer);
                 setLoading(false);
             });
         }
@@ -151,13 +154,15 @@ function Favorites() {
     // 懒加载词汇收藏
     useEffect(() => {
         if (activeTab === 'vocab' && !vocabsLoaded && user) {
-            setLoading(true);
+            const loadingTimer = setTimeout(() => setLoading(true), 200);
             favoritesService.loadFavoriteVocabItems(user).then(data => {
                 setFavoriteVocabs(data);
                 setVocabsLoaded(true);
+                clearTimeout(loadingTimer);
                 setLoading(false);
             }).catch(err => {
                 console.error('Error loading favorite vocab:', err);
+                clearTimeout(loadingTimer);
                 setLoading(false);
             });
         }

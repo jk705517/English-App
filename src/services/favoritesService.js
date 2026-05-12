@@ -247,18 +247,19 @@ export const favoritesService = {
             // 获取所有相关视频的 ID
             const videoIds = [...new Set(sentenceFavorites.map(f => f.video_id))];
 
-            // 使用 videoAPI 获取视频数据
+            // 并行获取视频数据
             const videoMap = {};
-            for (const videoId of videoIds) {
-                try {
-                    const response = await videoAPI.getById(videoId);
-                    if (response.success && response.data) {
-                        videoMap[videoId] = response.data;
-                    }
-                } catch (err) {
-                    console.error(`获取视频 ${videoId} 失败:`, err);
+            const videoResults = await Promise.allSettled(
+                videoIds.map(videoId => videoAPI.getById(videoId))
+            );
+            videoResults.forEach((result, idx) => {
+                const videoId = videoIds[idx];
+                if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                    videoMap[videoId] = result.value.data;
+                } else if (result.status === 'rejected') {
+                    console.error(`获取视频 ${videoId} 失败:`, result.reason);
                 }
-            }
+            });
 
             // 为每个收藏的句子查找对应的内容（这部分逻辑保持不变）
             const enrichedSentences = sentenceFavorites.map(f => {
@@ -327,18 +328,19 @@ export const favoritesService = {
 
             const videoIds = [...new Set(vocabFavorites.map(f => f.video_id))];
 
-            // 使用 videoAPI 获取视频数据
+            // 并行获取视频数据
             const videoMap = {};
-            for (const videoId of videoIds) {
-                try {
-                    const response = await videoAPI.getById(videoId);
-                    if (response.success && response.data) {
-                        videoMap[videoId] = response.data;
-                    }
-                } catch (err) {
-                    console.error(`获取视频 ${videoId} 失败:`, err);
+            const videoResults = await Promise.allSettled(
+                videoIds.map(videoId => videoAPI.getById(videoId))
+            );
+            videoResults.forEach((result, idx) => {
+                const videoId = videoIds[idx];
+                if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                    videoMap[videoId] = result.value.data;
+                } else if (result.status === 'rejected') {
+                    console.error(`获取视频 ${videoId} 失败:`, result.reason);
                 }
-            }
+            });
 
             // 为每个收藏的词汇查找对应的内容（这部分逻辑保持不变）
             const enrichedVocabs = vocabFavorites.map(f => {

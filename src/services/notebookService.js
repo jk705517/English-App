@@ -1,5 +1,19 @@
 import { notebooksAPI, videoAPI, reviewStatesAPI } from './api';
 
+// In-flight 请求去重：同一瞬间发起的相同请求，只真正发一次 HTTP。
+// 请求一完成立即从 Map 删除（不是缓存，不会脏读）。
+const _inflightRequests = new Map();
+function dedupRequest(key, fetcher) {
+    if (_inflightRequests.has(key)) {
+        return _inflightRequests.get(key);
+    }
+    const promise = fetcher().finally(() => {
+        _inflightRequests.delete(key);
+    });
+    _inflightRequests.set(key, promise);
+    return promise;
+}
+
 // ============================================
 // 基础 API 封装函数
 // ============================================
@@ -174,7 +188,10 @@ export const notebookService = {
         if (!user || !notebookId) return null;
 
         try {
-            const response = await notebooksAPI.getItems(notebookId);
+            const response = await dedupRequest(
+                `items:${notebookId}`,
+                () => notebooksAPI.getItems(notebookId)
+            );
             console.log('📓 loadNotebookDetail - API response:', response);
 
             if (!response.success) {
@@ -205,18 +222,19 @@ export const notebookService = {
             const videoIds = [...new Set(rawItems.map(item => item.video_id).filter(Boolean))];
             console.log('📓 loadNotebookDetail - videoIds to fetch:', videoIds);
 
-            // 使用 videoAPI 获取视频数据
+            // 并行获取视频数据
             let videoMap = {};
-            for (const videoId of videoIds) {
-                try {
-                    const response = await videoAPI.getById(videoId);
-                    if (response.success && response.data) {
-                        videoMap[videoId] = response.data;
-                    }
-                } catch (err) {
-                    console.error(`获取视频 ${videoId} 失败:`, err);
+            const videoResults = await Promise.allSettled(
+                videoIds.map(videoId => videoAPI.getById(videoId))
+            );
+            videoResults.forEach((result, idx) => {
+                const videoId = videoIds[idx];
+                if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                    videoMap[videoId] = result.value.data;
+                } else if (result.status === 'rejected') {
+                    console.error(`获取视频 ${videoId} 失败:`, result.reason);
                 }
-            }
+            });
 
             // 丰富句子数据
             const enrichedSentences = sentenceItems.map(item => {
@@ -374,10 +392,10 @@ export const notebookService = {
         if (!user || !notebookId) return null;
 
         try {
-            // 同时获取本子内容和复习状态
+            // 同时获取本子内容和复习状态（同一瞬间内的相同请求会自动去重）
             const [itemsResponse, reviewStatesResponse] = await Promise.all([
-                notebooksAPI.getItems(notebookId),
-                reviewStatesAPI.getAll()
+                dedupRequest(`items:${notebookId}`, () => notebooksAPI.getItems(notebookId)),
+                dedupRequest('reviewStates', () => reviewStatesAPI.getAll())
             ]);
 
             if (!itemsResponse.success) {
@@ -410,20 +428,21 @@ export const notebookService = {
                 };
             }
 
-            // 使用 videoAPI 获取视频数据
+            // 并行获取视频数据
             const allItems = [...vocabItems, ...wordItems];
             const videoIds = [...new Set(allItems.map(item => item.video_id).filter(Boolean))];
             let videoMap = {};
-            for (const videoId of videoIds) {
-                try {
-                    const response = await videoAPI.getById(videoId);
-                    if (response.success && response.data) {
-                        videoMap[videoId] = response.data;
-                    }
-                } catch (err) {
-                    console.error(`获取视频 ${videoId} 失败:`, err);
+            const videoResults = await Promise.allSettled(
+                videoIds.map(videoId => videoAPI.getById(videoId))
+            );
+            videoResults.forEach((result, idx) => {
+                const videoId = videoIds[idx];
+                if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                    videoMap[videoId] = result.value.data;
+                } else if (result.status === 'rejected') {
+                    console.error(`获取视频 ${videoId} 失败:`, result.reason);
                 }
-            }
+            });
 
             // 丰富词汇数据（vocab 类型，从视频 vocab 数组查找）
             const enrichedVocabs = vocabItems.map(item => {
@@ -567,10 +586,10 @@ export const notebookService = {
         if (!user || !notebookId) return null;
 
         try {
-            // 同时获取本子内容和复习状态
+            // 同时获取本子内容和复习状态（同一瞬间内的相同请求会自动去重）
             const [itemsResponse, reviewStatesResponse] = await Promise.all([
-                notebooksAPI.getItems(notebookId),
-                reviewStatesAPI.getAll()
+                dedupRequest(`items:${notebookId}`, () => notebooksAPI.getItems(notebookId)),
+                dedupRequest('reviewStates', () => reviewStatesAPI.getAll())
             ]);
 
             if (!itemsResponse.success) {
@@ -603,19 +622,20 @@ export const notebookService = {
                 };
             }
 
-            // 使用 videoAPI 获取视频数据
+            // 并行获取视频数据
             const videoIds = [...new Set(sentenceItems.map(item => item.video_id).filter(Boolean))];
             let videoMap = {};
-            for (const videoId of videoIds) {
-                try {
-                    const response = await videoAPI.getById(videoId);
-                    if (response.success && response.data) {
-                        videoMap[videoId] = response.data;
-                    }
-                } catch (err) {
-                    console.error(`获取视频 ${videoId} 失败:`, err);
+            const videoResults = await Promise.allSettled(
+                videoIds.map(videoId => videoAPI.getById(videoId))
+            );
+            videoResults.forEach((result, idx) => {
+                const videoId = videoIds[idx];
+                if (result.status === 'fulfilled' && result.value?.success && result.value?.data) {
+                    videoMap[videoId] = result.value.data;
+                } else if (result.status === 'rejected') {
+                    console.error(`获取视频 ${videoId} 失败:`, result.reason);
                 }
-            }
+            });
 
             // 丰富句子数据
             const enrichedSentences = sentenceItems.map(item => {

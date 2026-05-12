@@ -348,7 +348,8 @@ function Notebooks() {
     // 加载本子详情
     const handleSelectNotebook = async (notebook, shouldUpdateUrl = true) => {
         setSelectedNotebook(notebook);
-        setDetailLoading(true);
+        // 200ms 后才显示 loading（数据已回来则不显示，避免 spinner 闪烁）
+        const loadingTimer = setTimeout(() => setDetailLoading(true), 200);
         setVocabStats({ dueCount: 0, totalVocabCount: 0, hasReviewState: false });
         setSentenceStats({ dueCount: 0, totalSentenceCount: 0, hasReviewState: false });
         console.log('[handleSelectNotebook] Reset stats for notebook:', notebook.id);
@@ -357,16 +358,18 @@ function Notebooks() {
             updateUrlParams(notebook.id, activeTab);
         }
 
-        const detail = await notebookService.loadNotebookDetail(user, notebook.id);
-        setNotebookDetail(detail);
-        setDetailLoading(false);
-
+        // 三个请求并行触发，互不阻塞（stats 自己管理 loading state）
         loadVocabStats(notebook.id);
         loadSentenceStats(notebook.id);
+
+        const detail = await notebookService.loadNotebookDetail(user, notebook.id);
+        clearTimeout(loadingTimer);
+        setNotebookDetail(detail);
+        setDetailLoading(false);
     };
 
     const loadVocabStats = async (notebookId) => {
-        setVocabStatsLoading(true);
+        const loadingTimer = setTimeout(() => setVocabStatsLoading(true), 200);
         try {
             const data = await notebookService.loadNotebookVocabsForReview(user, notebookId);
             if (data) {
@@ -389,11 +392,12 @@ function Notebooks() {
         } catch (err) {
             console.error('Error loading vocab stats:', err);
         }
+        clearTimeout(loadingTimer);
         setVocabStatsLoading(false);
     };
 
     const loadSentenceStats = async (notebookId) => {
-        setSentenceStatsLoading(true);
+        const loadingTimer = setTimeout(() => setSentenceStatsLoading(true), 200);
         try {
             const data = await notebookService.loadNotebookSentencesForReview(user, notebookId);
             if (data) {
@@ -415,6 +419,7 @@ function Notebooks() {
         } catch (err) {
             console.error('Error loading sentence stats:', err);
         }
+        clearTimeout(loadingTimer);
         setSentenceStatsLoading(false);
     };
 
