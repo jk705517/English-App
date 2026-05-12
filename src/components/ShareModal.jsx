@@ -1,12 +1,14 @@
 import { useState, useRef } from 'react';
-import { toPng } from 'html-to-image';
+import { toJpeg } from 'html-to-image';
 
 /* ==========================================================================
    听写分享卡 Modal（小红书"打卡日记"风）
    - 支持 4 种风格切换：暖桃 / 静谧蓝 / 牛奶白 / 抹茶绿
    - 努力 badge 文案根据 attemptCount 动态变化
    - 学到的词：从句子中自动提取最长的非常用词
-   - 保存图片：html-to-image 把卡片渲染为 PNG，pixelRatio=2 保证高清
+   - 保存图片：html-to-image 把卡片渲染为 JPG，pixelRatio=3 高清，quality=0.95
+   - 选 JPG 而非 PNG：文件小一半、系统识别为"照片"（iOS Safari 长按存相册更顺），
+     卡片无透明区域，不需要 PNG 的 alpha 通道
    ========================================================================== */
 
 const CARD_THEMES = [
@@ -111,23 +113,25 @@ const ShareModal = ({ sentence, videoTitle, attemptCount = 1, onClose }) => {
             .slice(0, 20)
             .replace(/[\\/:*?"<>|]/g, '')
             .trim() || 'dictation';
-        return `biubiu-${date.replace(/\./g, '-')}-${safeText}.png`;
+        return `biubiu-${date.replace(/\./g, '-')}-${safeText}.jpg`;
     };
 
     const handleSaveImage = async () => {
         if (!cardRef.current || saving) return;
         setSaving(true);
         try {
-            const dataUrl = await toPng(cardRef.current, {
+            const dataUrl = await toJpeg(cardRef.current, {
                 // pixelRatio: 3 → ~864×1152 输出（接近小红书 1080×1440 推荐尺寸）
-                // 比 2x 大一倍文件（~60KB → ~120KB），但小红书全屏放大不再糊
                 pixelRatio: 3,
+                // JPEG 质量 0.95：肉眼无损，文件比 PNG 小一半（约 60-80KB vs 120KB）
+                quality: 0.95,
                 cacheBust: true,            // 防字体缓存导致的渲染异常
-                backgroundColor: '#ffffff', // 兜底底色
+                backgroundColor: '#ffffff', // JPEG 不支持透明，必须有底色
             });
 
             // 触发浏览器下载
-            // iOS Safari 对 download 属性支持有限，会改为在新标签打开图片 → 用户长按保存
+            // iOS Safari 对 download 属性支持有限，会改为在新标签打开图片 → 用户长按"保存到相册"
+            // JPG 比 PNG 更易被 iOS 识别为"照片"而非"文件"
             const link = document.createElement('a');
             link.download = buildFileName();
             link.href = dataUrl;
