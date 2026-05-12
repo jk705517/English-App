@@ -313,9 +313,9 @@ app.post('/api/admin/generate-link', async (req, res) => {
     // 生成密码：biubiu + 手机号后4位
     const password = 'biubiu' + phone.slice(-4);
 
-    // 计算过期时间：24小时后
+    // 计算过期时间：7天后
     const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    expiresAt.setDate(expiresAt.getDate() + 7);
 
     // 存入数据库
     await pool.query(
