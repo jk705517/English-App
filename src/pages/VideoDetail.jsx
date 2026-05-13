@@ -824,13 +824,29 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             // 还在原集 → 把 video 拨到 bgAudio 当前位置，按需继续播
             stopBgAudioHard();
             if (playerRef.current) {
-                try { playerRef.current.currentTime = bgT; } catch { }
-                if (wasPlaying) {
-                    const p = playerRef.current.play();
-                    if (p && typeof p.catch === 'function') p.catch(() => { });
-                    setIsPlaying(true);
+                const v = playerRef.current;
+                // 关键：switchEp 在后台 navigate 切了 URL，videoData 在后台拉了新数据，
+                // video.src 也在后台被 React 改成了新一期。但 iOS 后台对 video 元素的网络/解码
+                // 有限制 → video 实际上没真正 load，buffer 是空的。
+                // 这时直接 play() 经常画面卡住、要手动点几次下一期才能恢复。
+                // 解决：如果 video 没就绪（readyState < 3 = HAVE_FUTURE_DATA），
+                // force-load 一下让 iOS 在前台真正去拉数据，
+                // 通过 onLoadedMetadata 钩子里现成的 resumeTimeRef + autoplayPendingRef 接管 seek+play
+                if (v.readyState < 3) {
+                    resumeTimeRef.current = bgT;
+                    if (wasPlaying) autoplayPendingRef.current = true;
+                    try { v.load(); } catch { }
+                    setIsPlaying(wasPlaying);
                 } else {
-                    setIsPlaying(false);
+                    // video 已就绪（普通锁屏-解锁循环，src 没换）→ 直接 seek + play
+                    try { v.currentTime = bgT; } catch { }
+                    if (wasPlaying) {
+                        const p = v.play();
+                        if (p && typeof p.catch === 'function') p.catch(() => { });
+                        setIsPlaying(true);
+                    } else {
+                        setIsPlaying(false);
+                    }
                 }
             }
         };
