@@ -735,14 +735,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 其它模式（循环/AB/精读/听写）维持旧行为——直接暂停。
     // 回前台：若 bgAudio 还在放就交接回 video 继续播；若期间换了集则 navigate 到那一集。
     useEffect(() => {
-        // 把 bgAudio 彻底停下（pause + currentTime=0 + src=''）。
-        // iOS PWA 在某些场景下 visibilitychange 不一定按预期触发，多重保险避免「2 个声音」
+        // 把 bgAudio 停下。注意：故意不移 src——iOS 上一旦移了 src，audio 元素的「用户手势解锁」状态会丢，
+        // 下次锁屏点播放会哑火（priming 又不会重跑，因为 bgAudioPrimedRef 是 true）。
+        // 只 pause + currentTime=0 已经能彻底无声，src 保留让元素始终待命。
         const stopBgAudioHard = () => {
             const a = bgAudioRef.current;
             if (!a) return;
             try { a.pause(); } catch { }
             try { a.currentTime = 0; } catch { }
-            try { a.removeAttribute('src'); a.load(); } catch { }
         };
 
         const onBackground = () => {
@@ -837,10 +837,17 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         document.addEventListener('visibilitychange', onVisChange);
         window.addEventListener('pageshow', onPageShow);
         window.addEventListener('focus', onFocus);
+        // 兜底：iOS PWA 上面三个事件都可能抽风，加个 1.5s 轮询
+        // 只在「页面前台 + bgAudio 还 engaged」的矛盾状态下出手收拾
+        const safetyInterval = setInterval(() => {
+            if (document.hidden) return;
+            if (bgAudioEngagedRef.current) onForeground();
+        }, 1500);
         return () => {
             document.removeEventListener('visibilitychange', onVisChange);
             window.removeEventListener('pageshow', onPageShow);
             window.removeEventListener('focus', onFocus);
+            clearInterval(safetyInterval);
         };
     }, [videoData, navigate]);
 
