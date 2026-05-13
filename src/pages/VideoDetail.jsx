@@ -1017,6 +1017,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         else a.addEventListener('loadedmetadata', startPlayback, { once: true });
         currentBgEpisodeRef.current = epData.episode;
         bgHelpersRef.current.install(epData);
+        // 关键：同步把 PWA 内部 URL 也切到新一期。
+        // 不然用户解锁回 PWA 时，页面 URL 还停在原来那期 → 视频元素加载的是旧期 →
+        // 跟 bgAudio 在响的新期内容不一致 = 2 个声音 / 看到错的画面。
+        // 用户在锁屏看不到 PWA 切页，这次 navigate 对他完全无感
+        if (!isDemo && Number(epData.episode) !== Number(episode)) {
+            navigate(`/episode/${epData.episode}`);
+        }
         // 链式预取"下下集"和"上一集"，让连续连播 / 锁屏上下切换零延迟
         if (!isDemo) {
             if (epData.nextVideo) {
@@ -1057,8 +1064,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     }, [prevVideo, isDemo]);
 
     // episode 切换时重置后台交接状态（priming 标志保留——audio 元素一旦解锁，跨集仍有效）
+    // ⚠ 关键守卫：如果当前正处于后台 bgAudio 接力中（switchEp 切到新一期会触发这个 effect），
+    // 不要重置——保留 engagedRef 和 currentBgEpisodeRef 让用户回前台时能正确同步
     useEffect(() => {
-        bgAudioEngagedRef.current = false;
+        if (bgAudioEngagedRef.current) return;
         currentBgEpisodeRef.current = null;
     }, [episode]);
 
