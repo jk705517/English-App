@@ -3353,16 +3353,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         if (!a.src) a.src = videoData?.audio_url || videoData?.video_url || '';
                                         // 关键：在 priming 的 play() 之前就装好 Media Session metadata。
                                         // 否则 iOS 在 priming 那一刻创建 Media Session 时会拿 document.title 兜底，
-                                        // 之后真正锁屏再 install 也刷不掉那个旧标题（这就是「第一次锁屏卡片显示 doc title 和
-                                        // ±10s 按钮而非 ◀◀ ▶▶」那个 bug 的根因）。
+                                        // 之后真正锁屏再 install 也刷不掉那个旧标题
                                         if (videoData) bgHelpersRef.current.install?.(videoData);
                                         a.muted = true;
                                         const p = a.play();
+                                        // ⚠ 关键：priming 之后【永远不 unmute】！bgAudio 静音躺平。
+                                        // 之前的 bug：.then 里 a.pause() + a.muted=false 同步执行，
+                                        // 但 iOS pause() 有几毫秒延迟，muted=false 瞬时生效 →
+                                        // 这几毫秒里 bgAudio 不静音播放，跟 video 同时响 → 2 个声音
+                                        // 修法：priming 后保持 muted=true，真正锁屏交接时 onBackground 里再 unmute
                                         if (p && typeof p.then === 'function') {
-                                            p.then(() => { a.pause(); a.muted = false; })
-                                             .catch(() => { a.muted = false; });
-                                        } else {
-                                            a.muted = false;
+                                            p.then(() => { a.pause(); /* 保持 muted=true */ })
+                                             .catch(() => { /* play 失败也不 unmute */ });
                                         }
                                     }
                                 }}
