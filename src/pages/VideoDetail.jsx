@@ -735,7 +735,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 老架构是「主从切换」，无数个 race 折磨我们。新架构是「音视频共存」：
     //   video 永远 muted、只负责画面
     //   audio 永远在 sync 跟随 video、负责声音
-    // 用户操作 video（play/pause/seek/倍速），audio 通过事件监听自动跟随
+    // 用户操作 video（play/pause/seek/倍速），audio 通过 monkey-patch + 事件监听自动跟随
     // 后台 iOS 强制暂停 video，但因为 audio 是独立元素，iOS 允许它继续放
     // 回前台时再让 video 跟上 audio 的位置并恢复播放
     useEffect(() => {
@@ -743,11 +743,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         const audio = bgAudioRef.current;
         if (!video || !audio) return;
 
-        const onVideoPlay = () => { audio.play().catch(() => { }); };
+        // ⚠ Monkey-patch video.play()/pause()，让 audio 在【用户手势同步调用栈】里被 play
+        // 关键背景：iOS 要求 audio.play() 必须在用户手势同步栈里被调用过，否则切后台时静音它。
+        // 单纯靠 video.onPlay 事件监听不行 —— play 事件是【异步派发】的（microtask），
+        // 已经脱离用户手势栈。必须在 video.play() 被调用的【同一同步函数里】也调 audio.play()
+        const origPlay = video.play.bind(video);
+        const origPause = video.pause.bind(video);
+        video.play = function () {
+            try { audio.play().catch(() => { }); } catch { }
+            return origPlay();
+        };
+        video.pause = function () {
+            try { audio.pause(); } catch { }
+            return origPause();
+        };
+
+        // 事件监听是备用通道（覆盖原生 controls 按钮、key 事件等不经过 JS .play() 的场景）
+        const onVideoPlay = () => { if (audio.paused) audio.play().catch(() => { }); };
         const onVideoPause = () => {
             // ⚠ 关键：iOS 后台会强制 pause video，这时千万不要也 pause audio
-            // 因为 audio 才是声音源，停了用户就听不到了
-            if (!document.hidden) audio.pause();
+            if (!document.hidden && !audio.paused) audio.pause();
         };
         const onVideoSeeked = () => {
             try { audio.currentTime = video.currentTime; } catch { }
@@ -774,6 +789,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         window.addEventListener('focus', onForegroundReturn);
 
         return () => {
+            // 恢复原生 play/pause
+            try { video.play = origPlay; } catch { }
+            try { video.pause = origPause; } catch { }
             video.removeEventListener('play', onVideoPlay);
             video.removeEventListener('pause', onVideoPause);
             video.removeEventListener('seeked', onVideoSeeked);
