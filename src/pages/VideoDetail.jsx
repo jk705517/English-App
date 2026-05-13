@@ -784,8 +784,24 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             try { video.currentTime = audio.currentTime; } catch { }
             video.play().catch(() => { });
         };
-        document.addEventListener('visibilitychange', onForegroundReturn);
+
+        // 切后台时显式 audio.play() —— iOS 在 visibility 切换那一刻检查 audio 是否"主动在播"，
+        // 不是只看 element.paused=false。这一步是给 iOS 信号："audio 在 visibility 变化时还
+        // 主动调了 play"，让它允许后台继续放
+        const onGoingBackground = () => {
+            if (audio && !audio.paused) {
+                audio.play().catch(() => { });
+            }
+        };
+        const onVisibilityToHidden = () => {
+            if (document.hidden) onGoingBackground();
+            else onForegroundReturn();
+        };
+        const onPageHide = (e) => { if (e.persisted) onGoingBackground(); };
+
+        document.addEventListener('visibilitychange', onVisibilityToHidden);
         window.addEventListener('pageshow', onForegroundReturn);
+        window.addEventListener('pagehide', onPageHide);
         window.addEventListener('focus', onForegroundReturn);
 
         return () => {
@@ -796,8 +812,9 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             video.removeEventListener('pause', onVideoPause);
             video.removeEventListener('seeked', onVideoSeeked);
             video.removeEventListener('ratechange', onVideoRateChange);
-            document.removeEventListener('visibilitychange', onForegroundReturn);
+            document.removeEventListener('visibilitychange', onVisibilityToHidden);
             window.removeEventListener('pageshow', onForegroundReturn);
+            window.removeEventListener('pagehide', onPageHide);
             window.removeEventListener('focus', onForegroundReturn);
         };
     }, [videoData]);
