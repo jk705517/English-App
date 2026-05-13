@@ -735,90 +735,113 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 其它模式（循环/AB/精读/听写）维持旧行为——直接暂停。
     // 回前台：若 bgAudio 还在放就交接回 video 继续播；若期间换了集则 navigate 到那一集。
     useEffect(() => {
-        const onVisChange = () => {
+        // 把 bgAudio 彻底停下（pause + currentTime=0 + src=''）。
+        // iOS PWA 在某些场景下 visibilitychange 不一定按预期触发，多重保险避免「2 个声音」
+        const stopBgAudioHard = () => {
+            const a = bgAudioRef.current;
+            if (!a) return;
+            try { a.pause(); } catch { }
+            try { a.currentTime = 0; } catch { }
+            try { a.removeAttribute('src'); a.load(); } catch { }
+        };
+
+        const onBackground = () => {
             const ctx = playbackCtxRef.current || {};
-            if (document.hidden) {
-                const isLinear = ctx.isPlaying
-                    && !ctx.isVideoLooping
-                    && !ctx.isSentenceLooping
-                    && ctx.abMode === 0
-                    && ctx.mode !== 'intensive'
-                    && ctx.mode !== 'dictation';
-                if (!isLinear || !playerRef.current || !bgAudioRef.current || !videoData) {
-                    // 维持旧行为：暂停 video，不交接
-                    if (ctx.isPlaying && playerRef.current) {
-                        playerRef.current.pause();
-                        setIsPlaying(false);
-                    }
-                    return;
+            const isLinear = ctx.isPlaying
+                && !ctx.isVideoLooping
+                && !ctx.isSentenceLooping
+                && ctx.abMode === 0
+                && ctx.mode !== 'intensive'
+                && ctx.mode !== 'dictation';
+            if (!isLinear || !playerRef.current || !bgAudioRef.current || !videoData) {
+                // 维持旧行为：暂停 video，不交接
+                if (ctx.isPlaying && playerRef.current) {
+                    playerRef.current.pause();
+                    setIsPlaying(false);
                 }
-                // 交接到 bgAudio
-                const t = playerRef.current.currentTime || 0;
-                const rate = playerRef.current.playbackRate || 1;
-                playerRef.current.pause();
-                const a = bgAudioRef.current;
-                const desiredSrc = videoData.audio_url || videoData.video_url;
-                const isAlreadyLoaded = a.src && (a.src === desiredSrc || a.src.endsWith(desiredSrc));
-                if (!isAlreadyLoaded) {
-                    a.src = desiredSrc;
-                    a.load();
+                return;
+            }
+            // 交接到 bgAudio
+            const t = playerRef.current.currentTime || 0;
+            const rate = playerRef.current.playbackRate || 1;
+            playerRef.current.pause();
+            const a = bgAudioRef.current;
+            const desiredSrc = videoData.audio_url || videoData.video_url;
+            const isAlreadyLoaded = a.src && (a.src === desiredSrc || a.src.endsWith(desiredSrc));
+            if (!isAlreadyLoaded) {
+                a.src = desiredSrc;
+                a.load();
+            }
+            // 先装 Media Session metadata —— 必须在 bgAudio.play() 之前
+            currentBgEpisodeRef.current = videoData.episode;
+            bgHelpersRef.current.install(videoData);
+            bgAudioEngagedRef.current = true;
+            const startBg = () => {
+                try { a.currentTime = t; } catch { }
+                a.playbackRate = rate;
+                a.volume = ctx.volume ?? 1;
+                a.play().catch(() => { /* iOS 万一拒就退化成"已暂停" */ });
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch { }
                 }
-                // 先装 Media Session metadata —— 必须在 bgAudio.play() 之前，
-                // 否则 iOS 会拿 document.title 当 fallback 显示在锁屏上（首次锁屏会看到"BiuBiu English｜刷视频学英语"那一串）
-                currentBgEpisodeRef.current = videoData.episode;
-                bgHelpersRef.current.install(videoData);
-                bgAudioEngagedRef.current = true;
-                const startBg = () => {
-                    try { a.currentTime = t; } catch { }
-                    a.playbackRate = rate;
-                    a.volume = ctx.volume ?? 1;
-                    a.play().catch(() => { /* iOS 万一拒就退化成"已暂停" */ });
-                    if ('mediaSession' in navigator) {
-                        try { navigator.mediaSession.playbackState = 'playing'; } catch { }
-                    }
-                };
-                if (isAlreadyLoaded || a.readyState >= 1) startBg();
-                else a.addEventListener('loadedmetadata', startBg, { once: true });
-            } else {
-                // 回前台
-                if (!bgAudioEngagedRef.current) return;
-                const a = bgAudioRef.current;
-                if (!a) { bgAudioEngagedRef.current = false; return; }
-                const bgT = a.currentTime || 0;
-                const wasPlaying = !a.paused;
-                a.pause();
-                const bgEp = currentBgEpisodeRef.current;
-                const curEp = videoData?.episode;
-                if (bgEp != null && curEp != null && Number(bgEp) !== Number(curEp)) {
-                    // 后台连播换过集 → navigate 到那一集，带上当前位置和是否继续播
-                    const qs = new URLSearchParams();
-                    qs.set('bgresume', '1');
-                    qs.set('t', String(Math.floor(bgT)));
-                    if (wasPlaying) qs.set('play', '1');
-                    bgAudioEngagedRef.current = false;
-                    currentBgEpisodeRef.current = null;
-                    bgHelpersRef.current.uninstall();
-                    navigate(`/episode/${bgEp}?${qs.toString()}`);
-                    return;
+            };
+            if (isAlreadyLoaded || a.readyState >= 1) startBg();
+            else a.addEventListener('loadedmetadata', startBg, { once: true });
+        };
+
+        const onForeground = () => {
+            if (!bgAudioEngagedRef.current) return;
+            const a = bgAudioRef.current;
+            if (!a) { bgAudioEngagedRef.current = false; return; }
+            const bgT = a.currentTime || 0;
+            const wasPlaying = !a.paused;
+            const bgEp = currentBgEpisodeRef.current;
+            const curEp = videoData?.episode;
+            // 先清理：Media Session + engaged ref，避免下面 navigate/pause 异步过程中重复进入
+            bgAudioEngagedRef.current = false;
+            currentBgEpisodeRef.current = null;
+            bgHelpersRef.current.uninstall();
+            if (bgEp != null && curEp != null && Number(bgEp) !== Number(curEp)) {
+                // 后台连播换过集 → 彻底停 bgAudio + navigate 到那一集
+                stopBgAudioHard();
+                const qs = new URLSearchParams();
+                qs.set('bgresume', '1');
+                qs.set('t', String(Math.floor(bgT)));
+                if (wasPlaying) qs.set('play', '1');
+                navigate(`/episode/${bgEp}?${qs.toString()}`);
+                return;
+            }
+            // 还在原集 → 把 video 拨到 bgAudio 当前位置，按需继续播
+            stopBgAudioHard();
+            if (playerRef.current) {
+                try { playerRef.current.currentTime = bgT; } catch { }
+                if (wasPlaying) {
+                    const p = playerRef.current.play();
+                    if (p && typeof p.catch === 'function') p.catch(() => { });
+                    setIsPlaying(true);
+                } else {
+                    setIsPlaying(false);
                 }
-                // 还在原集 → 把 video 拨到 bgAudio 当前位置，按需继续播
-                if (playerRef.current) {
-                    try { playerRef.current.currentTime = bgT; } catch { }
-                    if (wasPlaying) {
-                        const p = playerRef.current.play();
-                        if (p && typeof p.catch === 'function') p.catch(() => { });
-                        setIsPlaying(true);
-                    } else {
-                        setIsPlaying(false);
-                    }
-                }
-                bgAudioEngagedRef.current = false;
-                currentBgEpisodeRef.current = null;
-                bgHelpersRef.current.uninstall();
             }
         };
+
+        const onVisChange = () => {
+            if (document.hidden) onBackground();
+            else onForeground();
+        };
+        // 多挂几个「回前台」触发：iOS PWA standalone 模式下 visibilitychange 偶尔抽风，
+        // pageshow / focus 兜底
+        const onPageShow = () => { if (!document.hidden) onForeground(); };
+        const onFocus = () => { if (!document.hidden) onForeground(); };
+
         document.addEventListener('visibilitychange', onVisChange);
-        return () => document.removeEventListener('visibilitychange', onVisChange);
+        window.addEventListener('pageshow', onPageShow);
+        window.addEventListener('focus', onFocus);
+        return () => {
+            document.removeEventListener('visibilitychange', onVisChange);
+            window.removeEventListener('pageshow', onPageShow);
+            window.removeEventListener('focus', onFocus);
+        };
     }, [videoData, navigate]);
 
     // Load learned status
@@ -3313,6 +3336,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                         bgAudioPrimedRef.current = true;
                                         const a = bgAudioRef.current;
                                         if (!a.src) a.src = videoData?.audio_url || videoData?.video_url || '';
+                                        // 关键：在 priming 的 play() 之前就装好 Media Session metadata。
+                                        // 否则 iOS 在 priming 那一刻创建 Media Session 时会拿 document.title 兜底，
+                                        // 之后真正锁屏再 install 也刷不掉那个旧标题（这就是「第一次锁屏卡片显示 doc title 和
+                                        // ±10s 按钮而非 ◀◀ ▶▶」那个 bug 的根因）。
+                                        if (videoData) bgHelpersRef.current.install?.(videoData);
                                         a.muted = true;
                                         const p = a.play();
                                         if (p && typeof p.then === 'function') {
