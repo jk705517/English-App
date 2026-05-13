@@ -731,156 +731,64 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         return () => observer.disconnect();
     }, [isMobile, isPhone]);
 
-    // 切后台/锁屏：普通线性播放时把声音交给隐藏 bgAudio 继续放（iOS 后台允许 audio）；
-    // 其它模式（循环/AB/精读/听写）维持旧行为——直接暂停。
-    // 回前台：若 bgAudio 还在放就交接回 video 继续播；若期间换了集则 navigate 到那一集。
+    // === 新架构：video 静音(只画面) + audio 出声(常驻发声) ===
+    // 老架构是「主从切换」，无数个 race 折磨我们。新架构是「音视频共存」：
+    //   video 永远 muted、只负责画面
+    //   audio 永远在 sync 跟随 video、负责声音
+    // 用户操作 video（play/pause/seek/倍速），audio 通过事件监听自动跟随
+    // 后台 iOS 强制暂停 video，但因为 audio 是独立元素，iOS 允许它继续放
+    // 回前台时再让 video 跟上 audio 的位置并恢复播放
     useEffect(() => {
-        // 把 bgAudio 停下。注意：故意不移 src——iOS 上一旦移了 src，audio 元素的「用户手势解锁」状态会丢，
-        // 下次锁屏点播放会哑火（priming 又不会重跑，因为 bgAudioPrimedRef 是 true）。
-        // muted=true 是瞬时生效的，pause() 在 iOS 上有几毫秒延迟，先 mute 能保证立刻无声，
-        // 避免「回前台时 bgAudio 还漏几毫秒声音 + video 同时在响 = 2 个声音」
-        const stopBgAudioHard = () => {
-            const a = bgAudioRef.current;
-            if (!a) return;
-            try { a.muted = true; } catch { }
-            try { a.pause(); } catch { }
-            try { a.currentTime = 0; } catch { }
+        const video = playerRef.current;
+        const audio = bgAudioRef.current;
+        if (!video || !audio) return;
+
+        const onVideoPlay = () => { audio.play().catch(() => { }); };
+        const onVideoPause = () => {
+            // ⚠ 关键：iOS 后台会强制 pause video，这时千万不要也 pause audio
+            // 因为 audio 才是声音源，停了用户就听不到了
+            if (!document.hidden) audio.pause();
+        };
+        const onVideoSeeked = () => {
+            try { audio.currentTime = video.currentTime; } catch { }
+        };
+        const onVideoRateChange = () => {
+            audio.playbackRate = video.playbackRate;
         };
 
-        const onBackground = () => {
-            // 幂等守卫：已经在接力中就别再跑（pagehide + visibilitychange 可能双触发）
-            if (bgAudioEngagedRef.current) return;
-            const ctx = playbackCtxRef.current || {};
-            const isLinear = ctx.isPlaying
-                && !ctx.isVideoLooping
-                && !ctx.isSentenceLooping
-                && ctx.abMode === 0
-                && ctx.mode !== 'intensive'
-                && ctx.mode !== 'dictation';
-            if (!isLinear || !playerRef.current || !bgAudioRef.current || !videoData) {
-                // 维持旧行为：暂停 video，不交接
-                if (ctx.isPlaying && playerRef.current) {
-                    playerRef.current.pause();
-                    setIsPlaying(false);
-                }
-                return;
-            }
-            // 交接到 bgAudio
-            const t = playerRef.current.currentTime || 0;
-            const rate = playerRef.current.playbackRate || 1;
-            playerRef.current.pause();
-            const a = bgAudioRef.current;
-            const desiredSrc = videoData.audio_url || videoData.video_url;
-            const isAlreadyLoaded = a.src && (a.src === desiredSrc || a.src.endsWith(desiredSrc));
-            if (!isAlreadyLoaded) {
-                a.src = desiredSrc;
-                a.load();
-            }
-            // 先装 Media Session metadata —— 必须在 bgAudio.play() 之前
-            currentBgEpisodeRef.current = videoData.episode;
-            bgHelpersRef.current.install(videoData);
-            bgAudioEngagedRef.current = true;
-            // 上一轮 stopBgAudioHard 可能把 muted 调成 true，这里恢复
-            a.muted = false;
-            const startBg = () => {
-                // ⚠ 防止 race：如果在等 loadedmetadata 这段时间里用户已经解锁回前台，
-                // engaged 已经被 onForeground 清成 false，这里就别再 play 了，
-                // 否则 bgAudio 会在前台和 video 同时响 → 2 个声音
-                if (!bgAudioEngagedRef.current) return;
-                try { a.currentTime = t; } catch { }
-                a.playbackRate = rate;
-                a.volume = ctx.volume ?? 1;
-                a.play().catch(() => { /* iOS 万一拒就退化成"已暂停" */ });
-                if ('mediaSession' in navigator) {
-                    try { navigator.mediaSession.playbackState = 'playing'; } catch { }
-                }
-            };
-            if (isAlreadyLoaded || a.readyState >= 1) startBg();
-            else a.addEventListener('loadedmetadata', startBg, { once: true });
-        };
+        video.addEventListener('play', onVideoPlay);
+        video.addEventListener('pause', onVideoPause);
+        video.addEventListener('seeked', onVideoSeeked);
+        video.addEventListener('ratechange', onVideoRateChange);
 
-        const onForeground = () => {
-            if (!bgAudioEngagedRef.current) return;
-            const a = bgAudioRef.current;
-            if (!a) { bgAudioEngagedRef.current = false; return; }
-            const bgT = a.currentTime || 0;
-            const wasPlaying = !a.paused;
-            const bgEp = currentBgEpisodeRef.current;
-            const curEp = videoData?.episode;
-            // 先清理：Media Session + engaged ref，避免下面 navigate/pause 异步过程中重复进入
-            bgAudioEngagedRef.current = false;
-            currentBgEpisodeRef.current = null;
-            bgHelpersRef.current.uninstall();
-            if (bgEp != null && curEp != null && Number(bgEp) !== Number(curEp)) {
-                // 后台连播换过集 → 彻底停 bgAudio + navigate 到那一集
-                stopBgAudioHard();
-                const qs = new URLSearchParams();
-                qs.set('bgresume', '1');
-                qs.set('t', String(Math.floor(bgT)));
-                if (wasPlaying) qs.set('play', '1');
-                navigate(`/episode/${bgEp}?${qs.toString()}`);
-                return;
-            }
-            // 还在原集 → 把 video 拨到 bgAudio 当前位置，按需继续播
-            stopBgAudioHard();
-            if (playerRef.current) {
-                const v = playerRef.current;
-                // 关键：switchEp 在后台 navigate 切了 URL，videoData 在后台拉了新数据，
-                // video.src 也在后台被 React 改成了新一期。但 iOS 后台对 video 元素的网络/解码
-                // 有限制 → video 实际上没真正 load，buffer 是空的。
-                // 这时直接 play() 经常画面卡住、要手动点几次下一期才能恢复。
-                // 解决：如果 video 没就绪（readyState < 3 = HAVE_FUTURE_DATA），
-                // force-load 一下让 iOS 在前台真正去拉数据，
-                // 通过 onLoadedMetadata 钩子里现成的 resumeTimeRef + autoplayPendingRef 接管 seek+play
-                if (v.readyState < 3) {
-                    resumeTimeRef.current = bgT;
-                    if (wasPlaying) autoplayPendingRef.current = true;
-                    try { v.load(); } catch { }
-                    setIsPlaying(wasPlaying);
-                } else {
-                    // video 已就绪（普通锁屏-解锁循环，src 没换）→ 直接 seek + play
-                    try { v.currentTime = bgT; } catch { }
-                    if (wasPlaying) {
-                        const p = v.play();
-                        if (p && typeof p.catch === 'function') p.catch(() => { });
-                        setIsPlaying(true);
-                    } else {
-                        setIsPlaying(false);
-                    }
-                }
-            }
-        };
-
-        const onVisChange = () => {
-            if (document.hidden) onBackground();
-            else onForeground();
-        };
-        // 多挂几个「回前台」触发：iOS PWA standalone 模式下 visibilitychange 偶尔抽风，
-        // pageshow / focus 兜底
-        const onPageShow = () => { if (!document.hidden) onForeground(); };
-        const onFocus = () => { if (!document.hidden) onForeground(); };
-        // 关键：iOS PWA standalone 模式下，「上拉切后台/回主屏」常常不触发 visibilitychange，
-        // 但会触发 pagehide(persisted=true)。这是用户最常用的"切后台听音频"的入口
-        const onPageHide = (e) => { if (e.persisted) onBackground(); };
-
-        document.addEventListener('visibilitychange', onVisChange);
-        window.addEventListener('pageshow', onPageShow);
-        window.addEventListener('pagehide', onPageHide);
-        window.addEventListener('focus', onFocus);
-        // 兜底：iOS PWA 上面三个事件都可能抽风，加个 1.5s 轮询
-        // 只在「页面前台 + bgAudio 还 engaged」的矛盾状态下出手收拾
-        const safetyInterval = setInterval(() => {
+        // 回前台 sync：iOS 从后台回前台时 video 是停的而 audio 一直在播。
+        // 让 video 跟上 audio 当前位置，并恢复播放
+        const onForegroundReturn = () => {
             if (document.hidden) return;
-            if (bgAudioEngagedRef.current) onForeground();
-        }, 1500);
-        return () => {
-            document.removeEventListener('visibilitychange', onVisChange);
-            window.removeEventListener('pageshow', onPageShow);
-            window.removeEventListener('pagehide', onPageHide);
-            window.removeEventListener('focus', onFocus);
-            clearInterval(safetyInterval);
+            if (audio.paused) return;
+            try { video.currentTime = audio.currentTime; } catch { }
+            video.play().catch(() => { });
         };
-    }, [videoData, navigate]);
+        document.addEventListener('visibilitychange', onForegroundReturn);
+        window.addEventListener('pageshow', onForegroundReturn);
+        window.addEventListener('focus', onForegroundReturn);
+
+        return () => {
+            video.removeEventListener('play', onVideoPlay);
+            video.removeEventListener('pause', onVideoPause);
+            video.removeEventListener('seeked', onVideoSeeked);
+            video.removeEventListener('ratechange', onVideoRateChange);
+            document.removeEventListener('visibilitychange', onForegroundReturn);
+            window.removeEventListener('pageshow', onForegroundReturn);
+            window.removeEventListener('focus', onForegroundReturn);
+        };
+    }, [videoData]);
+
+    // videoData 加载后立刻装 Media Session（锁屏卡片元数据），不再依赖 engaged 状态
+    useEffect(() => {
+        if (!videoData) return;
+        bgHelpersRef.current.install?.(videoData);
+    }, [videoData]);
 
     // Load learned status
     // 记录最近访问的视频，供首页"继续学习"使用
@@ -903,9 +811,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // iOS Safari 后台/锁屏会强制暂停 <video>，但允许 <audio> 后台继续放。
     // 切后台时把当前进度交给 bgAudio，回前台再交接回 video。
     const bgAudioRef = useRef(null);
-    const bgAudioPrimedRef = useRef(false);    // iOS 用户手势"解锁"标志
-    const bgAudioEngagedRef = useRef(false);   // 当前是否由 bgAudio 在后台放
-    const currentBgEpisodeRef = useRef(null);  // bgAudio 当前正在放第几期
     const nextVideoFullRef = useRef(null);     // 预取的下一集完整数据
     const prevVideoFullRef = useRef(null);     // 预取的上一集完整数据（锁屏「上一首」用）
     const resumeTimeRef = useRef(null);        // 新页面起播位置（消费 ?bgresume&t=）
@@ -958,40 +863,51 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         const set = (name, fn) => {
             try { navigator.mediaSession.setActionHandler(name, fn); } catch { }
         };
+        // 锁屏点播放 → 走 video.play()，video.onplay 监听器会自动让 audio.play()
         set('play', () => {
+            const v = playerRef.current;
             const a = bgAudioRef.current;
-            if (!a) return;
-            // 修复：ended 状态下直接 play 不会从头开始，必须先 seek
-            if (a.ended || (a.duration && a.currentTime >= a.duration - 0.1)) {
+            // 兜底：如果在结尾，先 seek 回 0
+            if (a && (a.ended || (a.duration && a.currentTime >= a.duration - 0.1))) {
                 try { a.currentTime = 0; } catch { }
+                if (v) try { v.currentTime = 0; } catch { }
             }
-            // 关键：priming 后 bgAudio 是 muted=true 躺平的，如果用户没经过 onBackground
-            // 而是直接锁屏点了 play（visibilitychange 没触发的边界场景），
-            // 这里必须 unmute，否则只是静音播放 = 没声音
-            a.muted = false;
-            a.play().catch(() => { });
+            // 直接驱动 audio（声音源），video 通过事件链跟随
+            if (a) a.play().catch(() => { });
+            if (v) v.play().catch(() => { });
         });
-        set('pause', () => { bgAudioRef.current?.pause(); });
+        set('pause', () => {
+            const v = playerRef.current;
+            if (v) v.pause();
+            // audio 通过 video.onpause 监听器自动跟随（前台分支）；
+            // 锁屏触发时 document.hidden=true，video.onpause 不会级联，需要这里手动同步
+            if (bgAudioRef.current) bgAudioRef.current.pause();
+        });
         set('seekto', (e) => {
-            if (!bgAudioRef.current || !e) return;
-            if (e.fastSeek && typeof bgAudioRef.current.fastSeek === 'function') {
-                bgAudioRef.current.fastSeek(e.seekTime);
-            } else {
-                bgAudioRef.current.currentTime = e.seekTime;
+            if (!e) return;
+            const seekTime = e.seekTime;
+            const a = bgAudioRef.current;
+            const v = playerRef.current;
+            if (a) {
+                if (e.fastSeek && typeof a.fastSeek === 'function') a.fastSeek(seekTime);
+                else a.currentTime = seekTime;
             }
+            if (v) try { v.currentTime = seekTime; } catch { }
             bgHelpersRef.current.updatePos();
         });
+        // 锁屏切下一首 → navigate 到那一集（带 autoplay=1）。
+        // 新页面 audio.src 自动跟着 videoData 变，onCanPlay 里见到 autoplayPending 就 play
         set('nexttrack', () => {
-            if (nextVideoFullRef.current) {
-                bgHelpersRef.current.switchEp(nextVideoFullRef.current, { startAt: 0, autoPlay: true });
-            }
+            if (!nextVideoFullRef.current || isDemo) return;
+            navigate(`/episode/${nextVideoFullRef.current.episode}?autoplay=1`);
         });
         set('previoustrack', () => {
-            if (prevVideoFullRef.current) {
-                bgHelpersRef.current.switchEp(prevVideoFullRef.current, { startAt: 0, autoPlay: true });
+            if (prevVideoFullRef.current && !isDemo) {
+                navigate(`/episode/${prevVideoFullRef.current.episode}?autoplay=1`);
             } else if (bgAudioRef.current) {
-                // 没有上一集（已经是第一集）→ 回到当前集开头，至少响应一下
+                // 已经是第一集 → 回本集开头
                 bgAudioRef.current.currentTime = 0;
+                if (playerRef.current) try { playerRef.current.currentTime = 0; } catch { }
                 bgHelpersRef.current.updatePos();
             }
         });
@@ -1004,59 +920,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         ['play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'nexttrack', 'previoustrack'].forEach(name => {
             try { navigator.mediaSession.setActionHandler(name, null); } catch { }
         });
-    };
-
-    // 把 bgAudio 切到另一集（后台一集播完自动接 / 锁屏点"下一首"）
-    bgHelpersRef.current.switchEp = (epData, opts = {}) => {
-        const { startAt = 0, autoPlay = true } = opts;
-        if (!bgAudioRef.current || !epData) return;
-        const a = bgAudioRef.current;
-        const src = epData.audio_url || epData.video_url;
-        if (!src) return;
-        a.src = src;
-        a.load();
-        const ctx = playbackCtxRef.current || {};
-        a.playbackRate = ctx.playbackRate || 1;
-        a.volume = ctx.volume ?? 1;
-        // 锁屏点上一首/下一首切换时，bgAudio 可能是 muted（priming 后躺平状态），这里必须 unmute
-        a.muted = false;
-        const startPlayback = () => {
-            try { if (startAt) a.currentTime = startAt; } catch { }
-            if (autoPlay) {
-                a.play().catch(() => { });
-                if ('mediaSession' in navigator) {
-                    try { navigator.mediaSession.playbackState = 'playing'; } catch { }
-                }
-            }
-        };
-        if (a.readyState >= 1) startPlayback();
-        else a.addEventListener('loadedmetadata', startPlayback, { once: true });
-        currentBgEpisodeRef.current = epData.episode;
-        bgHelpersRef.current.install(epData);
-        // 关键：同步把 PWA 内部 URL 也切到新一期。
-        // 不然用户解锁回 PWA 时，页面 URL 还停在原来那期 → 视频元素加载的是旧期 →
-        // 跟 bgAudio 在响的新期内容不一致 = 2 个声音 / 看到错的画面。
-        // 用户在锁屏看不到 PWA 切页，这次 navigate 对他完全无感
-        if (!isDemo && Number(epData.episode) !== Number(episode)) {
-            navigate(`/episode/${epData.episode}`);
-        }
-        // 链式预取"下下集"和"上一集"，让连续连播 / 锁屏上下切换零延迟
-        if (!isDemo) {
-            if (epData.nextVideo) {
-                videoAPI.getByEpisode(epData.nextVideo.episode)
-                    .then(resp => { if (resp?.success && resp.data) nextVideoFullRef.current = resp.data; })
-                    .catch(() => { });
-            } else {
-                nextVideoFullRef.current = null;
-            }
-            if (epData.prevVideo) {
-                videoAPI.getByEpisode(epData.prevVideo.episode)
-                    .then(resp => { if (resp?.success && resp.data) prevVideoFullRef.current = resp.data; })
-                    .catch(() => { });
-            } else {
-                prevVideoFullRef.current = null;
-            }
-        }
     };
 
     // 预取下一集完整数据（后台连播 / 锁屏「下一首」零延迟换源用）
@@ -1079,20 +942,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         return () => { cancelled = true; };
     }, [prevVideo, isDemo]);
 
-    // episode 切换时重置后台交接状态（priming 标志保留——audio 元素一旦解锁，跨集仍有效）
-    // ⚠ 关键守卫：如果当前正处于后台 bgAudio 接力中（switchEp 切到新一期会触发这个 effect），
-    // 不要重置——保留 engagedRef 和 currentBgEpisodeRef 让用户回前台时能正确同步
-    useEffect(() => {
-        if (bgAudioEngagedRef.current) return;
-        currentBgEpisodeRef.current = null;
-    }, [episode]);
-
     // 组件卸载清理
     useEffect(() => {
         return () => {
             try { bgAudioRef.current?.pause(); } catch { }
-            bgAudioEngagedRef.current = false;
-            currentBgEpisodeRef.current = null;
             bgHelpersRef.current.uninstall?.();
         };
     }, []);
@@ -2662,13 +2515,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     };
 
     // 音量变更
+    // 新架构：video 永远 muted，声音由 audio 出。音量/静音控制都改作用于 bgAudio
     const handleVolumeChange = (newVolume) => {
         setVolume(newVolume);
         setMuted(newVolume === 0);
         localStorage.setItem('bbEnglish_volume', newVolume.toString());
-        if (playerRef.current) {
-            playerRef.current.volume = newVolume;
-            playerRef.current.muted = newVolume === 0;
+        if (bgAudioRef.current) {
+            bgAudioRef.current.volume = newVolume;
+            bgAudioRef.current.muted = newVolume === 0;
         }
     };
 
@@ -2676,8 +2530,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const handleToggleMute = () => {
         const newMuted = !muted;
         setMuted(newMuted);
-        if (playerRef.current) {
-            playerRef.current.muted = newMuted;
+        if (bgAudioRef.current) {
+            bgAudioRef.current.muted = newMuted;
         }
     };
 
@@ -2800,11 +2654,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, []);
 
-    // 初始化音量和倍速到视频元素
+    // 初始化倍速和音量。video 永远 muted（声音由 audio 出），所以 video.volume 不影响实际音量
     useEffect(() => {
         if (playerRef.current) {
-            playerRef.current.volume = volume;
             playerRef.current.playbackRate = playbackRate;
+        }
+        if (bgAudioRef.current) {
+            bgAudioRef.current.volume = volume;
+            bgAudioRef.current.playbackRate = playbackRate;
         }
     }, [videoData]); // 当视频数据加载完成时初始化
 
@@ -3361,6 +3218,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 x5-video-player-type="h5"
                                 x5-playsinline="true"
                                 preload="auto"
+                                muted
                                 onContextMenu={(e) => e.preventDefault()}
                                 onLoadedMetadata={(e) => {
                                     setDuration(e.target.duration);
@@ -3383,28 +3241,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onPlay={() => {
                                     setIsPlaying(true);
                                     resetControlsTimeout();
-                                    // iOS 解锁：首次播放时在用户手势上下文里给 bgAudio 跑一遍 play→pause，
-                                    // 之后从 visibilitychange 回调里 .play() 才不会被 iOS 拒。
-                                    if (!bgAudioPrimedRef.current && bgAudioRef.current) {
-                                        bgAudioPrimedRef.current = true;
-                                        const a = bgAudioRef.current;
-                                        if (!a.src) a.src = videoData?.audio_url || videoData?.video_url || '';
-                                        // 关键：在 priming 的 play() 之前就装好 Media Session metadata。
-                                        // 否则 iOS 在 priming 那一刻创建 Media Session 时会拿 document.title 兜底，
-                                        // 之后真正锁屏再 install 也刷不掉那个旧标题
-                                        if (videoData) bgHelpersRef.current.install?.(videoData);
-                                        a.muted = true;
-                                        const p = a.play();
-                                        // ⚠ 关键：priming 之后【永远不 unmute】！bgAudio 静音躺平。
-                                        // 之前的 bug：.then 里 a.pause() + a.muted=false 同步执行，
-                                        // 但 iOS pause() 有几毫秒延迟，muted=false 瞬时生效 →
-                                        // 这几毫秒里 bgAudio 不静音播放，跟 video 同时响 → 2 个声音
-                                        // 修法：priming 后保持 muted=true，真正锁屏交接时 onBackground 里再 unmute
-                                        if (p && typeof p.then === 'function') {
-                                            p.then(() => { a.pause(); /* 保持 muted=true */ })
-                                             .catch(() => { /* play 失败也不 unmute */ });
-                                        }
-                                    }
                                 }}
                                 onPause={() => {
                                     setIsPlaying(false);
@@ -3414,49 +3250,30 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onTimeUpdate={(e) => handleProgress({ playedSeconds: e.target.currentTime })}
                             />
 
-                            {/* 隐藏的后台接力音频：切后台/锁屏时 video 把进度交给它继续放（iOS 后台允许 audio） */}
+                            {/* 常驻发声源：video 永远静音（muted），声音永远由 audio 出。
+                                前台用户感觉是 video 在响，其实是 audio；后台 iOS 暂停 video 但 audio 继续放（iOS 允许 audio 后台） */}
                             <audio
                                 ref={bgAudioRef}
-                                preload="none"
+                                src={videoData.audio_url || videoData.video_url}
+                                preload="auto"
+                                playsInline
                                 style={{ display: 'none' }}
-                                onEnded={() => {
-                                    const ctx = playbackCtxRef.current || {};
-                                    // 后台一集放完 → 自动接下一集（若开启顺序播放且有下一集）
-                                    if (ctx.isAutoPlayNext && !isDemo && nextVideoFullRef.current) {
-                                        bgHelpersRef.current.switchEp(nextVideoFullRef.current, { startAt: 0, autoPlay: true });
-                                        return;
-                                    }
-                                    // 没下一集 / 没开顺序播放 → 停
-                                    setIsPlaying(false);
-                                    if ('mediaSession' in navigator) {
-                                        try { navigator.mediaSession.playbackState = 'paused'; } catch { }
+                                onEnded={handleVideoEnded}
+                                onCanPlay={() => {
+                                    // 切到新一期时（episode 变化触发 audio.src 变化），如果是顺序播放跳来的，需要主动 play audio
+                                    if (autoplayPendingRef.current && bgAudioRef.current) {
+                                        bgAudioRef.current.play().catch(() => { });
                                     }
                                 }}
                                 onTimeUpdate={() => {
-                                    if (!bgAudioEngagedRef.current) return;
+                                    // 节流更新锁屏卡片进度
                                     const now = Date.now();
                                     if (now - bgAudioPosThrottleRef.current > 1000) {
                                         bgAudioPosThrottleRef.current = now;
                                         bgHelpersRef.current.updatePos?.();
                                     }
                                 }}
-                                onPlay={() => {
-                                    if (!bgAudioEngagedRef.current) return;
-                                    setIsPlaying(true);
-                                    if ('mediaSession' in navigator) {
-                                        try { navigator.mediaSession.playbackState = 'playing'; } catch { }
-                                    }
-                                }}
-                                onPause={() => {
-                                    if (!bgAudioEngagedRef.current) return;
-                                    setIsPlaying(false);
-                                    if ('mediaSession' in navigator) {
-                                        try { navigator.mediaSession.playbackState = 'paused'; } catch { }
-                                    }
-                                }}
-                                onLoadedMetadata={() => {
-                                    if (bgAudioEngagedRef.current) bgHelpersRef.current.updatePos?.();
-                                }}
+                                onLoadedMetadata={() => bgHelpersRef.current.updatePos?.()}
                             />
 
                         </div>
