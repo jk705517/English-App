@@ -441,8 +441,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     // 视频循环 - 整支视频播放完从头循环
     const [isVideoLooping, setIsVideoLooping] = useState(false);
     // 顺序播放 - 当前视频结束自动播放下一个，最后一个时回到第一个；持久化以跨视频生效
+    // 默认开：没动过 toggle 的用户开箱即用顺序播放；显式关过的（localStorage='false'）保留偏好
     const [isAutoPlayNext, setIsAutoPlayNext] = useState(() => {
-        return localStorage.getItem('bbEnglish_isAutoPlayNext') === 'true';
+        const saved = localStorage.getItem('bbEnglish_isAutoPlayNext');
+        return saved === null ? true : saved === 'true';
     });
     // 单句循环 - 当前字幕句循环（与右侧悬浮按钮共用同一状态）
     const [isSentenceLooping, setIsSentenceLooping] = useState(false);
@@ -761,6 +763,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     a.src = desiredSrc;
                     a.load();
                 }
+                // 先装 Media Session metadata —— 必须在 bgAudio.play() 之前，
+                // 否则 iOS 会拿 document.title 当 fallback 显示在锁屏上（首次锁屏会看到"BiuBiu English｜刷视频学英语"那一串）
+                currentBgEpisodeRef.current = videoData.episode;
+                bgHelpersRef.current.install(videoData);
+                bgAudioEngagedRef.current = true;
                 const startBg = () => {
                     try { a.currentTime = t; } catch { }
                     a.playbackRate = rate;
@@ -772,9 +779,6 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 };
                 if (isAlreadyLoaded || a.readyState >= 1) startBg();
                 else a.addEventListener('loadedmetadata', startBg, { once: true });
-                bgAudioEngagedRef.current = true;
-                currentBgEpisodeRef.current = videoData.episode;
-                bgHelpersRef.current.install(videoData);
             } else {
                 // 回前台
                 if (!bgAudioEngagedRef.current) return;
@@ -842,6 +846,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const bgAudioEngagedRef = useRef(false);   // 当前是否由 bgAudio 在后台放
     const currentBgEpisodeRef = useRef(null);  // bgAudio 当前正在放第几期
     const nextVideoFullRef = useRef(null);     // 预取的下一集完整数据
+    const prevVideoFullRef = useRef(null);     // 预取的上一集完整数据（锁屏「上一首」用）
     const resumeTimeRef = useRef(null);        // 新页面起播位置（消费 ?bgresume&t=）
     const bgAudioPosThrottleRef = useRef(0);
     const playbackCtxRef = useRef({});         // 镜像 state，供 visibility/mediaSession 回调读
@@ -869,36 +874,39 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     };
 
     // 装上 Media Session（标题/封面/锁屏按钮）
+    // 注意：故意不设 seekbackward/seekforward —— iOS 锁屏卡片在两者都设时优先显示 ±10s，
+    // 我们要的是「上一期/下一期」按钮（◀◀ ▶▶），所以只留 previoustrack/nexttrack。
     bgHelpersRef.current.install = (epData) => {
         if (!('mediaSession' in navigator) || !epData) return;
         try {
+            const artwork = [];
+            if (epData.cover) {
+                // 后端 cover 是 webp，iOS 14+ / Android 都支持
+                artwork.push({ src: epData.cover, sizes: '512x512', type: 'image/webp' });
+            }
+            // 兜底：cover 加载失败时仍有 BiuBiu logo
+            artwork.push({ src: '/logo-512.png', sizes: '512x512', type: 'image/png' });
+            artwork.push({ src: '/logo-192.png', sizes: '192x192', type: 'image/png' });
             navigator.mediaSession.metadata = new window.MediaMetadata({
                 title: epData.title || `第${epData.episode}期`,
                 artist: epData.author || 'BiuBiu English',
                 album: `第${epData.episode}期`,
-                artwork: [
-                    { src: '/logo-512.png', sizes: '512x512', type: 'image/png' },
-                    { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
-                ],
+                artwork,
             });
         } catch { /* 老浏览器无 MediaMetadata 构造器 */ }
         const set = (name, fn) => {
             try { navigator.mediaSession.setActionHandler(name, fn); } catch { }
         };
-        set('play', () => { bgAudioRef.current?.play().catch(() => { }); });
+        set('play', () => {
+            const a = bgAudioRef.current;
+            if (!a) return;
+            // 修复：ended 状态下直接 play 不会从头开始，必须先 seek
+            if (a.ended || (a.duration && a.currentTime >= a.duration - 0.1)) {
+                try { a.currentTime = 0; } catch { }
+            }
+            a.play().catch(() => { });
+        });
         set('pause', () => { bgAudioRef.current?.pause(); });
-        set('seekbackward', (e) => {
-            if (!bgAudioRef.current) return;
-            const off = (e && e.seekOffset) || 10;
-            bgAudioRef.current.currentTime = Math.max(0, bgAudioRef.current.currentTime - off);
-            bgHelpersRef.current.updatePos();
-        });
-        set('seekforward', (e) => {
-            if (!bgAudioRef.current) return;
-            const off = (e && e.seekOffset) || 10;
-            bgAudioRef.current.currentTime = bgAudioRef.current.currentTime + off;
-            bgHelpersRef.current.updatePos();
-        });
         set('seekto', (e) => {
             if (!bgAudioRef.current || !e) return;
             if (e.fastSeek && typeof bgAudioRef.current.fastSeek === 'function') {
@@ -913,10 +921,14 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 bgHelpersRef.current.switchEp(nextVideoFullRef.current, { startAt: 0, autoPlay: true });
             }
         });
-        // 回本集开头（不真跳上一集，符合主流播客 App 习惯）
         set('previoustrack', () => {
-            if (bgAudioRef.current) bgAudioRef.current.currentTime = 0;
-            bgHelpersRef.current.updatePos();
+            if (prevVideoFullRef.current) {
+                bgHelpersRef.current.switchEp(prevVideoFullRef.current, { startAt: 0, autoPlay: true });
+            } else if (bgAudioRef.current) {
+                // 没有上一集（已经是第一集）→ 回到当前集开头，至少响应一下
+                bgAudioRef.current.currentTime = 0;
+                bgHelpersRef.current.updatePos();
+            }
         });
     };
 
@@ -954,15 +966,26 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         else a.addEventListener('loadedmetadata', startPlayback, { once: true });
         currentBgEpisodeRef.current = epData.episode;
         bgHelpersRef.current.install(epData);
-        // 链式预取"下下集"，让连续连播零延迟
-        if (epData.nextVideo && !isDemo) {
-            videoAPI.getByEpisode(epData.nextVideo.episode)
-                .then(resp => { if (resp?.success && resp.data) nextVideoFullRef.current = resp.data; })
-                .catch(() => { });
+        // 链式预取"下下集"和"上一集"，让连续连播 / 锁屏上下切换零延迟
+        if (!isDemo) {
+            if (epData.nextVideo) {
+                videoAPI.getByEpisode(epData.nextVideo.episode)
+                    .then(resp => { if (resp?.success && resp.data) nextVideoFullRef.current = resp.data; })
+                    .catch(() => { });
+            } else {
+                nextVideoFullRef.current = null;
+            }
+            if (epData.prevVideo) {
+                videoAPI.getByEpisode(epData.prevVideo.episode)
+                    .then(resp => { if (resp?.success && resp.data) prevVideoFullRef.current = resp.data; })
+                    .catch(() => { });
+            } else {
+                prevVideoFullRef.current = null;
+            }
         }
     };
 
-    // 预取下一集完整数据
+    // 预取下一集完整数据（后台连播 / 锁屏「下一首」零延迟换源用）
     useEffect(() => {
         if (!nextVideo || isDemo) { nextVideoFullRef.current = null; return; }
         let cancelled = false;
@@ -971,6 +994,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             .catch(() => { });
         return () => { cancelled = true; };
     }, [nextVideo, isDemo]);
+
+    // 预取上一集完整数据（锁屏「上一首」用）
+    useEffect(() => {
+        if (!prevVideo || isDemo) { prevVideoFullRef.current = null; return; }
+        let cancelled = false;
+        videoAPI.getByEpisode(prevVideo.episode)
+            .then(resp => { if (!cancelled && resp?.success && resp.data) prevVideoFullRef.current = resp.data; })
+            .catch(() => { });
+        return () => { cancelled = true; };
+    }, [prevVideo, isDemo]);
 
     // episode 切换时重置后台交接状态（priming 标志保留——audio 元素一旦解锁，跨集仍有效）
     useEffect(() => {
