@@ -729,23 +729,93 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         return () => observer.disconnect();
     }, [isMobile, isPhone]);
 
-    // 防止浏览器在页面重新获得焦点时自动恢复播放（用于词汇查询等场景）
+    // 切后台/锁屏：普通线性播放时把声音交给隐藏 bgAudio 继续放（iOS 后台允许 audio）；
+    // 其它模式（循环/AB/精读/听写）维持旧行为——直接暂停。
+    // 回前台：若 bgAudio 还在放就交接回 video 继续播；若期间换了集则 navigate 到那一集。
     useEffect(() => {
-        const handleVisibilityChange = () => {
+        const onVisChange = () => {
+            const ctx = playbackCtxRef.current || {};
             if (document.hidden) {
-                // 页面隐藏时，如果正在播放则暂停
-                if (isPlaying && playerRef.current) {
-                    playerRef.current.pause();
-                    setIsPlaying(false);
+                const isLinear = ctx.isPlaying
+                    && !ctx.isVideoLooping
+                    && !ctx.isSentenceLooping
+                    && ctx.abMode === 0
+                    && ctx.mode !== 'intensive'
+                    && ctx.mode !== 'dictation';
+                if (!isLinear || !playerRef.current || !bgAudioRef.current || !videoData) {
+                    // 维持旧行为：暂停 video，不交接
+                    if (ctx.isPlaying && playerRef.current) {
+                        playerRef.current.pause();
+                        setIsPlaying(false);
+                    }
+                    return;
                 }
+                // 交接到 bgAudio
+                const t = playerRef.current.currentTime || 0;
+                const rate = playerRef.current.playbackRate || 1;
+                playerRef.current.pause();
+                const a = bgAudioRef.current;
+                const desiredSrc = videoData.audio_url || videoData.video_url;
+                const isAlreadyLoaded = a.src && (a.src === desiredSrc || a.src.endsWith(desiredSrc));
+                if (!isAlreadyLoaded) {
+                    a.src = desiredSrc;
+                    a.load();
+                }
+                const startBg = () => {
+                    try { a.currentTime = t; } catch { }
+                    a.playbackRate = rate;
+                    a.volume = ctx.volume ?? 1;
+                    a.play().catch(() => { /* iOS 万一拒就退化成"已暂停" */ });
+                    if ('mediaSession' in navigator) {
+                        try { navigator.mediaSession.playbackState = 'playing'; } catch { }
+                    }
+                };
+                if (isAlreadyLoaded || a.readyState >= 1) startBg();
+                else a.addEventListener('loadedmetadata', startBg, { once: true });
+                bgAudioEngagedRef.current = true;
+                currentBgEpisodeRef.current = videoData.episode;
+                bgHelpersRef.current.install(videoData);
+            } else {
+                // 回前台
+                if (!bgAudioEngagedRef.current) return;
+                const a = bgAudioRef.current;
+                if (!a) { bgAudioEngagedRef.current = false; return; }
+                const bgT = a.currentTime || 0;
+                const wasPlaying = !a.paused;
+                a.pause();
+                const bgEp = currentBgEpisodeRef.current;
+                const curEp = videoData?.episode;
+                if (bgEp != null && curEp != null && Number(bgEp) !== Number(curEp)) {
+                    // 后台连播换过集 → navigate 到那一集，带上当前位置和是否继续播
+                    const qs = new URLSearchParams();
+                    qs.set('bgresume', '1');
+                    qs.set('t', String(Math.floor(bgT)));
+                    if (wasPlaying) qs.set('play', '1');
+                    bgAudioEngagedRef.current = false;
+                    currentBgEpisodeRef.current = null;
+                    bgHelpersRef.current.uninstall();
+                    navigate(`/episode/${bgEp}?${qs.toString()}`);
+                    return;
+                }
+                // 还在原集 → 把 video 拨到 bgAudio 当前位置，按需继续播
+                if (playerRef.current) {
+                    try { playerRef.current.currentTime = bgT; } catch { }
+                    if (wasPlaying) {
+                        const p = playerRef.current.play();
+                        if (p && typeof p.catch === 'function') p.catch(() => { });
+                        setIsPlaying(true);
+                    } else {
+                        setIsPlaying(false);
+                    }
+                }
+                bgAudioEngagedRef.current = false;
+                currentBgEpisodeRef.current = null;
+                bgHelpersRef.current.uninstall();
             }
-            // 注意：页面恢复可见时不自动恢复播放
-            // 用户必须手动点击播放按钮才能继续
         };
-
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-        return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
-    }, [isPlaying]);
+        document.addEventListener('visibilitychange', onVisChange);
+        return () => document.removeEventListener('visibilitychange', onVisChange);
+    }, [videoData, navigate]);
 
     // Load learned status
     // 记录最近访问的视频，供首页"继续学习"使用
@@ -763,6 +833,160 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const autoplayPendingRef = useRef(false);
     // 「上一期/下一期」按钮手动跳转标记：跳过恢复进度，从第 1 行开始（但不自动播放）
     const fromNavPendingRef = useRef(false);
+
+    // === 后台/锁屏继续播放：video → 隐藏 audio 交接 + Media Session ===
+    // iOS Safari 后台/锁屏会强制暂停 <video>，但允许 <audio> 后台继续放。
+    // 切后台时把当前进度交给 bgAudio，回前台再交接回 video。
+    const bgAudioRef = useRef(null);
+    const bgAudioPrimedRef = useRef(false);    // iOS 用户手势"解锁"标志
+    const bgAudioEngagedRef = useRef(false);   // 当前是否由 bgAudio 在后台放
+    const currentBgEpisodeRef = useRef(null);  // bgAudio 当前正在放第几期
+    const nextVideoFullRef = useRef(null);     // 预取的下一集完整数据
+    const resumeTimeRef = useRef(null);        // 新页面起播位置（消费 ?bgresume&t=）
+    const bgAudioPosThrottleRef = useRef(0);
+    const playbackCtxRef = useRef({});         // 镜像 state，供 visibility/mediaSession 回调读
+    const bgHelpersRef = useRef({});           // 帮助函数集
+
+    // 每次 render 同步最新 state 到 ref（refs 不触发 re-render）
+    playbackCtxRef.current = {
+        isPlaying, isVideoLooping, isSentenceLooping, abMode, mode,
+        isAutoPlayNext, playbackRate, volume,
+    };
+
+    // 更新锁屏卡片的进度条
+    bgHelpersRef.current.updatePos = () => {
+        if (!('mediaSession' in navigator) || !bgAudioRef.current) return;
+        try {
+            const a = bgAudioRef.current;
+            if (!isNaN(a.duration) && a.duration > 0) {
+                navigator.mediaSession.setPositionState({
+                    duration: a.duration,
+                    position: Math.min(a.currentTime, a.duration),
+                    playbackRate: a.playbackRate || 1,
+                });
+            }
+        } catch { /* setPositionState 对非法值会抛 */ }
+    };
+
+    // 装上 Media Session（标题/封面/锁屏按钮）
+    bgHelpersRef.current.install = (epData) => {
+        if (!('mediaSession' in navigator) || !epData) return;
+        try {
+            navigator.mediaSession.metadata = new window.MediaMetadata({
+                title: epData.title || `第${epData.episode}期`,
+                artist: epData.author || 'BiuBiu English',
+                album: `第${epData.episode}期`,
+                artwork: [
+                    { src: '/logo-512.png', sizes: '512x512', type: 'image/png' },
+                    { src: '/logo-192.png', sizes: '192x192', type: 'image/png' },
+                ],
+            });
+        } catch { /* 老浏览器无 MediaMetadata 构造器 */ }
+        const set = (name, fn) => {
+            try { navigator.mediaSession.setActionHandler(name, fn); } catch { }
+        };
+        set('play', () => { bgAudioRef.current?.play().catch(() => { }); });
+        set('pause', () => { bgAudioRef.current?.pause(); });
+        set('seekbackward', (e) => {
+            if (!bgAudioRef.current) return;
+            const off = (e && e.seekOffset) || 10;
+            bgAudioRef.current.currentTime = Math.max(0, bgAudioRef.current.currentTime - off);
+            bgHelpersRef.current.updatePos();
+        });
+        set('seekforward', (e) => {
+            if (!bgAudioRef.current) return;
+            const off = (e && e.seekOffset) || 10;
+            bgAudioRef.current.currentTime = bgAudioRef.current.currentTime + off;
+            bgHelpersRef.current.updatePos();
+        });
+        set('seekto', (e) => {
+            if (!bgAudioRef.current || !e) return;
+            if (e.fastSeek && typeof bgAudioRef.current.fastSeek === 'function') {
+                bgAudioRef.current.fastSeek(e.seekTime);
+            } else {
+                bgAudioRef.current.currentTime = e.seekTime;
+            }
+            bgHelpersRef.current.updatePos();
+        });
+        set('nexttrack', () => {
+            if (nextVideoFullRef.current) {
+                bgHelpersRef.current.switchEp(nextVideoFullRef.current, { startAt: 0, autoPlay: true });
+            }
+        });
+        // 回本集开头（不真跳上一集，符合主流播客 App 习惯）
+        set('previoustrack', () => {
+            if (bgAudioRef.current) bgAudioRef.current.currentTime = 0;
+            bgHelpersRef.current.updatePos();
+        });
+    };
+
+    // 卸下 Media Session
+    bgHelpersRef.current.uninstall = () => {
+        if (!('mediaSession' in navigator)) return;
+        try { navigator.mediaSession.metadata = null; } catch { }
+        ['play', 'pause', 'seekbackward', 'seekforward', 'seekto', 'nexttrack', 'previoustrack'].forEach(name => {
+            try { navigator.mediaSession.setActionHandler(name, null); } catch { }
+        });
+    };
+
+    // 把 bgAudio 切到另一集（后台一集播完自动接 / 锁屏点"下一首"）
+    bgHelpersRef.current.switchEp = (epData, opts = {}) => {
+        const { startAt = 0, autoPlay = true } = opts;
+        if (!bgAudioRef.current || !epData) return;
+        const a = bgAudioRef.current;
+        const src = epData.audio_url || epData.video_url;
+        if (!src) return;
+        a.src = src;
+        a.load();
+        const ctx = playbackCtxRef.current || {};
+        a.playbackRate = ctx.playbackRate || 1;
+        a.volume = ctx.volume ?? 1;
+        const startPlayback = () => {
+            try { if (startAt) a.currentTime = startAt; } catch { }
+            if (autoPlay) {
+                a.play().catch(() => { });
+                if ('mediaSession' in navigator) {
+                    try { navigator.mediaSession.playbackState = 'playing'; } catch { }
+                }
+            }
+        };
+        if (a.readyState >= 1) startPlayback();
+        else a.addEventListener('loadedmetadata', startPlayback, { once: true });
+        currentBgEpisodeRef.current = epData.episode;
+        bgHelpersRef.current.install(epData);
+        // 链式预取"下下集"，让连续连播零延迟
+        if (epData.nextVideo && !isDemo) {
+            videoAPI.getByEpisode(epData.nextVideo.episode)
+                .then(resp => { if (resp?.success && resp.data) nextVideoFullRef.current = resp.data; })
+                .catch(() => { });
+        }
+    };
+
+    // 预取下一集完整数据
+    useEffect(() => {
+        if (!nextVideo || isDemo) { nextVideoFullRef.current = null; return; }
+        let cancelled = false;
+        videoAPI.getByEpisode(nextVideo.episode)
+            .then(resp => { if (!cancelled && resp?.success && resp.data) nextVideoFullRef.current = resp.data; })
+            .catch(() => { });
+        return () => { cancelled = true; };
+    }, [nextVideo, isDemo]);
+
+    // episode 切换时重置后台交接状态（priming 标志保留——audio 元素一旦解锁，跨集仍有效）
+    useEffect(() => {
+        bgAudioEngagedRef.current = false;
+        currentBgEpisodeRef.current = null;
+    }, [episode]);
+
+    // 组件卸载清理
+    useEffect(() => {
+        return () => {
+            try { bgAudioRef.current?.pause(); } catch { }
+            bgAudioEngagedRef.current = false;
+            currentBgEpisodeRef.current = null;
+            bgHelpersRef.current.uninstall?.();
+        };
+    }, []);
 
     // 记录当前播放句子，用于下次恢复
     // 视频切换时（videoData.id 变）跳过第一次写入：此时 activeIndex 还是上一个视频的值，
@@ -797,6 +1021,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (!videoData?.transcript?.length) return;
         if (sentenceIdFromQuery || vocabIdFromQuery || typeFromQuery || wordFromQuery || scrollToParam) return;
         if (autoplayPendingRef.current) return;
+        // 从锁屏后台连播跳回来时，让 onLoadedMetadata 里的 resumeTimeRef 位置生效，不要被"恢复上次进度"覆盖
+        if (resumeTimeRef.current != null) return;
         if (fromNavPendingRef.current) {
             fromNavPendingRef.current = false;
             return;
@@ -984,6 +1210,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         if (params.get('fromnav') === '1') {
             fromNavPendingRef.current = true;
             params.delete('fromnav');
+            changed = true;
+        }
+        // 从锁屏后台连播中回前台跳过来：在 t 秒处接着播
+        if (params.get('bgresume') === '1') {
+            const t = Number(params.get('t')) || 0;
+            resumeTimeRef.current = t;
+            if (params.get('play') === '1') autoplayPendingRef.current = true;
+            params.delete('bgresume');
+            params.delete('t');
+            params.delete('play');
             changed = true;
         }
         if (changed) {
@@ -2575,7 +2811,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                             onOpenSettings={() => setShowDesktopSettings(true)}
                             showPodcast={showPodcast}
                             onPodcastClick={handlePodcastClick}
-                            hasPodcast={!!videoData.podcast_url}
+                            hasPodcast={false}
                             hideSubtitles={jingTingSettings.hideSubtitles}
                             onToggleHideSubtitles={() => setJingTingSettings(s => ({ ...s, hideSubtitles: !s.hideSubtitles }))}
                         />
@@ -3019,6 +3255,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onContextMenu={(e) => e.preventDefault()}
                                 onLoadedMetadata={(e) => {
                                     setDuration(e.target.duration);
+                                    // 从锁屏后台连播回来：seek 到当时听到的位置
+                                    if (resumeTimeRef.current != null && playerRef.current) {
+                                        try { playerRef.current.currentTime = resumeTimeRef.current; } catch { }
+                                        resumeTimeRef.current = null;
+                                    }
                                     // 顺序播放跳转后的自动播放（iOS 拒绝就静默回退到等用户点）
                                     if (autoplayPendingRef.current) {
                                         autoplayPendingRef.current = false;
@@ -3033,6 +3274,21 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onPlay={() => {
                                     setIsPlaying(true);
                                     resetControlsTimeout();
+                                    // iOS 解锁：首次播放时在用户手势上下文里给 bgAudio 跑一遍 play→pause，
+                                    // 之后从 visibilitychange 回调里 .play() 才不会被 iOS 拒。
+                                    if (!bgAudioPrimedRef.current && bgAudioRef.current) {
+                                        bgAudioPrimedRef.current = true;
+                                        const a = bgAudioRef.current;
+                                        if (!a.src) a.src = videoData?.audio_url || videoData?.video_url || '';
+                                        a.muted = true;
+                                        const p = a.play();
+                                        if (p && typeof p.then === 'function') {
+                                            p.then(() => { a.pause(); a.muted = false; })
+                                             .catch(() => { a.muted = false; });
+                                        } else {
+                                            a.muted = false;
+                                        }
+                                    }
                                 }}
                                 onPause={() => {
                                     setIsPlaying(false);
@@ -3040,6 +3296,51 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 }}
                                 onEnded={handleVideoEnded}
                                 onTimeUpdate={(e) => handleProgress({ playedSeconds: e.target.currentTime })}
+                            />
+
+                            {/* 隐藏的后台接力音频：切后台/锁屏时 video 把进度交给它继续放（iOS 后台允许 audio） */}
+                            <audio
+                                ref={bgAudioRef}
+                                preload="none"
+                                style={{ display: 'none' }}
+                                onEnded={() => {
+                                    const ctx = playbackCtxRef.current || {};
+                                    // 后台一集放完 → 自动接下一集（若开启顺序播放且有下一集）
+                                    if (ctx.isAutoPlayNext && !isDemo && nextVideoFullRef.current) {
+                                        bgHelpersRef.current.switchEp(nextVideoFullRef.current, { startAt: 0, autoPlay: true });
+                                        return;
+                                    }
+                                    // 没下一集 / 没开顺序播放 → 停
+                                    setIsPlaying(false);
+                                    if ('mediaSession' in navigator) {
+                                        try { navigator.mediaSession.playbackState = 'paused'; } catch { }
+                                    }
+                                }}
+                                onTimeUpdate={() => {
+                                    if (!bgAudioEngagedRef.current) return;
+                                    const now = Date.now();
+                                    if (now - bgAudioPosThrottleRef.current > 1000) {
+                                        bgAudioPosThrottleRef.current = now;
+                                        bgHelpersRef.current.updatePos?.();
+                                    }
+                                }}
+                                onPlay={() => {
+                                    if (!bgAudioEngagedRef.current) return;
+                                    setIsPlaying(true);
+                                    if ('mediaSession' in navigator) {
+                                        try { navigator.mediaSession.playbackState = 'playing'; } catch { }
+                                    }
+                                }}
+                                onPause={() => {
+                                    if (!bgAudioEngagedRef.current) return;
+                                    setIsPlaying(false);
+                                    if ('mediaSession' in navigator) {
+                                        try { navigator.mediaSession.playbackState = 'paused'; } catch { }
+                                    }
+                                }}
+                                onLoadedMetadata={() => {
+                                    if (bgAudioEngagedRef.current) bgHelpersRef.current.updatePos?.();
+                                }}
                             />
 
                         </div>
@@ -3271,7 +3572,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                                 onSetMode={handleModeChange}
                                 showPodcast={showPodcast}
                                 onPodcastClick={handlePodcastClick}
-                                hasPodcast={!!videoData.podcast_url}
+                                hasPodcast={false}
                             />
                             {/* A/B 点引导提示（手机端嵌在 Tab 栏内，跟着 fixed/sticky 一起定位；
                                 ResizeObserver 监听 tabBarRef 高度，提示出现/消失时占位自动伸缩） */}
