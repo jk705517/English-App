@@ -737,10 +737,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     useEffect(() => {
         // 把 bgAudio 停下。注意：故意不移 src——iOS 上一旦移了 src，audio 元素的「用户手势解锁」状态会丢，
         // 下次锁屏点播放会哑火（priming 又不会重跑，因为 bgAudioPrimedRef 是 true）。
-        // 只 pause + currentTime=0 已经能彻底无声，src 保留让元素始终待命。
+        // muted=true 是瞬时生效的，pause() 在 iOS 上有几毫秒延迟，先 mute 能保证立刻无声，
+        // 避免「回前台时 bgAudio 还漏几毫秒声音 + video 同时在响 = 2 个声音」
         const stopBgAudioHard = () => {
             const a = bgAudioRef.current;
             if (!a) return;
+            try { a.muted = true; } catch { }
             try { a.pause(); } catch { }
             try { a.currentTime = 0; } catch { }
         };
@@ -776,7 +778,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             currentBgEpisodeRef.current = videoData.episode;
             bgHelpersRef.current.install(videoData);
             bgAudioEngagedRef.current = true;
+            // 上一轮 stopBgAudioHard 可能把 muted 调成 true，这里恢复
+            a.muted = false;
             const startBg = () => {
+                // ⚠ 防止 race：如果在等 loadedmetadata 这段时间里用户已经解锁回前台，
+                // engaged 已经被 onForeground 清成 false，这里就别再 play 了，
+                // 否则 bgAudio 会在前台和 video 同时响 → 2 个声音
+                if (!bgAudioEngagedRef.current) return;
                 try { a.currentTime = t; } catch { }
                 a.playbackRate = rate;
                 a.volume = ctx.volume ?? 1;
