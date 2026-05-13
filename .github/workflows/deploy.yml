@@ -37,3 +37,12 @@ jobs:
       
       - name: Deploy to OSS
         run: ossutil cp -r ./dist oss://biubiu-web/ --force --update
+
+      # 给 SW / 入口 HTML / manifest 设 Cache-Control: no-cache，
+      # 让浏览器每次都问服务器要最新——这是「老用户拿不到新版」的根治
+      - name: Set no-cache headers on critical files
+        run: |
+          ossutil set-meta oss://biubiu-web/sw.js Cache-Control:no-cache --update --force
+          ossutil set-meta oss://biubiu-web/registerSW.js Cache-Control:no-cache --update --force
+          ossutil set-meta oss://biubiu-web/index.html Cache-Control:no-cache --update --force
+          ossutil set-meta oss://biubiu-web/manifest.webmanifest Cache-Control:no-cache --update --force
