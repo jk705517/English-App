@@ -3830,16 +3830,16 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                     </div>{/* closes relative wrapper */}
                 </div>{/* closes overflow-y-auto */}
 
-                {/* 隐藏字幕 overlay - fixed在视口中央，pointer-events-none不遮挡其他交互 */}
+                {/* 隐藏字幕 overlay - 手机端整页滚动，必须用 fixed 钉在视口中央（absolute 会被撑成整列字幕的高度，居中点跟着字幕滚出屏幕）；PC 端字幕区是定高滚动容器，absolute 即可 */}
                 {jingTingSettings.hideSubtitles && (
-                    <div className="absolute inset-0 z-[45] flex items-center justify-center pointer-events-none">
+                    <div className={`${isMobile ? 'fixed' : 'absolute'} inset-0 z-[45] flex items-center justify-center pointer-events-none`}>
                         <button
                             className="pointer-events-auto inline-flex items-center gap-2 bg-white/90 dark:bg-gray-800/90 backdrop-blur-sm border border-gray-200 dark:border-gray-700 px-6 py-4 rounded-2xl text-gray-700 dark:text-gray-200 font-medium shadow-lg"
                             style={{ fontSize: '16px' }}
                             onClick={() => setJingTingSettings(s => ({ ...s, hideSubtitles: false }))}
                         >
                             <svg className="w-5 h-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0zM2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                            字幕已隐藏，点击显示
+                            点击显示字幕
                         </button>
                     </div>
                 )}
