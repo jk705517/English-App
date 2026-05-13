@@ -748,6 +748,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         };
 
         const onBackground = () => {
+            // 幂等守卫：已经在接力中就别再跑（pagehide + visibilitychange 可能双触发）
+            if (bgAudioEngagedRef.current) return;
             const ctx = playbackCtxRef.current || {};
             const isLinear = ctx.isPlaying
                 && !ctx.isVideoLooping
@@ -841,9 +843,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         // pageshow / focus 兜底
         const onPageShow = () => { if (!document.hidden) onForeground(); };
         const onFocus = () => { if (!document.hidden) onForeground(); };
+        // 关键：iOS PWA standalone 模式下，「上拉切后台/回主屏」常常不触发 visibilitychange，
+        // 但会触发 pagehide(persisted=true)。这是用户最常用的"切后台听音频"的入口
+        const onPageHide = (e) => { if (e.persisted) onBackground(); };
 
         document.addEventListener('visibilitychange', onVisChange);
         window.addEventListener('pageshow', onPageShow);
+        window.addEventListener('pagehide', onPageHide);
         window.addEventListener('focus', onFocus);
         // 兜底：iOS PWA 上面三个事件都可能抽风，加个 1.5s 轮询
         // 只在「页面前台 + bgAudio 还 engaged」的矛盾状态下出手收拾
@@ -854,6 +860,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         return () => {
             document.removeEventListener('visibilitychange', onVisChange);
             window.removeEventListener('pageshow', onPageShow);
+            window.removeEventListener('pagehide', onPageHide);
             window.removeEventListener('focus', onFocus);
             clearInterval(safetyInterval);
         };
@@ -942,6 +949,10 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             if (a.ended || (a.duration && a.currentTime >= a.duration - 0.1)) {
                 try { a.currentTime = 0; } catch { }
             }
+            // 关键：priming 后 bgAudio 是 muted=true 躺平的，如果用户没经过 onBackground
+            // 而是直接锁屏点了 play（visibilitychange 没触发的边界场景），
+            // 这里必须 unmute，否则只是静音播放 = 没声音
+            a.muted = false;
             a.play().catch(() => { });
         });
         set('pause', () => { bgAudioRef.current?.pause(); });
@@ -991,6 +1002,8 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         const ctx = playbackCtxRef.current || {};
         a.playbackRate = ctx.playbackRate || 1;
         a.volume = ctx.volume ?? 1;
+        // 锁屏点上一首/下一首切换时，bgAudio 可能是 muted（priming 后躺平状态），这里必须 unmute
+        a.muted = false;
         const startPlayback = () => {
             try { if (startAt) a.currentTime = startAt; } catch { }
             if (autoPlay) {
