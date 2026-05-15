@@ -1183,6 +1183,43 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [mode, videoData]);
 
+    // 把句子滚到"可视区域偏上 45%"位置（模仿歌词类产品做法）
+    // Why: 默认 block:'center' 用视口几何中央，手机端 fixed 视频+tab 栏吃掉上半屏，
+    //      长句子顶部会被遮挡。这里测量上下 fixed 栏，把句子放在「能看见的那一段」中央偏上
+    const scrollSubtitleIntoVisibleArea = useCallback((el, behavior = 'smooth') => {
+        if (!el) return;
+        let topInset = 0;
+        let bottomInset = 0;
+        const halfH = window.innerHeight / 2;
+        document.querySelectorAll('*').forEach(node => {
+            const cs = window.getComputedStyle(node);
+            if (cs.position !== 'fixed') return;
+            const r = node.getBoundingClientRect();
+            if (r.width < window.innerWidth * 0.5) return;
+            if (r.top < halfH && r.bottom < halfH && r.bottom > topInset) {
+                topInset = r.bottom;
+            } else if (r.top > halfH && r.bottom > halfH) {
+                bottomInset = Math.max(bottomInset, window.innerHeight - r.top);
+            }
+        });
+        const visibleH = window.innerHeight - topInset - bottomInset;
+        const targetViewportY = topInset + visibleH * 0.45;
+        // 找滚动容器（桌面端右侧面板有自己的 overflow scroll；手机端是 window）
+        let scrollContainer = null;
+        let p = el.parentElement;
+        while (p) {
+            const cs = window.getComputedStyle(p);
+            if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && p.scrollHeight > p.clientHeight) {
+                scrollContainer = p;
+                break;
+            }
+            p = p.parentElement;
+        }
+        const r = el.getBoundingClientRect();
+        const delta = (r.top + r.height / 2) - targetViewportY;
+        (scrollContainer || window).scrollBy({ top: delta, behavior });
+    }, []);
+
     // 字幕列表模式（双语/英/中/挖空）切换或激活句变化时滚动到当前活动句
     // Why: 从其他模式切回字幕列表时，列表会停在顶部，看不到当前播放位置——必须主动 seek 过去
     //      模式切换那一下用 'auto' 直接定位，避免看到画面被拉过来；同一模式内 activeIndex 变化仍用 'smooth'
@@ -1195,13 +1232,13 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 const el = transcriptRefs.current[activeIndex]
                     || document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
                 if (el) {
-                    el.scrollIntoView({ behavior: isModeSwitch ? 'auto' : 'smooth', block: 'center' });
+                    scrollSubtitleIntoVisibleArea(el, isModeSwitch ? 'auto' : 'smooth');
                 }
             }, 100);
         } else {
             lastScrolledListModeRef.current = null;
         }
-    }, [mode, videoData, activeIndex]);
+    }, [mode, videoData, activeIndex, scrollSubtitleIntoVisibleArea]);
 
     // 切换视频时加载该视频的"已engaged句子集合"
     useEffect(() => {
@@ -1469,10 +1506,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
             setActiveIndex(newIndex);
 
             if (isAutoScrollEnabled && transcriptRefs.current[newIndex]) {
-                transcriptRefs.current[newIndex].scrollIntoView({
-                    behavior: 'smooth',
-                    block: 'center'
-                });
+                scrollSubtitleIntoVisibleArea(transcriptRefs.current[newIndex]);
             }
         }
 
@@ -1518,7 +1552,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
                 }
             }
         }
-    }, [isSeeking, mode, videoData, activeIndex, isAutoScrollEnabled, isSentenceLooping, isSentencePauseEnabled, abMode, abPointA, abPointB, jingTingSettings, startLoopCountdown]);
+    }, [isSeeking, mode, videoData, activeIndex, isAutoScrollEnabled, isSentenceLooping, isSentencePauseEnabled, abMode, abPointA, abPointB, jingTingSettings, startLoopCountdown, scrollSubtitleIntoVisibleArea]);
 
     // 跟读模式：切换到下一句时重置模糊状态
     useEffect(() => {
