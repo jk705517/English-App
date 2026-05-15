@@ -1179,13 +1179,15 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
     }, [mode, videoData]);
 
-    // 挖空模式滚动到当前句子（独立 effect，不跟 dictation 入场绑在一起）
+    // 字幕列表模式（双语/英/中/挖空）切换或激活句变化时滚动到当前活动句
+    // Why: 从其他模式切回字幕列表时，列表会停在顶部，看不到当前播放位置——必须主动 seek 过去
     useEffect(() => {
-        if (mode === 'cloze' && videoData?.transcript) {
+        if (['dual', 'en', 'cn', 'cloze'].includes(mode) && videoData?.transcript && activeIndex >= 0) {
             setTimeout(() => {
-                const activeElement = document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
-                if (activeElement) {
-                    activeElement.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                const el = transcriptRefs.current[activeIndex]
+                    || document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
+                if (el) {
+                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
                 }
             }, 100);
         }
