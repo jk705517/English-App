@@ -15,22 +15,51 @@ const IntensiveSentenceList = ({
     videoId
 }) => {
     const activeRef = useRef(null);
+    const stickyHeaderRef = useRef(null);
     const hasMountedRef = useRef(false);
     const [showExplanations, setShowExplanations] = useState(true);
 
     // Auto-scroll to active item
     // 首次挂载（从其他模式切到精读）用 'auto' 直接定位，避免看到画面被拉的感觉
     // 后续 currentIndex 变化（播放推进）用 'smooth' 保持平滑跟随
-    // block: 'start' 让句子贴顶（卡片很高，居中会看到中间的"学习要点"而不是句子本身）
-    // scroll-margin-top 在卡片元素上设置，给 sticky 进度条留位置
+    // 手机端视频区是 fixed 顶栏，高度随视口宽度变化，固定 scroll-mt 无法兼容所有宽度
+    // 这里动态测量视口顶部 fixed 元素的最低边，作为内联 scroll-margin-top 写到卡片上
+    // 由 scrollIntoView 自动处理滚动容器（桌面是右侧面板，手机是 window）
     useEffect(() => {
-        if (activeRef.current) {
-            activeRef.current.scrollIntoView({
-                behavior: hasMountedRef.current ? 'smooth' : 'auto',
-                block: 'start'
-            });
-            hasMountedRef.current = true;
+        if (!activeRef.current) return;
+        const card = activeRef.current;
+        let topInset = 0;
+        const halfH = window.innerHeight / 2;
+        // 手机端：测量视口顶部 fixed 元素的最低边（视频区+tab 栏）
+        document.querySelectorAll('*').forEach(el => {
+            const cs = window.getComputedStyle(el);
+            if (cs.position !== 'fixed') return;
+            const r = el.getBoundingClientRect();
+            if (r.top < halfH && r.width > window.innerWidth * 0.5 && r.bottom > topInset && r.bottom < halfH) {
+                topInset = r.bottom;
+            }
+        });
+        // 桌面端：精读列表自己的 sticky 进度条只在「右侧面板」这种子滚动容器里真的会粘顶
+        // 手机端整页 window 滚动，sticky 进度条会随内容滚走，不需要加它的高度
+        let p = card.parentElement;
+        let hasSubScroll = false;
+        while (p) {
+            const cs = window.getComputedStyle(p);
+            if ((cs.overflowY === 'auto' || cs.overflowY === 'scroll') && p.scrollHeight > p.clientHeight) {
+                hasSubScroll = true;
+                break;
+            }
+            p = p.parentElement;
         }
+        if (hasSubScroll && stickyHeaderRef.current) {
+            topInset += stickyHeaderRef.current.offsetHeight;
+        }
+        card.style.scrollMarginTop = (topInset + 8) + 'px';
+        card.scrollIntoView({
+            behavior: hasMountedRef.current ? 'smooth' : 'auto',
+            block: 'start'
+        });
+        hasMountedRef.current = true;
     }, [currentIndex]);
 
     if (!transcript || transcript.length === 0) {
@@ -58,7 +87,7 @@ const IntensiveSentenceList = ({
     return (
         <div className="space-y-6">
             {/* Header: Progress & Toggle */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-0 z-10">
+            <div ref={stickyHeaderRef} className="bg-white rounded-xl shadow-sm border border-gray-100 p-4 sticky top-0 z-10">
                 <div className="flex items-center justify-between mb-3">
                     <div className="flex flex-col">
                         <span className="text-sm font-bold text-gray-900">
@@ -115,7 +144,7 @@ const IntensiveSentenceList = ({
                     const enrichedSentence = { ...item, id: sentenceId };
 
                     return (
-                        <div key={index} ref={isActive ? activeRef : null} className="scroll-mt-64">
+                        <div key={index} ref={isActive ? activeRef : null}>
                             <IntensiveCard
                                 index={index}
                                 sentence={enrichedSentence}
