@@ -408,6 +408,11 @@ const ShadowPanel = React.memo(({
     );
 });
 
+// Demo 模式的虚拟用户对象 —— 必须模块级单例，否则每次渲染都会生成新引用，
+// 导致依赖 user 的 useEffect 死循环（setFavoriteSentenceIds/setFavoriteVocabIds 等
+// 会反复传入新数组，React 无法 bail-out → Maximum update depth exceeded）
+const DEMO_USER = { id: 'demo-user' };
+
 const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const isDebug = new URLSearchParams(window.location.search).has('debug');
     const { episode: urlEpisode } = useParams();
@@ -416,8 +421,7 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const navigate = useNavigate();
     const { user: authUser } = useAuth();
     const { theme: appTheme, setTheme: setAppTheme } = useTheme();
-    // Demo 模式不需要真实用户，创建一个虚拟用户对象用于本地存储
-    const user = isDemo ? { id: 'demo-user' } : authUser;
+    const user = isDemo ? DEMO_USER : authUser;
 
     // Parse query params for sentence/vocab navigation from Favorites page
     const searchParams = new URLSearchParams(location.search);
