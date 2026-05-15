@@ -1185,15 +1185,21 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 字幕列表模式（双语/英/中/挖空）切换或激活句变化时滚动到当前活动句
     // Why: 从其他模式切回字幕列表时，列表会停在顶部，看不到当前播放位置——必须主动 seek 过去
+    //      模式切换那一下用 'auto' 直接定位，避免看到画面被拉过来；同一模式内 activeIndex 变化仍用 'smooth'
+    const lastScrolledListModeRef = useRef(null);
     useEffect(() => {
         if (['dual', 'en', 'cn', 'cloze'].includes(mode) && videoData?.transcript && activeIndex >= 0) {
+            const isModeSwitch = lastScrolledListModeRef.current !== mode;
+            lastScrolledListModeRef.current = mode;
             setTimeout(() => {
                 const el = transcriptRefs.current[activeIndex]
                     || document.querySelector('[data-subtitle-index="' + activeIndex + '"]');
                 if (el) {
-                    el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    el.scrollIntoView({ behavior: isModeSwitch ? 'auto' : 'smooth', block: 'center' });
                 }
             }, 100);
+        } else {
+            lastScrolledListModeRef.current = null;
         }
     }, [mode, videoData, activeIndex]);
 

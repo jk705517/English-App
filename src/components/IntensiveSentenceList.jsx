@@ -15,15 +15,21 @@ const IntensiveSentenceList = ({
     videoId
 }) => {
     const activeRef = useRef(null);
+    const hasMountedRef = useRef(false);
     const [showExplanations, setShowExplanations] = useState(true);
 
     // Auto-scroll to active item
+    // 首次挂载（从其他模式切到精读）用 'auto' 直接定位，避免看到画面被拉的感觉
+    // 后续 currentIndex 变化（播放推进）用 'smooth' 保持平滑跟随
+    // block: 'start' 让句子贴顶（卡片很高，居中会看到中间的"学习要点"而不是句子本身）
+    // scroll-margin-top 在卡片元素上设置，给 sticky 进度条留位置
     useEffect(() => {
         if (activeRef.current) {
             activeRef.current.scrollIntoView({
-                behavior: 'smooth',
-                block: 'center'
+                behavior: hasMountedRef.current ? 'smooth' : 'auto',
+                block: 'start'
             });
+            hasMountedRef.current = true;
         }
     }, [currentIndex]);
 
@@ -109,7 +115,7 @@ const IntensiveSentenceList = ({
                     const enrichedSentence = { ...item, id: sentenceId };
 
                     return (
-                        <div key={index} ref={isActive ? activeRef : null}>
+                        <div key={index} ref={isActive ? activeRef : null} className="scroll-mt-64">
                             <IntensiveCard
                                 index={index}
                                 sentence={enrichedSentence}
