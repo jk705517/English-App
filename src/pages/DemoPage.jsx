@@ -4,7 +4,7 @@ import VideoDetail from './VideoDetail';
 import * as demoStorage from '../services/demoStorage';
 
 const DEMO_PASSWORD = 'biubiured2026';
-const DEMO_EPISODE = 104;
+const DEMO_EPISODE = 147;
 const XIAOHONGSHU_LINK = 'https://xhslink.com/m/61lw0enbqKQ';
 
 const DemoPage = () => {
