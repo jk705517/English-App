@@ -636,12 +636,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
     // 根据模式设置单句循环的默认值
     useEffect(() => {
-        // 双语、英、中模式不默认单句循环
-        if (mode === 'dual' || mode === 'en' || mode === 'cn') {
+        // 双语、英、中、精读模式不默认单句循环（精读改为句末暂停+停留当前句，由用户主动决定下一步）
+        if (mode === 'dual' || mode === 'en' || mode === 'cn' || mode === 'intensive') {
             setIsSentenceLooping(false);
         }
-        // 精读、挖空模式默认单句循环
-        else if (mode === 'intensive' || mode === 'cloze') {
+        // 挖空模式默认单句循环
+        else if (mode === 'cloze') {
             setIsSentenceLooping(true);
         }
         // 听写模式(dictation)不在此处理，保持原有逻辑
@@ -1154,16 +1154,18 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
     const activeIndexRef = useRef(activeIndex);
     useEffect(() => { activeIndexRef.current = activeIndex; }, [activeIndex]);
 
-    // 切换到听写模式：默认从当前播放句开始（不再有 "恢复进度" 弹窗）
+    // 切换到「主动学习」模式（听写/跟读/精读）：seek 到当前句开头 + 暂停，等用户手动播放
     // 用 activeIndexRef 读最新值，effect 只在 mode 真正变化时触发
-    // 注意：进入时只 seek + 暂停，不自动播放——让用户准备好再点播放按钮
+    // Why: 这三种模式用户进入后第一秒需要先看清当前句、做心理准备，而不是被声音追着走
     useEffect(() => {
-        if (mode === 'dictation' && videoData?.transcript) {
+        if (['dictation', 'shadow', 'intensive'].includes(mode) && videoData?.transcript) {
             const startIdx = activeIndexRef.current >= 0 ? activeIndexRef.current : 0;
             const safeIdx = Math.min(Math.max(startIdx, 0), videoData.transcript.length - 1);
             const startTime = videoData.transcript[safeIdx].start;
-            setDictationIndex(safeIdx);
-            setHasPlayedCurrent(false);
+            if (mode === 'dictation') {
+                setDictationIndex(safeIdx);
+                setHasPlayedCurrent(false);
+            }
             setIsSeeking(true);
             setIsPlaying(false);
             if (playerRef.current) playerRef.current.pause();
@@ -1408,11 +1410,11 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
         }
 
         // 句末暂停逻辑（仅单句循环关闭时走这里；开启时由上方单句循环路径在「循环 N 次后」分支处理）
-        if ((isSentencePauseEnabled || mode === 'shadow') && !isSentenceLooping && activeIndex >= 0) {
+        if ((isSentencePauseEnabled || mode === 'shadow' || mode === 'intensive') && !isSentenceLooping && activeIndex >= 0) {
             const currentSub = videoData.transcript[activeIndex];
             const nextSub = videoData.transcript[activeIndex + 1];
-            // 手机端跟读模式：暂停后停留在当前句，不跳到下一句
-            const isMobileShadow = isMobile && mode === 'shadow';
+            // 跟读/精读：暂停后停留在当前句，让用户主动决定下一步（PC/手机端统一）
+            const stayOnCurrentSentence = mode === 'shadow' || mode === 'intensive';
 
             // 与单句循环相同的检测条件：下一句开始前 0.3 秒
             if (nextSub &&
@@ -1423,14 +1425,12 @@ const VideoDetail = ({ isDemo = false, demoEpisode = 104 }) => {
 
                 if (playerRef.current) {
                     playerRef.current.pause();
-                    // 手机端跟读：不跳到下一句开头，停留在当前句
-                    if (!isMobileShadow) {
+                    if (!stayOnCurrentSentence) {
                         playerRef.current.currentTime = nextSub.start;
                     }
                 }
                 setIsPlaying(false);
-                // 手机端跟读：不更新 activeIndex，让用户手动点下一句
-                if (!isMobileShadow) {
+                if (!stayOnCurrentSentence) {
                     setActiveIndex(activeIndex + 1);
                 }
                 return;
